@@ -1,0 +1,30 @@
+services:
+  web:
+    container_name: ${APP_SLUG}-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - project-cost-calculator-network
+      - proxy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.project=kanban"
+      - "traefik.docker.network=proxy-network"
+      # HTTPS router
+      - "traefik.http.routers.${APP_SLUG}-web.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.${APP_SLUG}-web.entrypoints=websecure"
+      - "traefik.http.routers.${APP_SLUG}-web.tls=true"
+      - "traefik.http.routers.${APP_SLUG}-web.tls.certresolver=kanban-letsencrypt"
+      - "traefik.http.services.${APP_SLUG}-web.loadbalancer.server.port=80"
+      # HTTP redirect to HTTPS
+      - "traefik.http.routers.${APP_SLUG}-web-http.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.${APP_SLUG}-web-http.entrypoints=web"
+      - "traefik.http.routers.${APP_SLUG}-web-http.middlewares=redirect-to-https@file"
+
+networks:
+  project-cost-calculator-network:
+    driver: bridge
+  proxy-network:
+    external: true
