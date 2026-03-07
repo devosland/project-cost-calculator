@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Switch } from '../components/ui/switch';
 import { Label } from '../components/ui/label';
 import { PlusCircle, Trash2 } from 'lucide-react';
-import { getRatesConfig } from '../config/rates';
 
 const useQuery = () => {
   return new URLSearchParams(window.location.search);
 }
 
-const ProjectCostCalculator = () => {
+const ProjectCostCalculator = ({ rates }) => {
   const query = useQuery();
   const isAuthorized = query.get('r') === 'true';
 
@@ -24,17 +23,6 @@ const ProjectCostCalculator = () => {
   const [includeContingency, setIncludeContingency] = useState(false);
   const [contingencyPercentage, setContingencyPercentage] = useState(10);
   const [includeTaxes, setIncludeTaxes] = useState(false);
-  const [rates, setRates] = useState({ INTERNAL_RATE: 0, CONSULTANT_RATES: {} });
-
-  useEffect(() => {
-    // Load rates when component mounts
-    getRatesConfig().then(config => {
-      setRates({
-        INTERNAL_RATE: config.INTERNAL_RATE,
-        CONSULTANT_RATES: config.CONSULTANT_RATES
-      });
-    });
-  }, []);
 
   const roles = Object.keys(rates.CONSULTANT_RATES);
   const levels = ['Employé interne', 'Junior', 'Intermédiaire', 'Sénior', 'Expert'];
