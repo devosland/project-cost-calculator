@@ -1,10 +1,16 @@
 import * as demoRates from './rates.demo';
 
+const prodModules = import.meta.glob('./rates.prod.js', { eager: false });
+
 // Create an async function to load the config
 async function loadRatesConfig() {
   try {
-    const prodRates = await import('./rates.prod.js');
-    return process.env.NODE_ENV === 'production' ? prodRates : demoRates;
+    const loader = prodModules['./rates.prod.js'];
+    if (loader && import.meta.env.PROD) {
+      const prodRates = await loader();
+      return prodRates;
+    }
+    return demoRates;
   } catch {
     return demoRates;
   }
