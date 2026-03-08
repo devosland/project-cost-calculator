@@ -169,7 +169,7 @@ export function calculateProjectDurationWithDependencies(project) {
     return { phaseId: p.id, startWeek: endWeek - p.durationWeeks, endWeek };
   });
 
-  const totalWeeks = Math.max(...phaseSchedule.map((s) => s.endWeek));
+  const totalWeeks = phaseSchedule.length > 0 ? Math.max(...phaseSchedule.map((s) => s.endWeek)) : 0;
 
   return { totalWeeks, phaseSchedule };
 }

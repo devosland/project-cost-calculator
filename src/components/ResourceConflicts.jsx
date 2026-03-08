@@ -21,20 +21,21 @@ const ResourceConflicts = ({ project, rates }) => {
     for (const member of phase.teamMembers) {
       const key = `${member.role}|${member.level}`;
       for (let w = schedule.startWeek; w < schedule.endWeek; w++) {
-        if (!weekAllocations[key]) weekAllocations[key] = {};
-        weekAllocations[key][w] = (weekAllocations[key][w] || 0) + member.allocation * member.quantity;
+        if (!weekAllocations[key]) weekAllocations[key] = { total: {}, available: {} };
+        weekAllocations[key].total[w] = (weekAllocations[key].total[w] || 0) + member.allocation * member.quantity;
+        weekAllocations[key].available[w] = (weekAllocations[key].available[w] || 0) + member.quantity;
       }
     }
   }
 
-  // Find conflicts (allocation > 100%)
+  // Find conflicts (total allocation > available capacity)
   const conflicts = [];
-  for (const [key, weeks] of Object.entries(weekAllocations)) {
+  for (const [key, data] of Object.entries(weekAllocations)) {
     const [role, level] = key.split('|');
     // Group consecutive overallocated weeks into ranges
-    const overWeeks = Object.entries(weeks)
-      .filter(([, alloc]) => alloc > 100)
-      .map(([w, alloc]) => ({ week: parseInt(w), alloc }))
+    const overWeeks = Object.entries(data.total)
+      .filter(([w, alloc]) => alloc > (data.available[w] || 1) * 100)
+      .map(([w, alloc]) => ({ week: parseInt(w), alloc: Math.round(alloc / (data.available[w] || 1)) }))
       .sort((a, b) => a.week - b.week);
 
     if (overWeeks.length === 0) continue;

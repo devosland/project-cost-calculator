@@ -54,7 +54,14 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
   };
   const removePhase = (phaseId) => {
     if (project.phases.length <= 1) return;
-    updateProject({ phases: project.phases.filter((p) => p.id !== phaseId) });
+    updateProject({
+      phases: project.phases
+        .filter((p) => p.id !== phaseId)
+        .map((p) => ({
+          ...p,
+          dependencies: (p.dependencies || []).filter((d) => d !== phaseId),
+        })),
+    });
   };
   const movePhase = (index, direction) => {
     const newIndex = index + direction;
