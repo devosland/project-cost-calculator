@@ -10,8 +10,8 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
 
   const CATEGORIES = [
     t('nonLabour.cat.infrastructure'),
-    t('nonLabour.cat.licences'),
-    t('nonLabour.cat.saasTools'),
+    t('nonLabour.cat.licenses'),
+    t('nonLabour.cat.saas'),
     t('nonLabour.cat.travel'),
     t('nonLabour.cat.training'),
     t('nonLabour.cat.equipment'),

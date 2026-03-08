@@ -20,7 +20,7 @@ const ScenarioComparison = ({ projects, rates, selectedIds, onClose }) => {
     return (
       <Card>
         <CardContent className="py-10 text-center text-muted-foreground">
-          {t('scenario.selectAtLeast2')}
+          {t('scenario.selectTwo')}
         </CardContent>
       </Card>
     );
@@ -52,8 +52,8 @@ const ScenarioComparison = ({ projects, rates, selectedIds, onClose }) => {
     { label: t('scenario.totalCost'), key: 'totalCost', format: fmt },
     { label: t('scenario.labour'), key: 'labourCost', format: fmt },
     { label: t('scenario.otherCosts'), key: 'nonLabourCost', format: fmt },
-    { label: t('scenario.duration'), key: 'duration', format: (v) => `${v} ${t('scenario.weeksShort')}` },
-    { label: t('scenario.weeklyRate'), key: 'burnRate', format: fmt },
+    { label: t('scenario.duration'), key: 'duration', format: (v) => `${v} ${t('dashboard.stats.weeks')}` },
+    { label: t('scenario.burnRate'), key: 'burnRate', format: fmt },
     { label: t('scenario.phases'), key: 'phases', format: (v) => v },
     { label: t('scenario.members'), key: 'members', format: (v) => v },
     { label: t('scenario.budget'), key: 'budget', format: (v) => (v ? fmt(v) : '\u2014') },

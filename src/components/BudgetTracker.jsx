@@ -71,7 +71,7 @@ const BudgetTracker = ({ project, rates }) => {
             <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-amber-300 bg-amber-50 text-amber-800">
               <AlertTriangle className="w-5 h-5 flex-shrink-0" />
               <div className="text-sm">
-                <span className="font-semibold">{t('budget.alertLabel')}</span>{' '}
+                <span className="font-semibold">{t('budget.alert')}</span>{' '}
                 {t('budget.alertMessage', { cost: fmt(totalCost), percent: usagePercent.toFixed(1), threshold: alertThreshold })}
                 {project.settings?.webhookUrl && ` ${t('budget.webhookConfigured')}`}
               </div>
@@ -94,7 +94,7 @@ const BudgetTracker = ({ project, rates }) => {
             )}
 
             <div className="p-4 rounded-xl bg-secondary/50">
-              <div className="text-xs text-muted-foreground">{t('budget.estimatedTotal')}</div>
+              <div className="text-xs text-muted-foreground">{t('budget.estimatedCost')}</div>
               <div className="text-xl font-bold">{fmt(totalCost)}</div>
             </div>
 
@@ -145,13 +145,13 @@ const BudgetTracker = ({ project, rates }) => {
               {project.settings.includeContingency && (
                 <div className="flex justify-between items-center text-muted-foreground">
                   <span className="text-sm">{t('budget.contingency', { percent: project.settings.contingencyPercentage })}</span>
-                  <span className="text-sm">{t('budget.includedInLabour')}</span>
+                  <span className="text-sm">{t('budget.contingencyIncluded')}</span>
                 </div>
               )}
               {project.settings.includeTaxes && (
                 <div className="flex justify-between items-center text-muted-foreground">
                   <span className="text-sm">{t('budget.taxes')}</span>
-                  <span className="text-sm">{t('budget.includedInLabour')}</span>
+                  <span className="text-sm">{t('budget.taxesIncluded')}</span>
                 </div>
               )}
             </div>

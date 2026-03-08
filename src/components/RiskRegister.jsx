@@ -153,7 +153,7 @@ const RiskRegister = ({ risks = [], onChange }) => {
                           className="input-field w-full text-sm"
                           value={risk.name}
                           onChange={(e) => updateRisk(risk.id, 'name', e.target.value)}
-                          placeholder={t('risks.riskName')}
+                          placeholder={t('risks.risk')}
                         />
                       </td>
                       <td className="p-2">
@@ -198,7 +198,7 @@ const RiskRegister = ({ risks = [], onChange }) => {
                           className="input-field w-full text-sm"
                           value={risk.mitigation}
                           onChange={(e) => updateRisk(risk.id, 'mitigation', e.target.value)}
-                          placeholder={t('risks.mitigationStrategy')}
+                          placeholder={t('risks.mitigation')}
                         />
                       </td>
                       <td className="p-2 text-center">

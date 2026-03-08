@@ -231,6 +231,10 @@ const translations = {
     'summary.costPerWeek': 'Coût/semaine',
     'summary.nonLabourCosts': "Coûts non liés à la main-d\u2019\u0153uvre",
     'summary.milestones': 'Jalons',
+    'summary.name': 'Nom',
+    'summary.category': 'Catégorie',
+    'summary.amount': 'Montant',
+    'summary.weekNum': 'Semaine {week}',
     'summary.footer': 'Calculateur de coûts de projet',
 
     // Scenario Comparison
@@ -545,6 +549,10 @@ const translations = {
     'summary.costPerWeek': 'Cost/week',
     'summary.nonLabourCosts': 'Non-labour costs',
     'summary.milestones': 'Milestones',
+    'summary.name': 'Name',
+    'summary.category': 'Category',
+    'summary.amount': 'Amount',
+    'summary.weekNum': 'Week {week}',
     'summary.footer': 'Project Cost Calculator',
 
     // Scenario Comparison

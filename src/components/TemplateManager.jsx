@@ -11,7 +11,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
 
   if (!open) return null;
 
-  const defaultName = currentProject?.name ? `${currentProject.name} - ${t('templates.template')}` : t('templates.template');
+  const defaultName = currentProject?.name ? `${currentProject.name} - ${t('templates.defaultName')}` : t('templates.defaultName');
 
   const handleSave = () => {
     const name = templateName.trim() || defaultName;

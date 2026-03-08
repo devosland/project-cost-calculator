@@ -47,7 +47,7 @@ const ProjectSummary = ({ project, rates }) => {
       <div className="flex justify-end print:hidden">
         <Button onClick={() => window.print()} className="flex items-center gap-2">
           <Download className="w-4 h-4" />
-          {t('summary.exportPdf')}
+          {t('summary.export')}
         </Button>
       </div>
 
@@ -67,14 +67,14 @@ const ProjectSummary = ({ project, rates }) => {
             </div>
             <div className="p-4 bg-secondary rounded-xl print:bg-white print:border">
               <div className="text-xs text-muted-foreground">{t('summary.duration')}</div>
-              <div className="text-xl font-bold">{totalWeeks} {t('summary.weeks')}</div>
+              <div className="text-xl font-bold">{totalWeeks} {t('dashboard.weeks')}</div>
             </div>
             <div className="p-4 bg-secondary rounded-xl print:bg-white print:border">
               <div className="text-xs text-muted-foreground">{t('summary.members')}</div>
               <div className="text-xl font-bold">{totalMembers}</div>
             </div>
             <div className="p-4 bg-secondary rounded-xl print:bg-white print:border">
-              <div className="text-xs text-muted-foreground">{t('summary.weeklyRate')}</div>
+              <div className="text-xs text-muted-foreground">{t('summary.ratePerWeek')}</div>
               <div className="text-xl font-bold">{fmt(burnRate)}</div>
             </div>
           </div>
@@ -108,7 +108,7 @@ const ProjectSummary = ({ project, rates }) => {
             </div>
             {project.settings.includeContingency && (
               <p className="text-xs text-muted-foreground mt-2">
-                {t('summary.contingency', { percentage: project.settings.contingencyPercentage })}
+                {t('summary.contingencyIncluded', { percent: project.settings.contingencyPercentage })}
               </p>
             )}
             {project.settings.includeTaxes && (
@@ -136,7 +136,7 @@ const ProjectSummary = ({ project, rates }) => {
                   return (
                     <tr key={phase.id} className="border-b last:border-b-0">
                       <td className="p-2 font-medium">{phase.name}</td>
-                      <td className="p-2 text-center">{phase.durationWeeks} {t('summary.weeksShort')}</td>
+                      <td className="p-2 text-center">{phase.durationWeeks} {t('dashboard.stats.weeks')}</td>
                       <td className="p-2 text-center">{mc}</td>
                       <td className="p-2 text-right">{fmt(wc)}</td>
                       <td className="p-2 text-right font-semibold">{fmt(tc)}</td>
@@ -178,7 +178,7 @@ const ProjectSummary = ({ project, rates }) => {
                 {allMilestones.map((m, i) => (
                   <div key={i} className="flex justify-between py-1.5 border-b last:border-b-0">
                     <span className="font-medium">{m.name}</span>
-                    <span className="text-muted-foreground">{m.phase} — {t('summary.week')} {m.week}</span>
+                    <span className="text-muted-foreground">{m.phase} — {t('summary.weekNum', { week: m.week })}</span>
                   </div>
                 ))}
               </div>

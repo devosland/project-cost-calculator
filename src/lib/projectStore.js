@@ -16,7 +16,7 @@ function createDefaultPhase(name = 'Phase 1') {
 }
 
 export function createProject(name) {
-  name = name || 'Nouveau projet';
+  name = name || 'New project';
   return {
     id: generateId(),
     name,
