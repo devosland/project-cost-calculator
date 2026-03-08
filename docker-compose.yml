@@ -5,6 +5,11 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - DATA_DIR=/data
+    volumes:
+      - app-data:/data
     networks:
       - project-cost-calculator-network
       - proxy-network
@@ -22,6 +27,9 @@ services:
       - "traefik.http.routers.${APP_SLUG}-web-http.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.${APP_SLUG}-web-http.entrypoints=web"
       - "traefik.http.routers.${APP_SLUG}-web-http.middlewares=redirect-to-https@file"
+
+volumes:
+  app-data:
 
 networks:
   project-cost-calculator-network:

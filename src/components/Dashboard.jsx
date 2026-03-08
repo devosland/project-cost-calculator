@@ -9,6 +9,7 @@ import {
   createProject, duplicateProject, deleteProject,
   exportProject, exportProjectCSV, importProjectFromFile,
 } from '../lib/projectStore';
+
 import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency,
 } from '../lib/costCalculations';

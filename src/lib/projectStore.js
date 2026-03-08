@@ -1,5 +1,3 @@
-const STORAGE_KEY = 'project-cost-calculator-projects';
-
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -37,40 +35,6 @@ export function createPhase(name, order) {
   return createDefaultPhase(name, order);
 }
 
-export function loadProjects() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {
-    // ignore
-  }
-  return [];
-}
-
-export function saveProjects(projects) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-}
-
-export function addProject(projects, project) {
-  const updated = [...projects, project];
-  saveProjects(updated);
-  return updated;
-}
-
-export function updateProject(projects, projectId, changes) {
-  const updated = projects.map((p) =>
-    p.id === projectId ? { ...p, ...changes, updatedAt: new Date().toISOString() } : p
-  );
-  saveProjects(updated);
-  return updated;
-}
-
-export function deleteProject(projects, projectId) {
-  const updated = projects.filter((p) => p.id !== projectId);
-  saveProjects(updated);
-  return updated;
-}
-
 export function duplicateProject(projects, projectId) {
   const source = projects.find((p) => p.id === projectId);
   if (!source) return projects;
@@ -87,9 +51,11 @@ export function duplicateProject(projects, projectId) {
     id: generateId(),
     milestones: phase.milestones.map((m) => ({ ...m, id: generateId() })),
   }));
-  const updated = [...projects, copy];
-  saveProjects(updated);
-  return updated;
+  return [...projects, copy];
+}
+
+export function deleteProject(projects, projectId) {
+  return projects.filter((p) => p.id !== projectId);
 }
 
 export function exportProject(project) {
