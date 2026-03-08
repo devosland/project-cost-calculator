@@ -102,7 +102,10 @@ const WebhookSettings = ({ project, updateSettings }) => {
           value={threshold}
           min="1"
           max="100"
-          onChange={(e) => updateSettings({ budgetAlertThreshold: parseInt(e.target.value) || 80 })}
+          onChange={(e) => {
+            const v = parseInt(e.target.value);
+            updateSettings({ budgetAlertThreshold: isNaN(v) ? 80 : Math.max(1, Math.min(100, v)) });
+          }}
         />
         <span className="text-sm text-muted-foreground">% du budget</span>
       </div>

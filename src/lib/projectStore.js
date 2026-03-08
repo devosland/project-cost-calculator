@@ -155,6 +155,10 @@ export function exportCalendar(project) {
     return `${y}${m}${d}T${h}${min}${s}`;
   }
 
+  function escapeICS(str) {
+    return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n').replace(/\r/g, '');
+  }
+
   const now = formatDateTimeICS(new Date());
   const events = [];
 
@@ -176,8 +180,8 @@ export function exportCalendar(project) {
           `DTSTAMP:${now}`,
           `DTSTART;VALUE=DATE:${formatDateICS(milestoneDate)}`,
           `DTEND;VALUE=DATE:${formatDateICS(nextDay)}`,
-          `SUMMARY:${milestone.name}`,
-          `DESCRIPTION:Phase : ${phase.name} — Semaine ${schedule.startWeek + milestone.weekOffset}`,
+          `SUMMARY:${escapeICS(milestone.name)}`,
+          `DESCRIPTION:Phase : ${escapeICS(phase.name)} — Semaine ${schedule.startWeek + milestone.weekOffset}`,
           'END:VEVENT',
         ].join('\r\n')
       );
@@ -190,7 +194,7 @@ export function exportCalendar(project) {
     'PRODID:-//ProjectCostCalculator//FR',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    `X-WR-CALNAME:${project.name}`,
+    `X-WR-CALNAME:${escapeICS(project.name)}`,
     ...events,
     'END:VCALENDAR',
   ].join('\r\n');

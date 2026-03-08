@@ -218,6 +218,22 @@ router.post('/snapshots/:snapshotId/restore', (req, res) => {
   }
 });
 
+// Validate webhook URL to prevent SSRF
+function isAllowedWebhookUrl(urlString) {
+  let parsed;
+  try { parsed = new URL(urlString); } catch { return false; }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+  const hostname = parsed.hostname;
+  if (
+    hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' ||
+    hostname.startsWith('10.') || hostname.startsWith('192.168.') ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+    hostname === '169.254.169.254' || hostname.endsWith('.internal') ||
+    hostname === '0.0.0.0' || hostname === '[::1]'
+  ) return false;
+  return true;
+}
+
 // POST /:id/test-webhook — send a test webhook notification
 router.post('/:id/test-webhook', async (req, res) => {
   try {
@@ -232,6 +248,9 @@ router.post('/:id/test-webhook', async (req, res) => {
     const webhookUrl = data.settings?.webhookUrl;
     if (!webhookUrl) {
       return res.status(400).json({ error: 'Aucune URL webhook configurée' });
+    }
+    if (!isAllowedWebhookUrl(webhookUrl)) {
+      return res.status(400).json({ error: 'URL webhook invalide ou non autorisée' });
     }
 
     const budget = data.budget ?? null;
