@@ -218,4 +218,61 @@ router.post('/snapshots/:snapshotId/restore', (req, res) => {
   }
 });
 
+// POST /:id/test-webhook — send a test webhook notification
+router.post('/:id/test-webhook', async (req, res) => {
+  try {
+    const role = checkAccess(req.params.id, req.user.id, 'editor');
+    if (!role) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const project = getProjectById(req.params.id);
+    let data = {};
+    try { data = JSON.parse(project.data); } catch {}
+
+    const webhookUrl = data.settings?.webhookUrl;
+    if (!webhookUrl) {
+      return res.status(400).json({ error: 'Aucune URL webhook configurée' });
+    }
+
+    const budget = data.budget ?? null;
+    const threshold = data.settings?.budgetAlertThreshold ?? 80;
+
+    const payload = {
+      event: 'budget_alert_test',
+      project: {
+        id: project.id,
+        name: project.name,
+      },
+      budget: {
+        total: budget,
+        threshold_percent: threshold,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return res.status(502).json({ error: `Le webhook a répondu avec le statut ${response.status}` });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Test webhook error:', err);
+    if (err.name === 'AbortError') {
+      return res.status(504).json({ error: 'Le webhook n\u2019a pas répondu dans les délais' });
+    }
+    res.status(502).json({ error: 'Impossible de joindre l\u2019URL du webhook' });
+  }
+});
+
 export default router;

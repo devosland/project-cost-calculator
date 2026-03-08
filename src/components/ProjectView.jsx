@@ -6,7 +6,7 @@ import { Dropdown } from './ui/dropdown';
 import {
   ArrowLeft, PlusCircle, Trash2, ChevronUp, ChevronDown,
   LayoutDashboard, Calendar, Settings, DollarSign, BarChart3, FileText,
-  Share2, History, AlertTriangle,
+  Share2, History, AlertTriangle, Bell,
 } from 'lucide-react';
 import PhaseEditor from './PhaseEditor';
 import TimelineView from './TimelineView';
@@ -33,6 +33,82 @@ const TABS = [
   { id: 'risks', label: 'Risques', icon: AlertTriangle },
   { id: 'rates', label: 'Taux', icon: Settings },
 ];
+
+const WebhookSettings = ({ project, updateSettings }) => {
+  const [testStatus, setTestStatus] = useState(null);
+  const webhookUrl = project.settings?.webhookUrl || '';
+  const threshold = project.settings?.budgetAlertThreshold ?? 80;
+
+  const testWebhook = async () => {
+    if (!webhookUrl) return;
+    setTestStatus('loading');
+    try {
+      const res = await fetch(`/api/projects/${project.id}/test-webhook`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (res.ok) {
+        setTestStatus('success');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setTestStatus(data.error || 'error');
+      }
+    } catch {
+      setTestStatus('error');
+    }
+    setTimeout(() => setTestStatus(null), 4000);
+  };
+
+  return (
+    <div className="p-5 bg-white border rounded-xl shadow-sm space-y-4">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Bell className="w-4 h-4" />
+        Notifications webhook
+      </div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Label className="text-sm text-muted-foreground w-32">URL du webhook</Label>
+        <input
+          type="url"
+          className="input-field flex-1 min-w-[200px]"
+          value={webhookUrl}
+          placeholder="https://example.com/webhook"
+          onChange={(e) => updateSettings({ webhookUrl: e.target.value })}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!webhookUrl || testStatus === 'loading'}
+          onClick={testWebhook}
+        >
+          {testStatus === 'loading' ? 'Envoi…' : 'Tester'}
+        </Button>
+        {testStatus === 'success' && (
+          <span className="text-xs text-emerald-600 font-medium">Envoyé avec succès</span>
+        )}
+        {testStatus && testStatus !== 'success' && testStatus !== 'loading' && (
+          <span className="text-xs text-red-600 font-medium">
+            {testStatus === 'error' ? 'Échec de l\u2019envoi' : testStatus}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <Label className="text-sm text-muted-foreground w-32">Seuil d'alerte</Label>
+        <input
+          type="number"
+          className="input-field w-20 text-center"
+          value={threshold}
+          min="1"
+          max="100"
+          onChange={(e) => updateSettings({ budgetAlertThreshold: parseInt(e.target.value) || 80 })}
+        />
+        <span className="text-sm text-muted-foreground">% du budget</span>
+      </div>
+    </div>
+  );
+};
 
 const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, onOpenShare, onOpenHistory }) => {
   const query = useQuery();
@@ -231,6 +307,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
             />
             <span className="text-sm text-muted-foreground">{currency}</span>
           </div>
+          <WebhookSettings project={project} updateSettings={updateSettings} />
           <BudgetTracker project={project} rates={rates} />
           <NonLabourCosts
             costs={project.nonLabourCosts || []}

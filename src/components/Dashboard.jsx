@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import {
   PlusCircle, Trash2, Copy, Download, Upload,
   FolderOpen, Pencil, Check, X, GitCompare, LayoutTemplate, Users,
+  BarChart3, DollarSign, Clock, UsersRound,
 } from 'lucide-react';
 import {
   createProject, duplicateProject, deleteProject,
@@ -107,6 +108,47 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
           </Button>
         </div>
       </div>
+
+      {sortedProjects.length > 0 && (() => {
+        const totalCostAll = projects.reduce((sum, p) => {
+          return sum + calculateProjectCost(p, rates);
+        }, 0);
+        const totalWeeksAll = projects.reduce((sum, p) => {
+          return sum + calculateProjectDurationWeeks(p);
+        }, 0);
+        const avgWeeks = projects.length > 0 ? (totalWeeksAll / projects.length) : 0;
+        const totalMembers = projects.reduce((sum, p) => {
+          return sum + p.phases.reduce((s, ph) => s + ph.teamMembers.reduce((s2, m) => s2 + m.quantity, 0), 0);
+        }, 0);
+        const primaryCurrency = projects[0]?.settings?.currency || 'CAD';
+
+        const stats = [
+          { icon: BarChart3, label: 'Projets', value: `${projects.length}` },
+          { icon: DollarSign, label: 'Coût total', value: formatCurrency(totalCostAll, primaryCurrency) },
+          { icon: Clock, label: 'Durée moyenne', value: `${avgWeeks.toFixed(1)} sem.` },
+          { icon: UsersRound, label: 'Membres', value: `${totalMembers}` },
+        ];
+
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            {stats.map((stat) => (
+              <Card key={stat.label}>
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <stat.icon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">{stat.label}</p>
+                      <p className="text-lg font-bold truncate">{stat.value}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
 
       {sortedProjects.length === 0 ? (
         <Card className="border-dashed">

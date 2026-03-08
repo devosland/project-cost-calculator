@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import { AlertTriangle } from 'lucide-react';
 import {
   calculateProjectCost,
   calculateProjectDurationWeeks,
@@ -27,6 +28,9 @@ const BudgetTracker = ({ project, rates }) => {
   const isOverBudget = hasBudget && totalCost > budget;
   const weeksUntilBudgetExhausted = burnRate > 0 && hasBudget ? budget / burnRate : null;
 
+  const alertThreshold = project.settings?.budgetAlertThreshold ?? 80;
+  const isAboveThreshold = hasBudget && usagePercent >= alertThreshold && !isOverBudget;
+
   return (
     <Card>
       <CardHeader>
@@ -47,7 +51,7 @@ const BudgetTracker = ({ project, rates }) => {
                   className={`h-full rounded-full transition-all duration-500 ${
                     isOverBudget
                       ? 'bg-red-500'
-                      : usagePercent > 80
+                      : usagePercent > alertThreshold
                         ? 'bg-amber-500'
                         : 'bg-emerald-500'
                   }`}
@@ -57,6 +61,18 @@ const BudgetTracker = ({ project, rates }) => {
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{fmt(0)}</span>
                 <span>{fmt(budget)}</span>
+              </div>
+            </div>
+          )}
+
+          {isAboveThreshold && (
+            <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-amber-300 bg-amber-50 text-amber-800">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <div className="text-sm">
+                <span className="font-semibold">Alerte budgétaire :</span>{' '}
+                le coût estimé ({fmt(totalCost)}) a atteint {usagePercent.toFixed(1)}% du budget,
+                dépassant le seuil de {alertThreshold}%.
+                {project.settings?.webhookUrl && ' Une notification webhook est configurée.'}
               </div>
             </div>
           )}
