@@ -36,6 +36,16 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    token TEXT UNIQUE NOT NULL,
+    expires_at TEXT NOT NULL,
+    used INTEGER DEFAULT 0
+  )
+`);
+
 // Helper functions
 function createUser(email, name, passwordHash) {
   const stmt = db.prepare('INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)');
@@ -69,4 +79,24 @@ function saveUserData(userId, projects, rates) {
   stmt.run(userId, projects, rates);
 }
 
-export { db, createUser, findUserByEmail, getUserData, saveUserData };
+function createPasswordReset(userId, token, expiresAt) {
+  const stmt = db.prepare('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)');
+  stmt.run(userId, token, expiresAt);
+}
+
+function findValidReset(token) {
+  const stmt = db.prepare("SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > datetime('now')");
+  return stmt.get(token);
+}
+
+function markResetUsed(token) {
+  const stmt = db.prepare('UPDATE password_resets SET used = 1 WHERE token = ?');
+  stmt.run(token);
+}
+
+function updateUserPassword(userId, passwordHash) {
+  const stmt = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+  stmt.run(passwordHash, userId);
+}
+
+export { db, createUser, findUserByEmail, getUserData, saveUserData, createPasswordReset, findValidReset, markResetUsed, updateUserPassword };

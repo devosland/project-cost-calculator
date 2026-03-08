@@ -33,30 +33,37 @@
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 210 40% 98%;
+    --background: 224 10% 10%;
+    --foreground: 210 40% 96%;
 
-    --card: 224 50% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 224 10% 13%;
+    --card-foreground: 210 40% 96%;
 
-    --popover: 224 50% 8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 224 10% 13%;
+    --popover-foreground: 210 40% 96%;
 
-    --primary: 243 75% 59%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 243 75% 65%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 215 28% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 224 10% 18%;
+    --secondary-foreground: 210 40% 96%;
 
-    --accent: 243 75% 20%;
-    --accent-foreground: 243 75% 80%;
+    --muted: 224 10% 18%;
+    --muted-foreground: 215 20% 55%;
 
-    --destructive: 0 63% 31%;
+    --accent: 224 10% 18%;
+    --accent-foreground: 210 40% 96%;
+
+    --destructive: 0 62% 55%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 243 75% 59%;
+    --border: 224 10% 20%;
+    --input: 224 10% 20%;
+    --ring: 243 75% 65%;
+  }
+
+  .dark .bg-white {
+    background-color: hsl(var(--card));
   }
 }
 

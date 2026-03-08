@@ -143,7 +143,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack })
 
           {project.phases.map((phase, index) => (
             <div key={phase.id} className="relative">
-              <div className="absolute -left-10 top-4 flex flex-col gap-1">
+              <div className="absolute -left-10 top-4 hidden sm:flex flex-col gap-1">
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => movePhase(index, -1)} disabled={index === 0}>
                   <ChevronUp className="w-3 h-3" />
                 </Button>
@@ -159,7 +159,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack })
                 onChange={(updated) => updatePhase(phase.id, updated)}
               />
               {project.phases.length > 1 && (
-                <div className="absolute -right-10 top-4">
+                <div className="absolute -right-10 top-4 hidden sm:block">
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
                     onClick={() => removePhase(phase.id)} title="Supprimer la phase">
                     <Trash2 className="w-3 h-3" />
@@ -175,7 +175,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack })
           </Button>
 
           <div className="p-6 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
-            <div className="grid grid-cols-3 gap-6 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
               <div>
                 <div className="text-sm text-muted-foreground">{"Dur\u00e9e totale"}</div>
                 <div className="text-2xl font-bold">{totalWeeks} semaines</div>

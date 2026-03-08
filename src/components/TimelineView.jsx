@@ -55,7 +55,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
       <CardContent>
         <div className="space-y-8">
           <div className="space-y-3">
-            <div className="relative h-6 ml-36">
+            <div className="relative h-6 ml-20 sm:ml-36">
               {weekMarkers.map((week) => (
                 <div
                   key={week}
@@ -73,7 +73,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
 
               return (
                 <div key={phase.id} className="flex items-center gap-3">
-                  <div className="w-36 text-sm font-medium truncate text-right pr-2">
+                  <div className="w-20 sm:w-36 text-sm font-medium truncate text-right pr-2">
                     {phase.name}
                   </div>
                   <div className="flex-1 relative h-9">
@@ -115,6 +115,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
 
           <div className="border-t pt-6">
             <h4 className="font-semibold mb-4">{"R\u00e9partition des co\u00fbts"}</h4>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
@@ -149,6 +150,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
 
           {phasesWithOffsets.some((p) => p.milestones.length > 0) && (

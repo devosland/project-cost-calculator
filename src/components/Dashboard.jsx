@@ -66,7 +66,7 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
               : "Commencez par cr\u00e9er un projet"}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {projects.length >= 2 && (
             <Button
               variant={compareMode ? 'default' : 'outline'}
@@ -169,7 +169,7 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                         ) : (
                           <h3 className="text-lg font-semibold truncate">{project.name}</h3>
                         )}
-                        <div className="flex gap-3 mt-1 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-sm text-muted-foreground">
                           <span>{phaseCount} phase{phaseCount > 1 ? 's' : ''}</span>
                           <span className="text-border">|</span>
                           <span>{memberCount} membre{memberCount > 1 ? 's' : ''}</span>
@@ -189,7 +189,7 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
 
                       {!compareMode && (
                         <div
-                          className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Button variant="ghost" size="sm" onClick={() => startRename(project)} title="Renommer">

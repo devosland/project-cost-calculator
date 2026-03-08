@@ -7,6 +7,8 @@ import { getRatesConfig } from './config/rates'
 import { api } from './lib/api'
 import { LogOut, User } from 'lucide-react'
 import { Button } from './components/ui/button'
+import SaveIndicator from './components/SaveIndicator'
+import ThemeToggle from './components/ThemeToggle'
 import './App.css'
 
 function App() {
@@ -16,7 +18,17 @@ function App() {
   const [projects, setProjects] = useState([]);
   const [activeProjectId, setActiveProjectId] = useState(null);
   const [compareIds, setCompareIds] = useState(null);
+  const [saveStatus, setSaveStatus] = useState('idle');
   const saveTimer = useRef(null);
+
+  // Apply saved theme on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (saved === 'dark' || (!saved && prefersDark)) {
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
 
   // Check existing token on mount
   useEffect(() => {
@@ -68,10 +80,16 @@ function App() {
   const saveToApi = useCallback((newProjects, newRates) => {
     if (!user) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaveStatus('saving');
     saveTimer.current = setTimeout(() => {
-      api.saveData(newProjects, newRates).catch((err) => {
-        console.error('Failed to save data:', err);
-      });
+      api.saveData(newProjects, newRates)
+        .then(() => {
+          setSaveStatus('saved');
+        })
+        .catch((err) => {
+          console.error('Failed to save data:', err);
+          setSaveStatus('error');
+        });
     }, 1000);
   }, [user]);
 
@@ -132,8 +150,10 @@ function App() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="w-4 h-4" />
-              <span>{user.name}</span>
+              <span className="hidden sm:inline">{user.name}</span>
             </div>
+            <SaveIndicator status={saveStatus} />
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="sm"

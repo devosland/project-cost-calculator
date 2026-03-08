@@ -78,7 +78,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange })
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           {editingName ? (
             <div className="flex items-center gap-2">
               <input
@@ -140,7 +140,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange })
             const details = getMemberDetails(member);
             return (
               <div key={index} className="space-y-2 p-4 border rounded-xl bg-secondary/20 hover:bg-secondary/40 transition-colors">
-                <div className="grid grid-cols-5 gap-3 items-center">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center">
                   <select
                     className="select-field"
                     value={member.role}
