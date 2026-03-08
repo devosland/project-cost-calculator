@@ -6,6 +6,7 @@ import {
   getCostByCategory,
   formatCurrency,
 } from '../lib/costCalculations';
+import { useLocale } from '../lib/i18n';
 
 const CHART_COLORS = [
   '#6366f1', '#10b981', '#f59e0b', '#ef4444',
@@ -114,20 +115,21 @@ const BarChart = ({ data, currency }) => {
   );
 };
 
-const VIEWS = [
-  { id: 'role', label: 'Par r\u00f4le' },
-  { id: 'phase', label: 'Par phase' },
-  { id: 'category', label: 'Par cat\u00e9gorie' },
-];
-
 const CostCharts = ({ project, rates }) => {
+  const { t } = useLocale();
   const [view, setView] = useState('role');
   const currency = project.settings?.currency || 'CAD';
+
+  const VIEWS = [
+    { id: 'role', label: t('charts.byRole') },
+    { id: 'phase', label: t('charts.byPhase') },
+    { id: 'category', label: t('charts.byCategory') },
+  ];
 
   const dataMap = {
     role: getCostByRole(project, rates),
     phase: getCostByPhase(project, rates),
-    category: getCostByCategory(project, rates),
+    category: getCostByCategory(project, rates, t('category.labour')),
   };
 
   const data = dataMap[view];
@@ -137,7 +139,7 @@ const CostCharts = ({ project, rates }) => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>{"R\u00e9partition des co\u00fbts"}</CardTitle>
+          <CardTitle>{t('charts.title')}</CardTitle>
           <div className="flex gap-1 bg-secondary rounded-lg p-1">
             {VIEWS.map((v) => (
               <button
@@ -158,7 +160,7 @@ const CostCharts = ({ project, rates }) => {
       <CardContent>
         {!hasData ? (
           <p className="text-sm text-muted-foreground text-center py-10">
-            {"Ajoutez des membres d\u2019\u00e9quipe pour voir les graphiques."}
+            {t('charts.empty')}
           </p>
         ) : (
           <div className="space-y-8">

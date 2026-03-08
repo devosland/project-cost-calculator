@@ -13,9 +13,11 @@ import { LogOut, User } from 'lucide-react'
 import { Button } from './components/ui/button'
 import SaveIndicator from './components/SaveIndicator'
 import ThemeToggle from './components/ThemeToggle'
+import { LocaleProvider, useLocale } from './lib/i18n'
 import './App.css'
 
-function App() {
+function AppContent() {
+  const { t, locale, setLocale } = useLocale();
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [rates, setRates] = useState(null);
@@ -72,7 +74,7 @@ function App() {
         if (data.rates) {
           setRates(data.rates);
         } else {
-          const config = await getRatesConfig();
+          const config = await getRatesConfig(locale);
           setRates({
             INTERNAL_RATE: config.INTERNAL_RATE,
             CONSULTANT_RATES: config.CONSULTANT_RATES,
@@ -80,7 +82,7 @@ function App() {
         }
       })
       .catch(async () => {
-        const config = await getRatesConfig();
+        const config = await getRatesConfig(locale);
         setRates({
           INTERNAL_RATE: config.INTERNAL_RATE,
           CONSULTANT_RATES: config.CONSULTANT_RATES,
@@ -264,7 +266,7 @@ function App() {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-white font-bold text-sm">PC</span>
             </div>
-            <span className="font-semibold text-lg tracking-tight">Planificateur</span>
+            <span className="font-semibold text-lg tracking-tight">{t('app.name')}</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -276,9 +278,17 @@ function App() {
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => setLocale(locale === 'fr' ? 'en' : 'fr')}
+              className="text-muted-foreground hover:text-foreground font-medium"
+            >
+              {locale === 'fr' ? 'EN' : 'FR'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleLogout}
               className="text-muted-foreground hover:text-foreground"
-              title={"\u00c9connexion"}
+              title={t('app.logout')}
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -348,6 +358,14 @@ function App() {
         onRestoreSnapshot={handleRestoreSnapshot}
       />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <LocaleProvider>
+      <AppContent />
+    </LocaleProvider>
   );
 }
 

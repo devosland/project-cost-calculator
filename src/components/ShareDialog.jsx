@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Mail, UserPlus, X, Shield } from 'lucide-react';
-
-const ROLE_OPTIONS = [
-  { value: 'viewer', label: 'Lecture seule' },
-  { value: 'editor', label: 'Éditeur' },
-];
+import { useLocale } from '../lib/i18n';
 
 const roleBadgeStyles = {
   viewer: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -13,9 +9,15 @@ const roleBadgeStyles = {
 };
 
 const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
+  const { t } = useLocale();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
   const [error, setError] = useState('');
+
+  const ROLE_OPTIONS = [
+    { value: 'viewer', label: t('share.roleViewer') },
+    { value: 'editor', label: t('share.roleEditor') },
+  ];
 
   if (!open) return null;
 
@@ -26,7 +28,7 @@ const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
       setEmail('');
       setRole('viewer');
     } catch (err) {
-      setError(err.message || 'Une erreur est survenue.');
+      setError(err.message || t('share.error'));
     }
   };
 
@@ -40,7 +42,7 @@ const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
-            <h2 className="text-xl font-semibold">Partager le projet</h2>
+            <h2 className="text-xl font-semibold">{t('share.title')}</h2>
           </div>
           <button
             onClick={onClose}
@@ -58,7 +60,7 @@ const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
               <input
                 type="email"
                 className="input-field w-full pl-9"
-                placeholder="adresse@courriel.com"
+                placeholder={t('share.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -78,17 +80,17 @@ const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
           )}
           <Button variant="default" size="sm" onClick={handleInvite} className="w-full">
             <UserPlus className="w-4 h-4 mr-2" />
-            Inviter
+            {t('share.invite')}
           </Button>
         </div>
 
         {/* Current Shares */}
         <div>
-          <h3 className="text-sm font-medium mb-3 text-muted-foreground">Partages actuels</h3>
+          <h3 className="text-sm font-medium mb-3 text-muted-foreground">{t('share.currentShares')}</h3>
           <div className="space-y-2">
             {(!shares || shares.length === 0) ? (
               <p className="text-sm text-muted-foreground text-center py-6">
-                Aucun partage.
+                {t('share.noShares')}
               </p>
             ) : (
               shares.map((share) => (

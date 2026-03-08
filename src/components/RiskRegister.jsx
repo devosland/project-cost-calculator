@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { PlusCircle, Trash2, AlertTriangle } from 'lucide-react';
+import { useLocale } from '../lib/i18n';
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -19,7 +20,7 @@ function getScoreBgColor(score) {
   return 'bg-red-500';
 }
 
-const RiskMatrix = ({ risks }) => {
+const RiskMatrix = ({ risks, t }) => {
   // Build a 5x5 matrix (probability on Y axis top-to-bottom 5->1, impact on X axis 1->5)
   const matrix = {};
   for (let p = 1; p <= 5; p++) {
@@ -34,11 +35,11 @@ const RiskMatrix = ({ risks }) => {
 
   return (
     <div className="mb-6">
-      <h4 className="text-sm font-semibold mb-2">{"Matrice de risques"}</h4>
+      <h4 className="text-sm font-semibold mb-2">{t('risks.matrix')}</h4>
       <div className="inline-block">
         <div className="flex items-end gap-0">
           <div className="flex flex-col items-center mr-1">
-            <span className="text-xs text-muted-foreground mb-1 -rotate-90 origin-center w-4">{"Probabilité"}</span>
+            <span className="text-xs text-muted-foreground mb-1 -rotate-90 origin-center w-4">{t('risks.probability')}</span>
           </div>
           <div>
             {[5, 4, 3, 2, 1].map((prob) => (
@@ -73,7 +74,7 @@ const RiskMatrix = ({ risks }) => {
                 <span key={i} className="w-10 text-center text-xs text-muted-foreground">{i}</span>
               ))}
             </div>
-            <div className="text-xs text-muted-foreground text-center mt-0.5 ml-5">Impact</div>
+            <div className="text-xs text-muted-foreground text-center mt-0.5 ml-5">{t('risks.impact')}</div>
           </div>
         </div>
       </div>
@@ -82,6 +83,7 @@ const RiskMatrix = ({ risks }) => {
 };
 
 const RiskRegister = ({ risks = [], onChange }) => {
+  const { t } = useLocale();
   const addRisk = () => {
     onChange([
       ...risks,
@@ -111,33 +113,33 @@ const RiskRegister = ({ risks = [], onChange }) => {
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
-            {"Registre des risques"}
+            {t('risks.title')}
           </CardTitle>
           <Button size="sm" onClick={addRisk} className="flex items-center gap-2">
             <PlusCircle className="w-4 h-4" />
-            {"Ajouter un risque"}
+            {t('risks.add')}
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        {risks.length > 0 && <RiskMatrix risks={risks} />}
+        {risks.length > 0 && <RiskMatrix risks={risks} t={t} />}
 
         {risks.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
-            {"Aucun risque enregistré. Cliquez sur \"Ajouter un risque\" pour commencer."}
+            {t('risks.empty')}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="p-2 text-muted-foreground font-medium">Risque</th>
-                  <th className="p-2 text-center text-muted-foreground font-medium">{"Probabilité"}</th>
-                  <th className="p-2 text-center text-muted-foreground font-medium">Impact</th>
-                  <th className="p-2 text-center text-muted-foreground font-medium">Score</th>
-                  <th className="p-2 text-muted-foreground font-medium">Phase</th>
-                  <th className="p-2 text-muted-foreground font-medium">{"Atténuation"}</th>
-                  <th className="p-2 text-center text-muted-foreground font-medium">Actions</th>
+                  <th className="p-2 text-muted-foreground font-medium">{t('risks.risk')}</th>
+                  <th className="p-2 text-center text-muted-foreground font-medium">{t('risks.probability')}</th>
+                  <th className="p-2 text-center text-muted-foreground font-medium">{t('risks.impact')}</th>
+                  <th className="p-2 text-center text-muted-foreground font-medium">{t('risks.score')}</th>
+                  <th className="p-2 text-muted-foreground font-medium">{t('risks.phase')}</th>
+                  <th className="p-2 text-muted-foreground font-medium">{t('risks.mitigation')}</th>
+                  <th className="p-2 text-center text-muted-foreground font-medium">{t('risks.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -151,7 +153,7 @@ const RiskRegister = ({ risks = [], onChange }) => {
                           className="input-field w-full text-sm"
                           value={risk.name}
                           onChange={(e) => updateRisk(risk.id, 'name', e.target.value)}
-                          placeholder="Nom du risque"
+                          placeholder={t('risks.risk')}
                         />
                       </td>
                       <td className="p-2">
@@ -187,7 +189,7 @@ const RiskRegister = ({ risks = [], onChange }) => {
                           className="input-field w-full text-sm"
                           value={risk.phase}
                           onChange={(e) => updateRisk(risk.id, 'phase', e.target.value)}
-                          placeholder="Phase"
+                          placeholder={t('risks.phase')}
                         />
                       </td>
                       <td className="p-2">
@@ -196,7 +198,7 @@ const RiskRegister = ({ risks = [], onChange }) => {
                           className="input-field w-full text-sm"
                           value={risk.mitigation}
                           onChange={(e) => updateRisk(risk.id, 'mitigation', e.target.value)}
-                          placeholder={"Stratégie d'atténuation"}
+                          placeholder={t('risks.mitigation')}
                         />
                       </td>
                       <td className="p-2 text-center">

@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { X, Trash2, Save, FolderOpen } from 'lucide-react';
+import { useLocale, getDateLocale } from '../lib/i18n';
 
 const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTemplate, onDeleteTemplate, currentProject }) => {
+  const { t, locale } = useLocale();
   const [activeTab, setActiveTab] = useState('save');
   const [templateName, setTemplateName] = useState('');
 
   if (!open) return null;
 
-  const defaultName = currentProject?.name ? `${currentProject.name} - Modèle` : 'Modèle';
+  const defaultName = currentProject?.name ? `${currentProject.name} - ${t('templates.defaultName')}` : t('templates.defaultName');
 
   const handleSave = () => {
     const name = templateName.trim() || defaultName;
@@ -25,7 +27,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold">Gestion des modèles</h2>
+          <h2 className="text-xl font-semibold">{t('templates.title')}</h2>
           <button
             onClick={onClose}
             className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -45,7 +47,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
             onClick={() => setActiveTab('save')}
           >
             <Save className="w-4 h-4" />
-            Sauvegarder
+            {t('templates.save')}
           </button>
           <button
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -56,7 +58,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
             onClick={() => setActiveTab('load')}
           >
             <FolderOpen className="w-4 h-4" />
-            Charger
+            {t('templates.load')}
           </button>
         </div>
 
@@ -64,7 +66,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
         {activeTab === 'save' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5">Nom du modèle</label>
+              <label className="block text-sm font-medium mb-1.5">{t('templates.templateName')}</label>
               <input
                 type="text"
                 className="input-field w-full"
@@ -75,7 +77,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
             </div>
             <Button variant="default" size="default" className="w-full" onClick={handleSave}>
               <Save className="w-4 h-4 mr-2" />
-              Sauvegarder comme modèle
+              {t('templates.saveAsTemplate')}
             </Button>
           </div>
         )}
@@ -85,7 +87,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
           <div className="space-y-3">
             {(!templates || templates.length === 0) ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                Aucun modèle sauvegardé.
+                {t('templates.noTemplates')}
               </p>
             ) : (
               templates.map((template) => (
@@ -96,7 +98,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
                   <div>
                     <p className="font-medium text-sm">{template.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(template.created_at).toLocaleDateString('fr-CA')}
+                      {new Date(template.created_at).toLocaleDateString(getDateLocale(locale))}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -105,7 +107,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
                       size="sm"
                       onClick={() => onLoadTemplate(template)}
                     >
-                      Utiliser
+                      {t('templates.use')}
                     </Button>
                     <button
                       onClick={() => onDeleteTemplate(template.id)}
