@@ -31,6 +31,28 @@ export const api = {
   getMe: () => request('/auth/me'),
   loadData: () => request('/data'),
   saveData: (projects, rates) => request('/data', { method: 'PUT', body: JSON.stringify({ projects, rates }) }),
+
+  // Projects
+  getProjects: () => request('/projects'),
+  createProject: (project) => request('/projects', { method: 'POST', body: JSON.stringify(project) }),
+  updateProject: (id, data) => request(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProject: (id) => request(`/projects/${id}`, { method: 'DELETE' }),
+
+  // Sharing
+  getShares: (projectId) => request(`/projects/${projectId}/shares`),
+  shareProject: (projectId, email, role) => request(`/projects/${projectId}/share`, { method: 'POST', body: JSON.stringify({ email, role }) }),
+  unshareProject: (projectId, userId) => request(`/projects/${projectId}/share/${userId}`, { method: 'DELETE' }),
+
+  // Snapshots
+  getSnapshots: (projectId) => request(`/projects/${projectId}/snapshots`),
+  createSnapshot: (projectId, label) => request(`/projects/${projectId}/snapshots`, { method: 'POST', body: JSON.stringify({ label }) }),
+  restoreSnapshot: (snapshotId) => request(`/projects/snapshots/${snapshotId}/restore`, { method: 'POST' }),
+
+  // Templates
+  getTemplates: () => request('/templates'),
+  saveTemplate: (name, data) => request('/templates', { method: 'POST', body: JSON.stringify({ name, data }) }),
+  deleteTemplate: (id) => request(`/templates/${id}`, { method: 'DELETE' }),
+
   setToken,
   getToken,
   clearToken,

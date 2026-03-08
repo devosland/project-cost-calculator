@@ -3,8 +3,12 @@ import AuthPage from './components/AuthPage'
 import Dashboard from './components/Dashboard'
 import ProjectView from './components/ProjectView'
 import ScenarioComparison from './components/ScenarioComparison'
+import TemplateManager from './components/TemplateManager'
+import ShareDialog from './components/ShareDialog'
+import VersionHistory from './components/VersionHistory'
 import { getRatesConfig } from './config/rates'
 import { api } from './lib/api'
+import { createProject } from './lib/projectStore'
 import { LogOut, User } from 'lucide-react'
 import { Button } from './components/ui/button'
 import SaveIndicator from './components/SaveIndicator'
@@ -20,6 +24,14 @@ function App() {
   const [compareIds, setCompareIds] = useState(null);
   const [saveStatus, setSaveStatus] = useState('idle');
   const saveTimer = useRef(null);
+
+  // Phase 2 state
+  const [templates, setTemplates] = useState([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [shares, setShares] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [snapshots, setSnapshots] = useState([]);
 
   // Apply saved theme on mount
   useEffect(() => {
@@ -74,6 +86,9 @@ function App() {
           CONSULTANT_RATES: config.CONSULTANT_RATES,
         });
       });
+
+    // Load templates
+    api.getTemplates().then(setTemplates).catch(() => {});
   }, [user]);
 
   // Debounced save to API
@@ -83,9 +98,7 @@ function App() {
     setSaveStatus('saving');
     saveTimer.current = setTimeout(() => {
       api.saveData(newProjects, newRates)
-        .then(() => {
-          setSaveStatus('saved');
-        })
+        .then(() => setSaveStatus('saved'))
         .catch((err) => {
           console.error('Failed to save data:', err);
           setSaveStatus('error');
@@ -126,6 +139,112 @@ function App() {
     saveToApi(newProjects, rates);
   };
 
+  // Template handlers
+  const handleSaveTemplate = async (name) => {
+    const activeProject = projects.find(p => p.id === activeProjectId);
+    const projectData = activeProject || createProject();
+    try {
+      const tmpl = await api.saveTemplate(name, projectData);
+      setTemplates((prev) => [tmpl, ...prev]);
+      setShowTemplates(false);
+    } catch (err) {
+      console.error('Save template error:', err);
+    }
+  };
+
+  const handleLoadTemplate = (template) => {
+    const newProject = {
+      ...template.data,
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      name: template.data.name || template.name,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    // Regenerate phase IDs
+    if (newProject.phases) {
+      newProject.phases = newProject.phases.map((phase) => ({
+        ...phase,
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        milestones: (phase.milestones || []).map((m) => ({
+          ...m,
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        })),
+      }));
+    }
+    const newProjects = [...projects, newProject];
+    setProjects(newProjects);
+    saveToApi(newProjects, rates);
+    setShowTemplates(false);
+    setActiveProjectId(newProject.id);
+  };
+
+  const handleDeleteTemplate = async (templateId) => {
+    try {
+      await api.deleteTemplate(templateId);
+      setTemplates((prev) => prev.filter((t) => t.id !== templateId));
+    } catch (err) {
+      console.error('Delete template error:', err);
+    }
+  };
+
+  // Share handlers
+  const handleOpenShare = async () => {
+    if (!activeProjectId) return;
+    try {
+      const data = await api.getShares(activeProjectId);
+      setShares(data);
+    } catch { setShares([]); }
+    setShowShare(true);
+  };
+
+  const handleShare = async (email, role) => {
+    await api.shareProject(activeProjectId, email, role);
+    const data = await api.getShares(activeProjectId);
+    setShares(data);
+  };
+
+  const handleUnshare = async (userId) => {
+    try {
+      await api.unshareProject(activeProjectId, userId);
+      setShares((prev) => prev.filter((s) => s.user_id !== userId));
+    } catch (err) {
+      console.error('Unshare error:', err);
+    }
+  };
+
+  // Version history handlers
+  const handleOpenHistory = async () => {
+    if (!activeProjectId) return;
+    try {
+      const data = await api.getSnapshots(activeProjectId);
+      setSnapshots(data);
+    } catch { setSnapshots([]); }
+    setShowHistory(true);
+  };
+
+  const handleCreateSnapshot = async (label) => {
+    if (!activeProjectId) return;
+    try {
+      const snapshot = await api.createSnapshot(activeProjectId, label);
+      setSnapshots((prev) => [snapshot, ...prev]);
+    } catch (err) {
+      console.error('Create snapshot error:', err);
+    }
+  };
+
+  const handleRestoreSnapshot = async (snapshotId) => {
+    try {
+      const result = await api.restoreSnapshot(snapshotId);
+      if (result.data) {
+        const restoredProject = { ...result.data, id: result.id, name: result.name };
+        setProjects((prev) => prev.map((p) => p.id === restoredProject.id ? restoredProject : p));
+      }
+      setShowHistory(false);
+    } catch (err) {
+      console.error('Restore snapshot error:', err);
+    }
+  };
+
   if (!authChecked) return null;
 
   if (!user) {
@@ -159,7 +278,7 @@ function App() {
               size="sm"
               onClick={handleLogout}
               className="text-muted-foreground hover:text-foreground"
-              title={"D\u00e9connexion"}
+              title={"\u00c9connexion"}
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -182,6 +301,8 @@ function App() {
             onProjectChange={handleProjectChange}
             onRatesChange={handleRatesChange}
             onBack={() => setActiveProjectId(null)}
+            onOpenShare={handleOpenShare}
+            onOpenHistory={handleOpenHistory}
           />
         ) : (
           <Dashboard
@@ -190,9 +311,42 @@ function App() {
             onProjectsChange={handleProjectsChange}
             onOpenProject={setActiveProjectId}
             onCompare={setCompareIds}
+            templates={templates}
+            onSaveTemplate={handleSaveTemplate}
+            onLoadTemplate={handleLoadTemplate}
+            onDeleteTemplate={handleDeleteTemplate}
+            showTemplates={showTemplates}
+            onToggleTemplates={() => setShowTemplates(true)}
           />
         )}
       </main>
+
+      {/* Modals */}
+      <TemplateManager
+        open={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        templates={templates}
+        onSaveTemplate={handleSaveTemplate}
+        onLoadTemplate={handleLoadTemplate}
+        onDeleteTemplate={handleDeleteTemplate}
+        currentProject={activeProject}
+      />
+
+      <ShareDialog
+        open={showShare}
+        onClose={() => setShowShare(false)}
+        shares={shares}
+        onShare={handleShare}
+        onUnshare={handleUnshare}
+      />
+
+      <VersionHistory
+        open={showHistory}
+        onClose={() => setShowHistory(false)}
+        snapshots={snapshots}
+        onCreateSnapshot={handleCreateSnapshot}
+        onRestoreSnapshot={handleRestoreSnapshot}
+      />
     </div>
   );
 }

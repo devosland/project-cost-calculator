@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import authRoutes from './auth.js';
 import dataRoutes from './data.js';
+import projectRoutes from './projects.js';
+import templateRoutes from './templates.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +20,8 @@ app.use(express.json());
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/data', dataRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/templates', templateRoutes);
 
 // Serve static files from the built frontend
 const distPath = path.join(__dirname, '..', 'dist');

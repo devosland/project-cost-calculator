@@ -6,6 +6,7 @@ import { Dropdown } from './ui/dropdown';
 import {
   ArrowLeft, PlusCircle, Trash2, ChevronUp, ChevronDown,
   LayoutDashboard, Calendar, Settings, DollarSign, BarChart3, FileText,
+  Share2, History,
 } from 'lucide-react';
 import PhaseEditor from './PhaseEditor';
 import TimelineView from './TimelineView';
@@ -30,7 +31,7 @@ const TABS = [
   { id: 'rates', label: 'Taux', icon: Settings },
 ];
 
-const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack }) => {
+const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, onOpenShare, onOpenHistory }) => {
   const query = useQuery();
   const isAuthorized = query.get('r') === 'true';
   const [activeTab, setActiveTab] = useState('phases');
@@ -74,9 +75,17 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack })
           </Button>
           <h1 className="text-2xl font-bold">{project.name}</h1>
         </div>
-        <div className="text-right">
-          <div className="text-sm text-muted-foreground">{totalWeeks} semaines</div>
-          <div className="text-2xl font-bold">{fmt(totalCost)}</div>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground hover:text-foreground" title="Historique">
+            <History className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onOpenShare} className="text-muted-foreground hover:text-foreground" title="Partager">
+            <Share2 className="w-4 h-4" />
+          </Button>
+          <div className="text-right">
+            <div className="text-sm text-muted-foreground">{totalWeeks} semaines</div>
+            <div className="text-2xl font-bold">{fmt(totalCost)}</div>
+          </div>
         </div>
       </div>
 

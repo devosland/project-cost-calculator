@@ -3,7 +3,7 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import {
   PlusCircle, Trash2, Copy, Download, Upload,
-  FolderOpen, Pencil, Check, X, GitCompare,
+  FolderOpen, Pencil, Check, X, GitCompare, LayoutTemplate, Users,
 } from 'lucide-react';
 import {
   createProject, duplicateProject, deleteProject,
@@ -14,7 +14,7 @@ import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency,
 } from '../lib/costCalculations';
 
-const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare }) => {
+const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare, templates, onSaveTemplate, onLoadTemplate, onDeleteTemplate, showTemplates, onToggleTemplates }) => {
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const [compareMode, setCompareMode] = useState(false);
@@ -93,6 +93,10 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
               Annuler
             </Button>
           )}
+          <Button variant="outline" onClick={onToggleTemplates} className="flex items-center gap-2">
+            <LayoutTemplate className="w-4 h-4" />
+            {"Mod\u00e8les"}
+          </Button>
           <Button variant="outline" onClick={handleImport} className="flex items-center gap-2">
             <Upload className="w-4 h-4" />
             Importer
@@ -167,7 +171,15 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                             <Button variant="ghost" size="sm" onClick={cancelRename}><X className="w-4 h-4" /></Button>
                           </div>
                         ) : (
-                          <h3 className="text-lg font-semibold truncate">{project.name}</h3>
+                          <h3 className="text-lg font-semibold truncate flex items-center gap-2">
+                            {project.name}
+                            {project.role && project.role !== 'owner' && (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shrink-0">
+                                <Users className="w-3 h-3 inline mr-1" />
+                                {project.role === 'editor' ? "\u00c9diteur" : "Lecture"}
+                              </span>
+                            )}
+                          </h3>
                         )}
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-sm text-muted-foreground">
                           <span>{phaseCount} phase{phaseCount > 1 ? 's' : ''}</span>
