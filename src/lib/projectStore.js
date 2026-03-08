@@ -1,3 +1,5 @@
+import { calculateProjectDurationWithDependencies } from './costCalculations';
+
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -118,6 +120,90 @@ export function exportProjectCSV(project, rates) {
   const a = document.createElement('a');
   a.href = url;
   a.download = `${project.name.replace(/[^a-zA-Z0-9À-ÿ ]/g, '_')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function exportCalendar(project) {
+  const { phaseSchedule } = calculateProjectDurationWithDependencies(project);
+  const scheduleMap = new Map(phaseSchedule.map((s) => [s.phaseId, s]));
+
+  const today = new Date();
+  // Reset to start of day
+  today.setHours(0, 0, 0, 0);
+
+  function addWeeks(date, weeks) {
+    const result = new Date(date);
+    result.setDate(result.getDate() + weeks * 7);
+    return result;
+  }
+
+  function formatDateICS(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}${m}${d}`;
+  }
+
+  function formatDateTimeICS(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const h = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    const s = String(date.getSeconds()).padStart(2, '0');
+    return `${y}${m}${d}T${h}${min}${s}`;
+  }
+
+  function escapeICS(str) {
+    return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n').replace(/\r/g, '');
+  }
+
+  const now = formatDateTimeICS(new Date());
+  const events = [];
+
+  for (const phase of project.phases) {
+    const schedule = scheduleMap.get(phase.id);
+    if (!schedule) continue;
+
+    for (const milestone of phase.milestones) {
+      const milestoneDate = addWeeks(today, schedule.startWeek + milestone.weekOffset);
+      const nextDay = new Date(milestoneDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      const uid = `${milestone.id}-${project.id}@project-cost-calculator`;
+
+      events.push(
+        [
+          'BEGIN:VEVENT',
+          `UID:${uid}`,
+          `DTSTAMP:${now}`,
+          `DTSTART;VALUE=DATE:${formatDateICS(milestoneDate)}`,
+          `DTEND;VALUE=DATE:${formatDateICS(nextDay)}`,
+          `SUMMARY:${escapeICS(milestone.name)}`,
+          `DESCRIPTION:Phase : ${escapeICS(phase.name)} — Semaine ${schedule.startWeek + milestone.weekOffset}`,
+          'END:VEVENT',
+        ].join('\r\n')
+      );
+    }
+  }
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//ProjectCostCalculator//FR',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:${escapeICS(project.name)}`,
+    ...events,
+    'END:VCALENDAR',
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${project.name.replace(/[^a-zA-Z0-9À-ÿ ]/g, '_')}_jalons.ics`;
   a.click();
   URL.revokeObjectURL(url);
 }

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import { Flag } from 'lucide-react';
+import { Button } from './ui/button';
+import { Flag, Calendar } from 'lucide-react';
+import { exportCalendar } from '../lib/projectStore';
 import {
   calculatePhaseWeeklyCost,
   calculatePhaseTotalCost,
@@ -52,7 +54,20 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ligne de temps du projet</CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle>Ligne de temps du projet</CardTitle>
+          {phasesWithOffsets.some((p) => p.milestones.length > 0) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportCalendar(project)}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="w-4 h-4" />
+              Calendrier
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-8">

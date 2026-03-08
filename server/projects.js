@@ -218,4 +218,80 @@ router.post('/snapshots/:snapshotId/restore', (req, res) => {
   }
 });
 
+// Validate webhook URL to prevent SSRF
+function isAllowedWebhookUrl(urlString) {
+  let parsed;
+  try { parsed = new URL(urlString); } catch { return false; }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+  const hostname = parsed.hostname;
+  if (
+    hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' ||
+    hostname.startsWith('10.') || hostname.startsWith('192.168.') ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+    hostname === '169.254.169.254' || hostname.endsWith('.internal') ||
+    hostname === '0.0.0.0' || hostname === '[::1]'
+  ) return false;
+  return true;
+}
+
+// POST /:id/test-webhook — send a test webhook notification
+router.post('/:id/test-webhook', async (req, res) => {
+  try {
+    const role = checkAccess(req.params.id, req.user.id, 'editor');
+    if (!role) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const project = getProjectById(req.params.id);
+    let data = {};
+    try { data = JSON.parse(project.data); } catch {}
+
+    const webhookUrl = data.settings?.webhookUrl;
+    if (!webhookUrl) {
+      return res.status(400).json({ error: 'Aucune URL webhook configurée' });
+    }
+    if (!isAllowedWebhookUrl(webhookUrl)) {
+      return res.status(400).json({ error: 'URL webhook invalide ou non autorisée' });
+    }
+
+    const budget = data.budget ?? null;
+    const threshold = data.settings?.budgetAlertThreshold ?? 80;
+
+    const payload = {
+      event: 'budget_alert_test',
+      project: {
+        id: project.id,
+        name: project.name,
+      },
+      budget: {
+        total: budget,
+        threshold_percent: threshold,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return res.status(502).json({ error: `Le webhook a répondu avec le statut ${response.status}` });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Test webhook error:', err);
+    if (err.name === 'AbortError') {
+      return res.status(504).json({ error: 'Le webhook n\u2019a pas répondu dans les délais' });
+    }
+    res.status(502).json({ error: 'Impossible de joindre l\u2019URL du webhook' });
+  }
+});
+
 export default router;

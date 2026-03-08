@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Printer } from 'lucide-react';
+import { Download } from 'lucide-react';
 import {
   calculateProjectCost,
   calculateProjectDurationWeeks,
@@ -44,8 +44,8 @@ const ProjectSummary = ({ project, rates }) => {
     <div className="space-y-4">
       <div className="flex justify-end print:hidden">
         <Button onClick={() => window.print()} className="flex items-center gap-2">
-          <Printer className="w-4 h-4" />
-          Imprimer
+          <Download className="w-4 h-4" />
+          Exporter PDF
         </Button>
       </div>
 

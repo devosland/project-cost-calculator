@@ -104,8 +104,33 @@
   .print\:border {
     border: 1px solid #e5e7eb !important;
   }
-  body {
+
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  html, body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  /* Remove container padding in print */
+  main.container {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  /* Ensure tables don't break across pages */
+  table, tr, td, th {
+    page-break-inside: avoid;
+  }
+
+  /* Avoid breaking sections */
+  h3, .p-4, .space-y-1 > div {
+    page-break-inside: avoid;
   }
 }
