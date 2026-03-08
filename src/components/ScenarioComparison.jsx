@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { X } from 'lucide-react';
+import { useLocale } from '../lib/i18n';
 import {
   calculateProjectCost,
   calculateProjectDurationWeeks,
@@ -12,13 +13,14 @@ import {
 } from '../lib/costCalculations';
 
 const ScenarioComparison = ({ projects, rates, selectedIds, onClose }) => {
+  const { t } = useLocale();
   const selected = projects.filter((p) => selectedIds.includes(p.id));
 
   if (selected.length < 2) {
     return (
       <Card>
         <CardContent className="py-10 text-center text-muted-foreground">
-          {"S\u00e9lectionnez au moins 2 projets pour comparer."}
+          {t('scenario.selectAtLeast2')}
         </CardContent>
       </Card>
     );
@@ -47,23 +49,23 @@ const ScenarioComparison = ({ projects, rates, selectedIds, onClose }) => {
   const maxCost = Math.max(...metrics.map((m) => m.totalCost));
 
   const rows = [
-    { label: "Co\u00fbt total", key: 'totalCost', format: fmt },
-    { label: "Main-d\u2019\u0153uvre", key: 'labourCost', format: fmt },
-    { label: "Autres co\u00fbts", key: 'nonLabourCost', format: fmt },
-    { label: "Dur\u00e9e", key: 'duration', format: (v) => `${v} sem.` },
-    { label: 'Taux/sem.', key: 'burnRate', format: fmt },
-    { label: 'Phases', key: 'phases', format: (v) => v },
-    { label: 'Membres', key: 'members', format: (v) => v },
-    { label: 'Budget', key: 'budget', format: (v) => (v ? fmt(v) : '\u2014') },
+    { label: t('scenario.totalCost'), key: 'totalCost', format: fmt },
+    { label: t('scenario.labour'), key: 'labourCost', format: fmt },
+    { label: t('scenario.otherCosts'), key: 'nonLabourCost', format: fmt },
+    { label: t('scenario.duration'), key: 'duration', format: (v) => `${v} ${t('scenario.weeksShort')}` },
+    { label: t('scenario.weeklyRate'), key: 'burnRate', format: fmt },
+    { label: t('scenario.phases'), key: 'phases', format: (v) => v },
+    { label: t('scenario.members'), key: 'members', format: (v) => v },
+    { label: t('scenario.budget'), key: 'budget', format: (v) => (v ? fmt(v) : '\u2014') },
   ];
 
   return (
     <div className="w-full max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">{"Comparaison de sc\u00e9narios"}</h1>
+        <h1 className="text-2xl font-bold">{t('scenario.title')}</h1>
         <Button variant="ghost" size="sm" onClick={onClose}>
           <X className="w-4 h-4 mr-1" />
-          Fermer
+          {t('scenario.close')}
         </Button>
       </div>
 
@@ -118,7 +120,7 @@ const ScenarioComparison = ({ projects, rates, selectedIds, onClose }) => {
           </div>
 
           <div className="border-t pt-6 mt-6">
-            <h4 className="font-semibold mb-4 text-sm">{"Comparaison visuelle des co\u00fbts"}</h4>
+            <h4 className="font-semibold mb-4 text-sm">{t('scenario.visualComparison')}</h4>
             <div className="space-y-3">
               {metrics.map((m) => (
                 <div key={m.id} className="flex items-center gap-3">

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { X, History, RotateCcw, Save } from 'lucide-react';
+import { useLocale, getDateLocale } from '../lib/i18n';
 
 const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreSnapshot }) => {
+  const { t, locale } = useLocale();
   const [label, setLabel] = useState('');
 
   const handleCreate = () => {
@@ -11,8 +13,9 @@ const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreS
   };
 
   const formatDate = (dateStr) => {
+    const dl = getDateLocale(locale);
     const d = new Date(dateStr);
-    return `${d.toLocaleDateString('fr-CA')} ${d.toLocaleTimeString('fr-CA')}`;
+    return `${d.toLocaleDateString(dl)} ${d.toLocaleTimeString(dl)}`;
   };
 
   return (
@@ -36,7 +39,7 @@ const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreS
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center gap-2">
               <History className="w-5 h-5" />
-              <h2 className="text-lg font-semibold">Historique des versions</h2>
+              <h2 className="text-lg font-semibold">{t('history.title')}</h2>
             </div>
             <button
               onClick={onClose}
@@ -51,13 +54,13 @@ const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreS
             <input
               type="text"
               className="input-field w-full"
-              placeholder="Libellé (optionnel)"
+              placeholder={t('history.labelPlaceholder')}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
             />
             <Button variant="default" size="sm" className="w-full" onClick={handleCreate}>
               <Save className="w-4 h-4 mr-2" />
-              Créer un point de sauvegarde
+              {t('history.createSnapshot')}
             </Button>
           </div>
 
@@ -65,7 +68,7 @@ const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreS
           <div className="flex-1 overflow-y-auto p-4">
             {(!snapshots || snapshots.length === 0) ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                Aucune version sauvegardée.
+                {t('history.noSnapshots')}
               </p>
             ) : (
               <div className="space-y-3">
@@ -89,7 +92,7 @@ const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreS
                         onClick={() => onRestoreSnapshot(snapshot.id)}
                       >
                         <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                        Restaurer
+                        {t('history.restore')}
                       </Button>
                     </div>
                   </div>

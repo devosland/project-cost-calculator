@@ -3,18 +3,21 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../lib/costCalculations';
-
-const CATEGORIES = [
-  'Infrastructure',
-  'Licences',
-  'SaaS / Outils',
-  'Voyage',
-  'Formation',
-  'Mat\u00e9riel',
-  'Autre',
-];
+import { useLocale } from '../lib/i18n';
 
 const NonLabourCosts = ({ costs, currency, onChange }) => {
+  const { t } = useLocale();
+
+  const CATEGORIES = [
+    t('nonLabour.cat.infrastructure'),
+    t('nonLabour.cat.licences'),
+    t('nonLabour.cat.saasTools'),
+    t('nonLabour.cat.travel'),
+    t('nonLabour.cat.training'),
+    t('nonLabour.cat.equipment'),
+    t('nonLabour.cat.other'),
+  ];
+
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState(CATEGORIES[0]);
@@ -50,7 +53,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>{"Co\u00fbts non li\u00e9s \u00e0 la main-d\u2019\u0153uvre"}</CardTitle>
+          <CardTitle>{t('nonLabour.title')}</CardTitle>
           {!adding && (
             <Button
               size="sm"
@@ -58,7 +61,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
               className="flex items-center gap-2"
             >
               <PlusCircle className="w-4 h-4" />
-              Ajouter
+              {t('nonLabour.add')}
             </Button>
           )}
         </div>
@@ -73,7 +76,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
                   className="input-field"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Nom"
+                  placeholder={t('nonLabour.name')}
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') addCost();
@@ -94,7 +97,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
                   className="input-field"
                   value={newAmount}
                   onChange={(e) => setNewAmount(e.target.value)}
-                  placeholder="Montant"
+                  placeholder={t('nonLabour.amount')}
                   min="0"
                   step="0.01"
                   onKeyDown={(e) => {
@@ -104,15 +107,15 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
                 />
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={addCost}>Ajouter</Button>
-                <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>Annuler</Button>
+                <Button size="sm" onClick={addCost}>{t('nonLabour.add')}</Button>
+                <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>{t('nonLabour.cancel')}</Button>
               </div>
             </div>
           )}
 
           {costs.length === 0 && !adding && (
             <p className="text-sm text-muted-foreground text-center py-6">
-              {"Aucun co\u00fbt suppl\u00e9mentaire. Ajoutez des co\u00fbts d\u2019infrastructure, licences, etc."}
+              {t('nonLabour.empty')}
             </p>
           )}
 
@@ -120,9 +123,9 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="p-2 font-medium text-muted-foreground">Nom</th>
-                  <th className="p-2 font-medium text-muted-foreground">{"Cat\u00e9gorie"}</th>
-                  <th className="p-2 text-right font-medium text-muted-foreground">Montant</th>
+                  <th className="p-2 font-medium text-muted-foreground">{t('nonLabour.name')}</th>
+                  <th className="p-2 font-medium text-muted-foreground">{t('nonLabour.category')}</th>
+                  <th className="p-2 text-right font-medium text-muted-foreground">{t('nonLabour.amount')}</th>
                   <th className="p-2 w-12"></th>
                 </tr>
               </thead>
@@ -173,7 +176,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
               </tbody>
               <tfoot>
                 <tr className="border-t font-semibold">
-                  <td className="p-2" colSpan="2">Total</td>
+                  <td className="p-2" colSpan="2">{t('nonLabour.total')}</td>
                   <td className="p-2 text-right">{fmt(total)}</td>
                   <td></td>
                 </tr>
@@ -183,7 +186,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
 
           {Object.keys(byCategory).length > 1 && (
             <div className="border-t pt-3">
-              <h4 className="text-xs text-muted-foreground mb-2">{"Par cat\u00e9gorie"}</h4>
+              <h4 className="text-xs text-muted-foreground mb-2">{t('nonLabour.byCategory')}</h4>
               <div className="space-y-1">
                 {Object.entries(byCategory)
                   .sort((a, b) => b[1] - a[1])

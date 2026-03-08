@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Mail, Lock, User, LogIn, KeyRound } from 'lucide-react';
 import { Button } from './ui/button';
 import { api } from '../lib/api';
+import { useLocale } from '../lib/i18n';
 
 export default function AuthPage({ onAuth }) {
+  const { t } = useLocale();
   const [mode, setMode] = useState('login'); // login, register, forgot, reset
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,11 +33,11 @@ export default function AuthPage({ onAuth }) {
       } else if (mode === 'forgot') {
         const data = await api.forgotPassword(email);
         setResetToken(data.resetToken);
-        setSuccess('Un jeton de réinitialisation a été généré.');
+        setSuccess(t('auth.resetTokenGenerated'));
         setMode('reset');
       } else if (mode === 'reset') {
         await api.resetPassword(resetToken, password);
-        setSuccess('Mot de passe modifié avec succès. Connectez-vous.');
+        setSuccess(t('auth.passwordChanged'));
         setMode('login');
         setPassword('');
       }
@@ -53,24 +55,24 @@ export default function AuthPage({ onAuth }) {
   };
 
   const titles = {
-    login: 'Connexion',
-    register: 'Inscription',
-    forgot: 'Mot de passe oublié',
-    reset: 'Nouveau mot de passe',
+    login: t('auth.login'),
+    register: t('auth.register'),
+    forgot: t('auth.forgot'),
+    reset: t('auth.reset'),
   };
 
   const submitLabels = {
-    login: 'Se connecter',
-    register: 'Créer un compte',
-    forgot: 'Envoyer le jeton',
-    reset: 'Réinitialiser',
+    login: t('auth.submit.login'),
+    register: t('auth.submit.register'),
+    forgot: t('auth.submit.forgot'),
+    reset: t('auth.submit.reset'),
   };
 
   const loadingLabels = {
-    login: 'Connexion...',
-    register: 'Création...',
-    forgot: 'Envoi...',
-    reset: 'Réinitialisation...',
+    login: t('auth.loading.login'),
+    register: t('auth.loading.register'),
+    forgot: t('auth.loading.forgot'),
+    reset: t('auth.loading.reset'),
   };
 
   return (
@@ -82,10 +84,10 @@ export default function AuthPage({ onAuth }) {
             PC
           </div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            Planificateur
+            {t('app.name')}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {"Calculateur de co\u00fbts de projet"}
+            {t('app.subtitle')}
           </p>
         </div>
 
@@ -112,7 +114,7 @@ export default function AuthPage({ onAuth }) {
             {(mode === 'login' || mode === 'register' || mode === 'forgot') && (
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground" htmlFor="email">
-                  Adresse courriel
+                  {t('auth.email')}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -123,7 +125,7 @@ export default function AuthPage({ onAuth }) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="input-field w-full pl-10"
-                    placeholder="vous@exemple.com"
+                    placeholder={t('auth.email.placeholder')}
                   />
                 </div>
               </div>
@@ -133,7 +135,7 @@ export default function AuthPage({ onAuth }) {
             {mode === 'register' && (
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground" htmlFor="name">
-                  Nom complet
+                  {t('auth.name')}
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -144,7 +146,7 @@ export default function AuthPage({ onAuth }) {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="input-field w-full pl-10"
-                    placeholder="Jean Dupont"
+                    placeholder={t('auth.name.placeholder')}
                   />
                 </div>
               </div>
@@ -154,7 +156,7 @@ export default function AuthPage({ onAuth }) {
             {mode === 'reset' && (
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground" htmlFor="token">
-                  {"Jeton de r\u00e9initialisation"}
+                  {t('auth.resetToken')}
                 </label>
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -174,7 +176,7 @@ export default function AuthPage({ onAuth }) {
             {(mode === 'login' || mode === 'register' || mode === 'reset') && (
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground" htmlFor="password">
-                  {mode === 'reset' ? 'Nouveau mot de passe' : 'Mot de passe'}
+                  {mode === 'reset' ? t('auth.newPassword') : t('auth.password')}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -225,14 +227,14 @@ export default function AuthPage({ onAuth }) {
                   onClick={() => switchMode('forgot')}
                   className="block w-full text-sm text-muted-foreground hover:text-foreground transition-colors hover:underline"
                 >
-                  {"Mot de passe oubli\u00e9 ?"}
+                  {t('auth.forgotLink')}
                 </button>
                 <button
                   type="button"
                   onClick={() => switchMode('register')}
                   className="block w-full text-sm text-primary hover:text-primary/80 transition-colors hover:underline"
                 >
-                  {"Pas encore de compte ? Inscrivez-vous"}
+                  {t('auth.registerLink')}
                 </button>
               </>
             )}
@@ -242,7 +244,7 @@ export default function AuthPage({ onAuth }) {
                 onClick={() => switchMode('login')}
                 className="text-sm text-primary hover:text-primary/80 transition-colors hover:underline"
               >
-                {"D\u00e9j\u00e0 un compte ? Connectez-vous"}
+                {t('auth.loginLink')}
               </button>
             )}
             {(mode === 'forgot' || mode === 'reset') && (
@@ -251,7 +253,7 @@ export default function AuthPage({ onAuth }) {
                 onClick={() => switchMode('login')}
                 className="text-sm text-primary hover:text-primary/80 transition-colors hover:underline"
               >
-                Retour à la connexion
+                {t('auth.backToLogin')}
               </button>
             )}
           </div>

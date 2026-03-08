@@ -21,20 +21,12 @@ import { createPhase } from '../lib/projectStore';
 import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency, CURRENCIES,
 } from '../lib/costCalculations';
+import { useLocale } from '../lib/i18n';
 
 const useQuery = () => new URLSearchParams(window.location.search);
 
-const TABS = [
-  { id: 'phases', label: 'Phases', icon: LayoutDashboard },
-  { id: 'timeline', label: 'Ligne de temps', icon: Calendar },
-  { id: 'budget', label: 'Budget', icon: DollarSign },
-  { id: 'charts', label: 'Graphiques', icon: BarChart3 },
-  { id: 'summary', label: 'Rapport', icon: FileText },
-  { id: 'risks', label: 'Risques', icon: AlertTriangle },
-  { id: 'rates', label: 'Taux', icon: Settings },
-];
-
 const WebhookSettings = ({ project, updateSettings }) => {
+  const { t } = useLocale();
   const [testStatus, setTestStatus] = useState(null);
   const webhookUrl = project.settings?.webhookUrl || '';
   const threshold = project.settings?.budgetAlertThreshold ?? 80;
@@ -66,10 +58,10 @@ const WebhookSettings = ({ project, updateSettings }) => {
     <div className="p-5 bg-white border rounded-xl shadow-sm space-y-4">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Bell className="w-4 h-4" />
-        Notifications webhook
+        {t('webhook.title')}
       </div>
       <div className="flex items-center gap-3 flex-wrap">
-        <Label className="text-sm text-muted-foreground w-32">URL du webhook</Label>
+        <Label className="text-sm text-muted-foreground w-32">{t('webhook.url')}</Label>
         <input
           type="url"
           className="input-field flex-1 min-w-[200px]"
@@ -83,19 +75,19 @@ const WebhookSettings = ({ project, updateSettings }) => {
           disabled={!webhookUrl || testStatus === 'loading'}
           onClick={testWebhook}
         >
-          {testStatus === 'loading' ? 'Envoi…' : 'Tester'}
+          {testStatus === 'loading' ? t('webhook.sending') : t('webhook.test')}
         </Button>
         {testStatus === 'success' && (
-          <span className="text-xs text-emerald-600 font-medium">Envoyé avec succès</span>
+          <span className="text-xs text-emerald-600 font-medium">{t('webhook.success')}</span>
         )}
         {testStatus && testStatus !== 'success' && testStatus !== 'loading' && (
           <span className="text-xs text-red-600 font-medium">
-            {testStatus === 'error' ? 'Échec de l\u2019envoi' : testStatus}
+            {t(`webhook.${testStatus}`) || t('webhook.error')}
           </span>
         )}
       </div>
       <div className="flex items-center gap-3">
-        <Label className="text-sm text-muted-foreground w-32">Seuil d'alerte</Label>
+        <Label className="text-sm text-muted-foreground w-32">{t('webhook.threshold')}</Label>
         <input
           type="number"
           className="input-field w-20 text-center"
@@ -107,19 +99,30 @@ const WebhookSettings = ({ project, updateSettings }) => {
             updateSettings({ budgetAlertThreshold: isNaN(v) ? 80 : Math.max(1, Math.min(100, v)) });
           }}
         />
-        <span className="text-sm text-muted-foreground">% du budget</span>
+        <span className="text-sm text-muted-foreground">{t('webhook.budgetPercent')}</span>
       </div>
     </div>
   );
 };
 
 const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, onOpenShare, onOpenHistory }) => {
+  const { t } = useLocale();
   const query = useQuery();
   const isAuthorized = query.get('r') === 'true';
   const [activeTab, setActiveTab] = useState('phases');
 
   const currency = project.settings?.currency || 'CAD';
   const fmt = (v) => formatCurrency(v, currency);
+
+  const TABS = [
+    { id: 'phases', label: t('tab.phases'), icon: LayoutDashboard },
+    { id: 'timeline', label: t('tab.timeline'), icon: Calendar },
+    { id: 'budget', label: t('tab.budget'), icon: DollarSign },
+    { id: 'charts', label: t('tab.charts'), icon: BarChart3 },
+    { id: 'summary', label: t('tab.summary'), icon: FileText },
+    { id: 'risks', label: t('tab.risks'), icon: AlertTriangle },
+    { id: 'rates', label: t('tab.rates'), icon: Settings },
+  ];
 
   const updateProject = (changes) => onProjectChange({ ...project, ...changes });
   const updateSettings = (s) => updateProject({ settings: { ...project.settings, ...s } });
@@ -160,19 +163,19 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Projets
+            {t('project.back')}
           </Button>
           <h1 className="text-2xl font-bold">{project.name}</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground hover:text-foreground" title="Historique">
+          <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground hover:text-foreground" title={t('project.history')}>
             <History className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onOpenShare} className="text-muted-foreground hover:text-foreground" title="Partager">
+          <Button variant="ghost" size="sm" onClick={onOpenShare} className="text-muted-foreground hover:text-foreground" title={t('project.share')}>
             <Share2 className="w-4 h-4" />
           </Button>
           <div className="text-right">
-            <div className="text-sm text-muted-foreground">{totalWeeks} semaines</div>
+            <div className="text-sm text-muted-foreground">{totalWeeks} {t('project.weeks')}</div>
             <div className="text-2xl font-bold">{fmt(totalCost)}</div>
           </div>
         </div>
@@ -204,7 +207,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-5 bg-white border rounded-xl shadow-sm">
             <div className="flex items-center gap-3">
-              <Label className="text-sm font-medium">Contingence</Label>
+              <Label className="text-sm font-medium">{t('project.contingency')}</Label>
               <Switch
                 checked={project.settings.includeContingency}
                 onCheckedChange={(val) => updateSettings({ includeContingency: val })}
@@ -223,14 +226,14 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
               )}
             </div>
             <div className="flex items-center gap-3">
-              <Label className="text-sm font-medium">Taxes (4,9875%)</Label>
+              <Label className="text-sm font-medium">{t('project.taxes')}</Label>
               <Switch
                 checked={project.settings.includeTaxes}
                 onCheckedChange={(val) => updateSettings({ includeTaxes: val })}
               />
             </div>
             <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium">Devise</Label>
+              <Label className="text-sm font-medium">{t('project.currency')}</Label>
               <Dropdown
                 value={currency}
                 options={CURRENCIES.map((c) => ({ value: c.code, label: c.label }))}
@@ -260,7 +263,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
               {project.phases.length > 1 && (
                 <div className="absolute -right-10 top-4 hidden sm:block">
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
-                    onClick={() => removePhase(phase.id)} title="Supprimer la phase">
+                    onClick={() => removePhase(phase.id)} title={t('project.deletePhase')}>
                     <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
@@ -270,21 +273,21 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
 
           <Button variant="outline" onClick={addPhase} className="w-full flex items-center justify-center gap-2 border-dashed h-12">
             <PlusCircle className="w-4 h-4" />
-            Ajouter une phase
+            {t('project.addPhase')}
           </Button>
 
           <div className="p-6 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
               <div>
-                <div className="text-sm text-muted-foreground">{"Dur\u00e9e totale"}</div>
-                <div className="text-2xl font-bold">{totalWeeks} semaines</div>
+                <div className="text-sm text-muted-foreground">{t('project.totalDuration')}</div>
+                <div className="text-2xl font-bold">{totalWeeks} {t('project.weeks')}</div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">{"Co\u00fbt total"}</div>
+                <div className="text-sm text-muted-foreground">{t('project.totalCost')}</div>
                 <div className="text-3xl font-bold text-primary">{fmt(totalCost)}</div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Phases</div>
+                <div className="text-sm text-muted-foreground">{t('tab.phases')}</div>
                 <div className="text-2xl font-bold">{project.phases.length}</div>
               </div>
             </div>
@@ -299,13 +302,13 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
       {activeTab === 'budget' && (
         <div className="space-y-6">
           <div className="flex items-center gap-4 p-5 bg-white border rounded-xl shadow-sm">
-            <Label className="text-sm font-medium">Budget du projet</Label>
+            <Label className="text-sm font-medium">{t('project.budget')}</Label>
             <input
               type="number"
               className="input-field w-40"
               value={project.budget || ''}
               min="0" step="100"
-              placeholder="Aucun budget"
+              placeholder={t('project.noBudget')}
               onChange={(e) => updateProject({ budget: e.target.value === '' ? null : parseFloat(e.target.value) })}
             />
             <span className="text-sm text-muted-foreground">{currency}</span>

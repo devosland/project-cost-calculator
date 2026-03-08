@@ -15,19 +15,22 @@ import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency,
 } from '../lib/costCalculations';
 
+import { useLocale, getDateLocale } from '../lib/i18n';
+
 const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare, templates, onSaveTemplate, onLoadTemplate, onDeleteTemplate, showTemplates, onToggleTemplates }) => {
+  const { t, locale } = useLocale();
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState([]);
 
   const handleCreate = () => {
-    const project = createProject();
+    const project = createProject(t('dashboard.newProject'));
     onProjectsChange([...projects, project]);
     onOpenProject(project.id);
   };
 
-  const handleDuplicate = (id) => onProjectsChange(duplicateProject(projects, id));
+  const handleDuplicate = (id) => onProjectsChange(duplicateProject(projects, id, t('dashboard.copy')));
   const handleDelete = (id) => {
     onProjectsChange(deleteProject(projects, id));
     setSelectedForCompare((prev) => prev.filter((x) => x !== id));
@@ -60,11 +63,11 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
     <div className="w-full max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Projets</h1>
+          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
           <p className="text-muted-foreground mt-1">
             {projects.length > 0
-              ? `${projects.length} projet${projects.length > 1 ? 's' : ''}`
-              : "Commencez par cr\u00e9er un projet"}
+              ? t('dashboard.projectCount', { count: projects.length, plural: projects.length > 1 ? 's' : '' })
+              : t('dashboard.startMessage')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -84,27 +87,27 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
               <GitCompare className="w-4 h-4" />
               {compareMode
                 ? selectedForCompare.length >= 2
-                  ? `Comparer (${selectedForCompare.length})`
-                  : "S\u00e9lectionnez 2+"
-                : 'Comparer'}
+                  ? `${t('dashboard.compare')} (${selectedForCompare.length})`
+                  : t('dashboard.compareSelect')
+                : t('dashboard.compare')}
             </Button>
           )}
           {compareMode && (
             <Button variant="ghost" onClick={() => { setCompareMode(false); setSelectedForCompare([]); }}>
-              Annuler
+              {t('dashboard.cancel')}
             </Button>
           )}
           <Button variant="outline" onClick={onToggleTemplates} className="flex items-center gap-2">
             <LayoutTemplate className="w-4 h-4" />
-            {"Mod\u00e8les"}
+            {t('dashboard.templates')}
           </Button>
           <Button variant="outline" onClick={handleImport} className="flex items-center gap-2">
             <Upload className="w-4 h-4" />
-            Importer
+            {t('dashboard.import')}
           </Button>
           <Button onClick={handleCreate} className="flex items-center gap-2">
             <PlusCircle className="w-4 h-4" />
-            Nouveau projet
+            {t('dashboard.newProject')}
           </Button>
         </div>
       </div>
@@ -123,10 +126,10 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
         const primaryCurrency = projects[0]?.settings?.currency || 'CAD';
 
         const stats = [
-          { icon: BarChart3, label: 'Projets', value: `${projects.length}` },
-          { icon: DollarSign, label: 'Coût total', value: formatCurrency(totalCostAll, primaryCurrency) },
-          { icon: Clock, label: 'Durée moyenne', value: `${avgWeeks.toFixed(1)} sem.` },
-          { icon: UsersRound, label: 'Membres', value: `${totalMembers}` },
+          { icon: BarChart3, label: t('dashboard.stats.projects'), value: `${projects.length}` },
+          { icon: DollarSign, label: t('dashboard.stats.totalCost'), value: formatCurrency(totalCostAll, primaryCurrency) },
+          { icon: Clock, label: t('dashboard.stats.avgDuration'), value: `${avgWeeks.toFixed(1)} ${t('dashboard.stats.weeks')}` },
+          { icon: UsersRound, label: t('dashboard.stats.members'), value: `${totalMembers}` },
         ];
 
         return (
@@ -157,13 +160,13 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <FolderOpen className="w-8 h-8 text-primary" />
               </div>
-              <p className="text-lg font-semibold mb-1">Aucun projet</p>
+              <p className="text-lg font-semibold mb-1">{t('dashboard.noProjects')}</p>
               <p className="text-sm text-muted-foreground mb-6">
-                {"Cr\u00e9ez un nouveau projet ou importez-en un pour commencer."}
+                {t('dashboard.startMessage')}
               </p>
               <Button onClick={handleCreate} className="flex items-center gap-2 mx-auto">
                 <PlusCircle className="w-4 h-4" />
-                Nouveau projet
+                {t('dashboard.newProject')}
               </Button>
             </div>
           </CardContent>
@@ -218,26 +221,26 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                             {project.role && project.role !== 'owner' && (
                               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shrink-0">
                                 <Users className="w-3 h-3 inline mr-1" />
-                                {project.role === 'editor' ? "\u00c9diteur" : "Lecture"}
+                                {project.role === 'editor' ? t('dashboard.role.editor') : t('dashboard.role.viewer')}
                               </span>
                             )}
                           </h3>
                         )}
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-sm text-muted-foreground">
-                          <span>{phaseCount} phase{phaseCount > 1 ? 's' : ''}</span>
+                          <span>{t('dashboard.phases', { count: phaseCount, plural: phaseCount > 1 ? 's' : '' })}</span>
                           <span className="text-border">|</span>
-                          <span>{memberCount} membre{memberCount > 1 ? 's' : ''}</span>
+                          <span>{t('dashboard.members', { count: memberCount, plural: memberCount > 1 ? 's' : '' })}</span>
                           <span className="text-border">|</span>
-                          <span>{totalWeeks} semaines</span>
+                          <span>{totalWeeks} {t('dashboard.weeks')}</span>
                           <span className="text-border">|</span>
-                          <span>{"Modifi\u00e9 "}{new Date(project.updatedAt).toLocaleDateString('fr-CA')}</span>
+                          <span>{t('dashboard.modified')}{new Date(project.updatedAt).toLocaleDateString(getDateLocale(locale))}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="text-xs text-muted-foreground">{"Co\u00fbt total"}</div>
+                        <div className="text-xs text-muted-foreground">{t('dashboard.totalCost')}</div>
                         <div className="text-xl font-bold">{formatCurrency(totalCost, currency)}</div>
                       </div>
 
@@ -246,19 +249,19 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                           className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Button variant="ghost" size="sm" onClick={() => startRename(project)} title="Renommer">
+                          <Button variant="ghost" size="sm" onClick={() => startRename(project)} title={t('dashboard.rename')}>
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDuplicate(project.id)} title="Dupliquer">
+                          <Button variant="ghost" size="sm" onClick={() => handleDuplicate(project.id)} title={t('dashboard.duplicate')}>
                             <Copy className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => exportProject(project)} title="Exporter JSON">
+                          <Button variant="ghost" size="sm" onClick={() => exportProject(project)} title={t('dashboard.exportJSON')}>
                             <Download className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => exportProjectCSV(project, rates)} title="Exporter CSV">
+                          <Button variant="ghost" size="sm" onClick={() => exportProjectCSV(project, rates)} title={t('dashboard.exportCSV')}>
                             CSV
                           </Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDelete(project.id)} title="Supprimer">
+                          <Button variant="destructive" size="sm" onClick={() => handleDelete(project.id)} title={t('dashboard.delete')}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>

@@ -9,8 +9,10 @@ import {
   calculatePhaseTotalCost,
   formatCurrency,
 } from '../lib/costCalculations';
+import { useLocale, LEVEL_KEYS, getLevelLabel } from '../lib/i18n';
 
 const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, allPhases = [] }) => {
+  const { t } = useLocale();
   const fmt = (v) => formatCurrency(v, currency);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(phase.name);
@@ -19,7 +21,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
   const [milestoneWeek, setMilestoneWeek] = useState(1);
 
   const roles = Object.keys(rates.CONSULTANT_RATES);
-  const levels = ['Employ\u00e9 interne', 'Junior', 'Interm\u00e9diaire', 'S\u00e9nior', 'Expert'];
+  const levels = LEVEL_KEYS;
 
   const update = (changes) => onChange({ ...phase, ...changes });
 
@@ -108,7 +110,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             </CardTitle>
           )}
           <div className="flex items-center gap-2">
-            <label className="text-sm text-muted-foreground">{"Dur\u00e9e :"}</label>
+            <label className="text-sm text-muted-foreground">{t('phase.duration')}</label>
             <input
               type="number"
               className="input-field w-16 text-center"
@@ -116,23 +118,23 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
               min="1"
               onChange={(e) => update({ durationWeeks: Math.max(1, parseInt(e.target.value) || 1) })}
             />
-            <span className="text-sm text-muted-foreground">semaines</span>
+            <span className="text-sm text-muted-foreground">{t('phase.weeks')}</span>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h4 className="font-semibold">{"\u00c9quipe"}</h4>
+            <h4 className="font-semibold">{t('phase.team')}</h4>
             <Button size="sm" onClick={addTeamMember} className="flex items-center gap-2">
               <PlusCircle className="w-4 h-4" />
-              Ajouter un membre
+              {t('phase.addMember')}
             </Button>
           </div>
 
           {phase.teamMembers.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-6">
-              {"Aucun membre. Ajoutez des membres pour calculer les co\u00fbts."}
+              {t('phase.noMembers')}
             </p>
           )}
 
@@ -157,7 +159,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     onChange={(e) => updateTeamMember(index, 'level', e.target.value)}
                   >
                     {levels.map((level) => (
-                      <option key={level} value={level}>{level}</option>
+                      <option key={level} value={level}>{getLevelLabel(t, level)}</option>
                     ))}
                   </select>
 
@@ -189,14 +191,14 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     className="flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
-                    Supprimer
+                    {t('phase.remove')}
                   </Button>
                 </div>
                 {isAuthorized && (
                   <div className="text-xs text-muted-foreground grid grid-cols-3 gap-2 pt-1">
-                    <div>Taux : {fmt(details.hourlyRate)}/h</div>
-                    <div>Heures/sem : {details.weeklyHours}h</div>
-                    <div>{"Co\u00fbt/sem : "}{fmt(details.weeklyCost)}</div>
+                    <div>{t('phase.rate')} : {fmt(details.hourlyRate)}/h</div>
+                    <div>{t('phase.hoursWeek')} : {details.weeklyHours}h</div>
+                    <div>{t('phase.costWeek')} : {fmt(details.weeklyCost)}</div>
                   </div>
                 )}
               </div>
@@ -206,12 +208,12 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
           {phase.teamMembers.length > 0 && (
             <div className="grid grid-cols-2 gap-4 pt-2">
               <div className="p-4 bg-secondary/50 rounded-xl">
-                <div className="text-xs text-muted-foreground">{"Co\u00fbt hebdomadaire"}</div>
+                <div className="text-xs text-muted-foreground">{t('phase.weeklyCost')}</div>
                 <div className="text-lg font-bold">{fmt(weeklyCost)}</div>
               </div>
               <div className="p-4 bg-primary/5 rounded-xl">
                 <div className="text-xs text-muted-foreground">
-                  {"Co\u00fbt total ("}{phase.durationWeeks}{" sem.)"}
+                  {t('phase.totalCost', { weeks: phase.durationWeeks })}
                 </div>
                 <div className="text-lg font-bold text-primary">{fmt(totalCost)}</div>
               </div>
@@ -222,12 +224,12 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             <div className="flex justify-between items-center mb-2">
               <h4 className="font-semibold flex items-center gap-2">
                 <Flag className="w-4 h-4 text-amber-500" />
-                Jalons
+                {t('phase.milestones')}
               </h4>
               {!addingMilestone && (
                 <Button variant="outline" size="sm" onClick={() => setAddingMilestone(true)} className="flex items-center gap-1">
                   <PlusCircle className="w-3 h-3" />
-                  Ajouter
+                  {t('phase.add')}
                 </Button>
               )}
             </div>
@@ -243,10 +245,10 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     if (e.key === 'Enter') addMilestone();
                     if (e.key === 'Escape') setAddingMilestone(false);
                   }}
-                  placeholder="Nom du jalon"
+                  placeholder={t('phase.milestonePlaceholder')}
                   autoFocus
                 />
-                <span className="text-xs text-muted-foreground">Sem.</span>
+                <span className="text-xs text-muted-foreground">{t('phase.weekAbbr')}</span>
                 <input
                   type="number"
                   className="input-field w-14 text-center"
@@ -261,7 +263,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             )}
 
             {phase.milestones.length === 0 && !addingMilestone && (
-              <p className="text-xs text-muted-foreground">{"Aucun jalon d\u00e9fini."}</p>
+              <p className="text-xs text-muted-foreground">{t('phase.noMilestones')}</p>
             )}
 
             {phase.milestones
@@ -273,7 +275,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     {milestone.name}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-xs">Semaine {milestone.weekOffset}</span>
+                    <span className="text-muted-foreground text-xs">{t('phase.week', { week: milestone.weekOffset })}</span>
                     <Button variant="ghost" size="sm" onClick={() => removeMilestone(milestone.id)} className="h-6 w-6 p-0">
                       <X className="w-3 h-3" />
                     </Button>
@@ -286,7 +288,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             <div className="border-t pt-4 mt-4">
               <h4 className="font-semibold flex items-center gap-2 mb-2">
                 <Link2 className="w-4 h-4 text-blue-500" />
-                {"Dépendances"}
+                {t('phase.dependencies')}
               </h4>
               <div className="space-y-1">
                 {allPhases
@@ -317,7 +319,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
               </div>
               {(!phase.dependencies || phase.dependencies.length === 0) && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {"Aucune dépendance. Cette phase peut démarrer immédiatement."}
+                  {t('phase.noDependencies')}
                 </p>
               )}
             </div>

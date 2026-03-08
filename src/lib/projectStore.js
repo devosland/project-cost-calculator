@@ -15,7 +15,8 @@ function createDefaultPhase(name = 'Phase 1') {
   };
 }
 
-export function createProject(name = 'Nouveau projet') {
+export function createProject(name) {
+  name = name || 'Nouveau projet';
   return {
     id: generateId(),
     name,
@@ -37,13 +38,13 @@ export function createPhase(name, order) {
   return createDefaultPhase(name, order);
 }
 
-export function duplicateProject(projects, projectId) {
+export function duplicateProject(projects, projectId, copyLabel) {
   const source = projects.find((p) => p.id === projectId);
   if (!source) return projects;
   const copy = {
     ...JSON.parse(JSON.stringify(source)),
     id: generateId(),
-    name: `${source.name} (copie)`,
+    name: `${source.name} (${copyLabel || 'copie'})`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -181,7 +182,7 @@ export function exportCalendar(project) {
           `DTSTART;VALUE=DATE:${formatDateICS(milestoneDate)}`,
           `DTEND;VALUE=DATE:${formatDateICS(nextDay)}`,
           `SUMMARY:${escapeICS(milestone.name)}`,
-          `DESCRIPTION:Phase : ${escapeICS(phase.name)} — Semaine ${schedule.startWeek + milestone.weekOffset}`,
+          `DESCRIPTION:${escapeICS(phase.name)} — Week ${schedule.startWeek + milestone.weekOffset}`,
           'END:VEVENT',
         ].join('\r\n')
       );
@@ -203,7 +204,7 @@ export function exportCalendar(project) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${project.name.replace(/[^a-zA-Z0-9À-ÿ ]/g, '_')}_jalons.ics`;
+  a.download = `${project.name.replace(/[^a-zA-Z0-9À-ÿ ]/g, '_')}_milestones.ics`;
   a.click();
   URL.revokeObjectURL(url);
 }

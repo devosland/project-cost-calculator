@@ -9,6 +9,7 @@ import {
   calculateProjectDurationWithDependencies,
   formatCurrency,
 } from '../lib/costCalculations';
+import { useLocale } from '../lib/i18n';
 
 const COLORS = [
   'bg-indigo-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500',
@@ -23,6 +24,7 @@ const LIGHT_COLORS = [
 ];
 
 const TimelineView = ({ project, rates, currency = 'CAD' }) => {
+  const { t } = useLocale();
   const fmt = (v) => formatCurrency(v, currency);
   const { totalWeeks, phaseSchedule } = calculateProjectDurationWithDependencies(project);
 
@@ -30,7 +32,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
     return (
       <Card>
         <CardContent className="py-10 text-center text-muted-foreground">
-          Ajoutez des phases pour voir la ligne de temps.
+          {t('timeline.empty')}
         </CardContent>
       </Card>
     );
@@ -55,7 +57,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Ligne de temps du projet</CardTitle>
+          <CardTitle>{t('timeline.title')}</CardTitle>
           {phasesWithOffsets.some((p) => p.milestones.length > 0) && (
             <Button
               variant="outline"
@@ -64,7 +66,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
               className="flex items-center gap-2"
             >
               <Calendar className="w-4 h-4" />
-              Calendrier
+              {t('timeline.calendar')}
             </Button>
           )}
         </div>
@@ -79,7 +81,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                   className="absolute text-xs text-muted-foreground -translate-x-1/2 font-medium"
                   style={{ left: `${(week / totalWeeks) * 100}%` }}
                 >
-                  S{week}
+                  {t('timeline.weekLabel', { week })}
                 </div>
               ))}
             </div>
@@ -108,7 +110,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                       style={{ left: `${left}%`, width: `${width}%` }}
                     >
                       <span className="text-white text-xs font-semibold truncate px-2">
-                        {phase.durationWeeks} sem.
+                        {phase.durationWeeks} {t('budget.weeksAbbr')}
                       </span>
                     </div>
                     {phase.milestones.map((milestone) => {
@@ -118,7 +120,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                           key={milestone.id}
                           className="absolute top-0 h-full flex items-center z-10"
                           style={{ left: `${milestoneLeft}%` }}
-                          title={`${milestone.name} (S${phase.offset + milestone.weekOffset})`}
+                          title={`${milestone.name} (${t('timeline.weekLabel', { week: phase.offset + milestone.weekOffset })})`}
                         >
                           <Flag className="w-3.5 h-3.5 text-amber-500 -translate-x-1/2 drop-shadow-sm" />
                         </div>
@@ -131,17 +133,17 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
           </div>
 
           <div className="border-t pt-6">
-            <h4 className="font-semibold mb-4">{"R\u00e9partition des co\u00fbts"}</h4>
+            <h4 className="font-semibold mb-4">{t('timeline.costBreakdown')}</h4>
             <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="p-2 text-muted-foreground font-medium">Phase</th>
-                  <th className="p-2 text-center text-muted-foreground font-medium">{"Dur\u00e9e"}</th>
-                  <th className="p-2 text-center text-muted-foreground font-medium">Membres</th>
-                  <th className="p-2 text-right text-muted-foreground font-medium">{"Co\u00fbt/sem."}</th>
-                  <th className="p-2 text-right text-muted-foreground font-medium">{"Co\u00fbt phase"}</th>
-                  <th className="p-2 text-right text-muted-foreground font-medium">Cumul</th>
+                  <th className="p-2 text-muted-foreground font-medium">{t('timeline.phase')}</th>
+                  <th className="p-2 text-center text-muted-foreground font-medium">{t('timeline.duration')}</th>
+                  <th className="p-2 text-center text-muted-foreground font-medium">{t('timeline.members')}</th>
+                  <th className="p-2 text-right text-muted-foreground font-medium">{t('timeline.costPerWeek')}</th>
+                  <th className="p-2 text-right text-muted-foreground font-medium">{t('timeline.phaseCost')}</th>
+                  <th className="p-2 text-right text-muted-foreground font-medium">{t('timeline.cumulative')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,7 +159,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                         <span className={`inline-block w-3 h-3 rounded-sm mr-2 ${COLORS[phase.colorIndex]}`} />
                         {phase.name}
                       </td>
-                      <td className="p-2 text-center">{phase.durationWeeks} sem.</td>
+                      <td className="p-2 text-center">{phase.durationWeeks} {t('budget.weeksAbbr')}</td>
                       <td className="p-2 text-center">{memberCount}</td>
                       <td className="p-2 text-right">{fmt(weeklyCost)}</td>
                       <td className="p-2 text-right font-semibold">{fmt(phaseTotalCost)}</td>
@@ -174,7 +176,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
             <div className="border-t pt-6">
               <h4 className="font-semibold mb-3 flex items-center gap-2">
                 <Flag className="w-4 h-4 text-amber-500" />
-                Jalons
+                {t('timeline.milestones')}
               </h4>
               <div className="space-y-1">
                 {phasesWithOffsets.flatMap((phase) =>
@@ -195,7 +197,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                           {m.phaseName}
                         </span>
                       </div>
-                      <span className="text-muted-foreground">Semaine {m.absoluteWeek}</span>
+                      <span className="text-muted-foreground">{t('timeline.weekLabel', { week: m.absoluteWeek })}</span>
                     </div>
                   ))}
               </div>

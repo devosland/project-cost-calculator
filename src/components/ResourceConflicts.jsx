@@ -2,8 +2,10 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { calculateProjectDurationWithDependencies } from '../lib/costCalculations';
+import { useLocale } from '../lib/i18n';
 
 const ResourceConflicts = ({ project, rates }) => {
+  const { t } = useLocale();
   const { phaseSchedule } = calculateProjectDurationWithDependencies(project);
   const phases = project.phases || [];
 
@@ -69,14 +71,14 @@ const ResourceConflicts = ({ project, rates }) => {
           ) : (
             <CheckCircle className="w-5 h-5 text-green-500" />
           )}
-          {"Conflits de ressources"}
+          {t('conflicts.title')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {conflicts.length === 0 ? (
           <div className="flex items-center gap-2 text-green-600 text-sm p-3 bg-green-50 rounded-lg">
             <CheckCircle className="w-4 h-4" />
-            {"Aucun conflit de ressources détecté"}
+            {t('conflicts.none')}
           </div>
         ) : (
           <div className="space-y-2">
@@ -87,8 +89,7 @@ const ResourceConflicts = ({ project, rates }) => {
               >
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-500" />
                 <span>
-                  {"Le rôle "}<strong>{c.role}</strong>{" ("}{c.level}{")"}{" est alloué à "}<strong>{c.totalAlloc}%</strong>
-                  {" pendant les semaines "}{c.startWeek}{"-"}{c.endWeek}{" (maximum recommandé\u00a0: 100%)"}
+                  {t('conflicts.warning', { role: c.role, level: c.level, alloc: c.totalAlloc, start: c.startWeek, end: c.endWeek })}
                 </span>
               </div>
             ))}

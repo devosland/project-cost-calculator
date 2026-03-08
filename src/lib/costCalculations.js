@@ -83,8 +83,8 @@ export function getCostByPhase(project, rates) {
   return phaseMap;
 }
 
-export function getCostByCategory(project, rates) {
-  const catMap = { 'Main-d\'oeuvre': calculateLabourCost(project, rates) };
+export function getCostByCategory(project, rates, labourLabel = "Main-d'oeuvre") {
+  const catMap = { [labourLabel]: calculateLabourCost(project, rates) };
   for (const cost of (project.nonLabourCosts || [])) {
     catMap[cost.category] = (catMap[cost.category] || 0) + cost.amount;
   }

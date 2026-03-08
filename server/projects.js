@@ -68,7 +68,7 @@ router.post('/', (req, res) => {
     }
     const dataStr = JSON.stringify(data ?? {});
     createProjectRecord(id, req.user.id, name, dataStr);
-    createSnapshot(id, req.user.id, dataStr, 'Création');
+    createSnapshot(id, req.user.id, dataStr, 'creation');
     res.status(201).json({ id, name, data: data ?? {} });
   } catch (err) {
     console.error('Create project error:', err);
@@ -247,10 +247,10 @@ router.post('/:id/test-webhook', async (req, res) => {
 
     const webhookUrl = data.settings?.webhookUrl;
     if (!webhookUrl) {
-      return res.status(400).json({ error: 'Aucune URL webhook configurée' });
+      return res.status(400).json({ error: 'webhook_not_configured' });
     }
     if (!isAllowedWebhookUrl(webhookUrl)) {
-      return res.status(400).json({ error: 'URL webhook invalide ou non autorisée' });
+      return res.status(400).json({ error: 'webhook_url_invalid' });
     }
 
     const budget = data.budget ?? null;
@@ -281,16 +281,16 @@ router.post('/:id/test-webhook', async (req, res) => {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      return res.status(502).json({ error: `Le webhook a répondu avec le statut ${response.status}` });
+      return res.status(502).json({ error: 'webhook_response_error', status: response.status });
     }
 
     res.json({ success: true });
   } catch (err) {
     console.error('Test webhook error:', err);
     if (err.name === 'AbortError') {
-      return res.status(504).json({ error: 'Le webhook n\u2019a pas répondu dans les délais' });
+      return res.status(504).json({ error: 'webhook_timeout' });
     }
-    res.status(502).json({ error: 'Impossible de joindre l\u2019URL du webhook' });
+    res.status(502).json({ error: 'webhook_unreachable' });
   }
 });
 

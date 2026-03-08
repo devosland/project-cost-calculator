@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { PlusCircle, Trash2, Pencil, Check, X } from 'lucide-react';
-
-const LEVELS = ['Junior', 'Intermédiaire', 'Sénior', 'Expert'];
+import { useLocale, CONSULTANT_LEVEL_KEYS, getConsultantLevelLabel } from '../lib/i18n';
 
 const RolesRatesManager = ({ rates, onRatesChange }) => {
+  const { t, locale } = useLocale();
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [newRoleName, setNewRoleName] = useState('');
@@ -49,7 +49,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
     if (!name || rates.CONSULTANT_RATES[name]) return;
 
     const defaultRates = {};
-    LEVELS.forEach((level) => {
+    CONSULTANT_LEVEL_KEYS.forEach((level) => {
       defaultRates[level] = 0;
     });
 
@@ -92,7 +92,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
   };
 
   const formatRate = (value) => {
-    return new Intl.NumberFormat('fr-CA', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'CAD',
       minimumFractionDigits: 2,
@@ -107,14 +107,14 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
   return (
     <Card className="w-full max-w-4xl">
       <CardHeader>
-        <CardTitle>Gestion des rôles et taux</CardTitle>
+        <CardTitle>{t('rates.title')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           {/* Internal Rate */}
           <div className="p-4 border rounded-lg">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Taux horaire interne</h3>
+              <h3 className="text-lg font-medium">{t('rates.internalRate')}</h3>
               {editingInternalRate ? (
                 <div className="flex items-center gap-2">
                   <input
@@ -149,7 +149,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
           {/* Consultant Rates Table */}
           <div className="p-4 border rounded-lg">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">Taux consultants</h3>
+              <h3 className="text-lg font-medium">{t('rates.consultantRates')}</h3>
               {!isAddingRole && (
                 <Button
                   variant="default"
@@ -158,7 +158,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                   className="flex items-center gap-2"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  Ajouter un rôle
+                  {t('rates.addRole')}
                 </Button>
               )}
             </div>
@@ -171,16 +171,16 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                   value={newRoleName}
                   onChange={(e) => setNewRoleName(e.target.value)}
                   onKeyDown={(e) => handleKeyDown(e, addRole, () => { setIsAddingRole(false); setNewRoleName(''); })}
-                  placeholder="Nom du rôle"
+                  placeholder={t('rates.roleName')}
                   autoFocus
                 />
                 <Button variant="default" size="sm" onClick={addRole}>
                   <Check className="w-4 h-4 mr-1" />
-                  Ajouter
+                  {t('phase.add')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => { setIsAddingRole(false); setNewRoleName(''); }}>
                   <X className="w-4 h-4 mr-1" />
-                  Annuler
+                  {t('nonLabour.cancel')}
                 </Button>
               </div>
             )}
@@ -189,20 +189,20 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-2 font-medium">Rôle</th>
-                    {LEVELS.map((level) => (
+                    <th className="text-left p-2 font-medium">{t('rates.role')}</th>
+                    {CONSULTANT_LEVEL_KEYS.map((level) => (
                       <th key={level} className="text-center p-2 font-medium">
-                        {level}
+                        {getConsultantLevelLabel(t, level)}
                       </th>
                     ))}
-                    <th className="text-center p-2 font-medium w-20">Actions</th>
+                    <th className="text-center p-2 font-medium w-20">{t('rates.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {roles.map((role) => (
                     <tr key={role} className="border-b last:border-b-0 hover:bg-gray-50">
                       <td className="p-2 font-medium">{role}</td>
-                      {LEVELS.map((level) => {
+                      {CONSULTANT_LEVEL_KEYS.map((level) => {
                         const isEditing =
                           editingCell?.role === role && editingCell?.level === level;
                         return (
@@ -230,7 +230,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                               <span
                                 className="cursor-pointer hover:text-primary hover:underline"
                                 onClick={() => startEdit(role, level)}
-                                title="Cliquer pour modifier"
+                                title={t('rates.clickToEdit')}
                               >
                                 {formatRate(rates.CONSULTANT_RATES[role][level])}
                               </span>
@@ -243,7 +243,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                           variant="destructive"
                           size="sm"
                           onClick={() => removeRole(role)}
-                          title="Supprimer le rôle"
+                          title={t('rates.deleteRole')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -252,8 +252,8 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                   ))}
                   {roles.length === 0 && (
                     <tr>
-                      <td colSpan={LEVELS.length + 2} className="p-8 text-center text-gray-500">
-                        Aucun rôle défini. Cliquez sur « Ajouter un rôle » pour commencer.
+                      <td colSpan={CONSULTANT_LEVEL_KEYS.length + 2} className="p-8 text-center text-gray-500">
+                        {t('rates.noRoles')}
                       </td>
                     </tr>
                   )}

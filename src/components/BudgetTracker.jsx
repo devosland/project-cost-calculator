@@ -9,8 +9,10 @@ import {
   calculateNonLabourCost,
   formatCurrency,
 } from '../lib/costCalculations';
+import { useLocale } from '../lib/i18n';
 
 const BudgetTracker = ({ project, rates }) => {
+  const { t } = useLocale();
   const currency = project.settings?.currency || 'CAD';
   const fmt = (v) => formatCurrency(v, currency);
 
@@ -34,14 +36,14 @@ const BudgetTracker = ({ project, rates }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Suivi du budget</CardTitle>
+        <CardTitle>{t('budget.title')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           {hasBudget && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Utilisation du budget</span>
+                <span className="text-muted-foreground">{t('budget.usage')}</span>
                 <span className={isOverBudget ? 'text-red-600 font-semibold' : 'text-muted-foreground'}>
                   {usagePercent.toFixed(1)}%
                 </span>
@@ -69,10 +71,9 @@ const BudgetTracker = ({ project, rates }) => {
             <div className="flex items-center gap-3 p-4 rounded-xl border-2 border-amber-300 bg-amber-50 text-amber-800">
               <AlertTriangle className="w-5 h-5 flex-shrink-0" />
               <div className="text-sm">
-                <span className="font-semibold">Alerte budgétaire :</span>{' '}
-                le coût estimé ({fmt(totalCost)}) a atteint {usagePercent.toFixed(1)}% du budget,
-                dépassant le seuil de {alertThreshold}%.
-                {project.settings?.webhookUrl && ' Une notification webhook est configurée.'}
+                <span className="font-semibold">{t('budget.alertLabel')}</span>{' '}
+                {t('budget.alertMessage', { cost: fmt(totalCost), percent: usagePercent.toFixed(1), threshold: alertThreshold })}
+                {project.settings?.webhookUrl && ` ${t('budget.webhookConfigured')}`}
               </div>
             </div>
           )}
@@ -81,7 +82,7 @@ const BudgetTracker = ({ project, rates }) => {
             {hasBudget && (
               <div className={`p-4 rounded-xl border-2 ${isOverBudget ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50'}`}>
                 <div className="text-xs text-muted-foreground">
-                  {isOverBudget ? 'D\u00e9passement' : 'Sous le budget'}
+                  {isOverBudget ? t('budget.overBudget') : t('budget.underBudget')}
                 </div>
                 <div className={`text-xl font-bold ${isOverBudget ? 'text-red-600' : 'text-emerald-600'}`}>
                   {isOverBudget ? '+' : ''}{fmt(Math.abs(variance))}
@@ -93,32 +94,32 @@ const BudgetTracker = ({ project, rates }) => {
             )}
 
             <div className="p-4 rounded-xl bg-secondary/50">
-              <div className="text-xs text-muted-foreground">{"Co\u00fbt total estim\u00e9"}</div>
+              <div className="text-xs text-muted-foreground">{t('budget.estimatedTotal')}</div>
               <div className="text-xl font-bold">{fmt(totalCost)}</div>
             </div>
 
             <div className="p-4 rounded-xl bg-secondary/50">
-              <div className="text-xs text-muted-foreground">Taux de consommation</div>
+              <div className="text-xs text-muted-foreground">{t('budget.burnRate')}</div>
               <div className="text-xl font-bold">{fmt(burnRate)}</div>
-              <div className="text-xs text-muted-foreground">par semaine</div>
+              <div className="text-xs text-muted-foreground">{t('budget.perWeek')}</div>
             </div>
 
             <div className="p-4 rounded-xl bg-secondary/50">
-              <div className="text-xs text-muted-foreground">{"Dur\u00e9e"}</div>
-              <div className="text-xl font-bold">{totalWeeks} sem.</div>
+              <div className="text-xs text-muted-foreground">{t('budget.duration')}</div>
+              <div className="text-xl font-bold">{totalWeeks} {t('budget.weeksAbbr')}</div>
               {hasBudget && weeksUntilBudgetExhausted && (
                 <div className="text-xs text-muted-foreground">
-                  Budget pour {weeksUntilBudgetExhausted.toFixed(1)} sem.
+                  {t('budget.budgetFor', { weeks: weeksUntilBudgetExhausted.toFixed(1) })}
                 </div>
               )}
             </div>
           </div>
 
           <div className="border-t pt-4">
-            <h4 className="font-semibold mb-3">Ventilation</h4>
+            <h4 className="font-semibold mb-3">{t('budget.breakdown')}</h4>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm">{"Main-d\u2019\u0153uvre"}</span>
+                <span className="text-sm">{t('budget.labour')}</span>
                 <div className="flex items-center gap-3">
                   <div className="w-32 h-2 bg-secondary rounded-full overflow-hidden">
                     <div
@@ -130,7 +131,7 @@ const BudgetTracker = ({ project, rates }) => {
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">{"Autres co\u00fbts"}</span>
+                <span className="text-sm">{t('budget.otherCosts')}</span>
                 <div className="flex items-center gap-3">
                   <div className="w-32 h-2 bg-secondary rounded-full overflow-hidden">
                     <div
@@ -143,14 +144,14 @@ const BudgetTracker = ({ project, rates }) => {
               </div>
               {project.settings.includeContingency && (
                 <div className="flex justify-between items-center text-muted-foreground">
-                  <span className="text-sm">Contingence ({project.settings.contingencyPercentage}%)</span>
-                  <span className="text-sm">{"Incluse dans main-d\u2019\u0153uvre"}</span>
+                  <span className="text-sm">{t('budget.contingency', { percent: project.settings.contingencyPercentage })}</span>
+                  <span className="text-sm">{t('budget.includedInLabour')}</span>
                 </div>
               )}
               {project.settings.includeTaxes && (
                 <div className="flex justify-between items-center text-muted-foreground">
-                  <span className="text-sm">Taxes (4,9875%)</span>
-                  <span className="text-sm">{"Incluses dans main-d\u2019\u0153uvre"}</span>
+                  <span className="text-sm">{t('budget.taxes')}</span>
+                  <span className="text-sm">{t('budget.includedInLabour')}</span>
                 </div>
               )}
             </div>

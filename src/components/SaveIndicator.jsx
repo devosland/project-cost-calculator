@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Check, AlertCircle, Loader2 } from 'lucide-react'
+import { useLocale } from '../lib/i18n'
 
 function SaveIndicator({ status }) {
+  const { t } = useLocale();
   const [opacity, setOpacity] = useState(1);
 
   useEffect(() => {
@@ -26,19 +28,19 @@ function SaveIndicator({ status }) {
       {status === 'saving' && (
         <>
           <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Sauvegarde...</span>
+          <span className="text-xs text-muted-foreground">{t('save.saving')}</span>
         </>
       )}
       {status === 'saved' && (
         <>
           <Check className="w-3 h-3 text-emerald-500" />
-          <span className="text-xs text-emerald-500">Sauvegardé</span>
+          <span className="text-xs text-emerald-500">{t('save.saved')}</span>
         </>
       )}
       {status === 'error' && (
         <>
           <AlertCircle className="w-3 h-3 text-destructive" />
-          <span className="text-xs text-destructive">Erreur</span>
+          <span className="text-xs text-destructive">{t('save.error')}</span>
         </>
       )}
     </div>
