@@ -6,7 +6,7 @@ import { Dropdown } from './ui/dropdown';
 import {
   ArrowLeft, PlusCircle, Trash2, ChevronUp, ChevronDown,
   LayoutDashboard, Calendar, Settings, DollarSign, BarChart3, FileText,
-  Share2, History,
+  Share2, History, AlertTriangle,
 } from 'lucide-react';
 import PhaseEditor from './PhaseEditor';
 import TimelineView from './TimelineView';
@@ -15,6 +15,8 @@ import BudgetTracker from './BudgetTracker';
 import NonLabourCosts from './NonLabourCosts';
 import CostCharts from './CostCharts';
 import ProjectSummary from './ProjectSummary';
+import ResourceConflicts from './ResourceConflicts';
+import RiskRegister from './RiskRegister';
 import { createPhase } from '../lib/projectStore';
 import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency, CURRENCIES,
@@ -28,6 +30,7 @@ const TABS = [
   { id: 'budget', label: 'Budget', icon: DollarSign },
   { id: 'charts', label: 'Graphiques', icon: BarChart3 },
   { id: 'summary', label: 'Rapport', icon: FileText },
+  { id: 'risks', label: 'Risques', icon: AlertTriangle },
   { id: 'rates', label: 'Taux', icon: Settings },
 ];
 
@@ -51,7 +54,14 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
   };
   const removePhase = (phaseId) => {
     if (project.phases.length <= 1) return;
-    updateProject({ phases: project.phases.filter((p) => p.id !== phaseId) });
+    updateProject({
+      phases: project.phases
+        .filter((p) => p.id !== phaseId)
+        .map((p) => ({
+          ...p,
+          dependencies: (p.dependencies || []).filter((d) => d !== phaseId),
+        })),
+    });
   };
   const movePhase = (index, direction) => {
     const newIndex = index + direction;
@@ -166,6 +176,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
                 isAuthorized={isAuthorized}
                 currency={currency}
                 onChange={(updated) => updatePhase(phase.id, updated)}
+                allPhases={project.phases}
               />
               {project.phases.length > 1 && (
                 <div className="absolute -right-10 top-4 hidden sm:block">
@@ -199,6 +210,8 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
               </div>
             </div>
           </div>
+
+          <ResourceConflicts project={project} rates={rates} />
         </div>
       )}
 
@@ -225,6 +238,13 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
             onChange={(costs) => updateProject({ nonLabourCosts: costs })}
           />
         </div>
+      )}
+
+      {activeTab === 'risks' && (
+        <RiskRegister
+          risks={project.risks || []}
+          onChange={(newRisks) => updateProject({ risks: newRisks })}
+        />
       )}
 
       {activeTab === 'charts' && <CostCharts project={project} rates={rates} />}

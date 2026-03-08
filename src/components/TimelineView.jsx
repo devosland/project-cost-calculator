@@ -4,6 +4,7 @@ import { Flag } from 'lucide-react';
 import {
   calculatePhaseWeeklyCost,
   calculatePhaseTotalCost,
+  calculateProjectDurationWithDependencies,
   formatCurrency,
 } from '../lib/costCalculations';
 
@@ -21,7 +22,7 @@ const LIGHT_COLORS = [
 
 const TimelineView = ({ project, rates, currency = 'CAD' }) => {
   const fmt = (v) => formatCurrency(v, currency);
-  const totalWeeks = project.phases.reduce((sum, p) => sum + p.durationWeeks, 0);
+  const { totalWeeks, phaseSchedule } = calculateProjectDurationWithDependencies(project);
 
   if (totalWeeks === 0) {
     return (
@@ -33,15 +34,16 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
     );
   }
 
+  const scheduleMap = new Map(phaseSchedule.map((s) => [s.phaseId, s]));
+
   const weekMarkers = [];
   const markerStep = totalWeeks <= 12 ? 1 : totalWeeks <= 24 ? 2 : 4;
   for (let i = 0; i <= totalWeeks; i += markerStep) weekMarkers.push(i);
   if (weekMarkers[weekMarkers.length - 1] !== totalWeeks) weekMarkers.push(totalWeeks);
 
-  let cumulativeWeeks = 0;
   const phasesWithOffsets = project.phases.map((phase, index) => {
-    const offset = cumulativeWeeks;
-    cumulativeWeeks += phase.durationWeeks;
+    const schedule = scheduleMap.get(phase.id);
+    const offset = schedule ? schedule.startWeek : 0;
     return { ...phase, offset, colorIndex: index % COLORS.length };
   });
 

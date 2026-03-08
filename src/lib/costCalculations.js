@@ -91,6 +91,89 @@ export function getCostByCategory(project, rates) {
   return catMap;
 }
 
+export function calculateProjectDurationWithDependencies(project) {
+  const phases = project.phases || [];
+  if (phases.length === 0) return { totalWeeks: 0, phaseSchedule: [] };
+
+  const phaseMap = new Map(phases.map((p) => [p.id, p]));
+  const hasDependencies = phases.some((p) => p.dependencies && p.dependencies.length > 0);
+
+  // Fall back to sequential if no dependencies are defined
+  if (!hasDependencies) {
+    let offset = 0;
+    const phaseSchedule = phases.map((p) => {
+      const entry = { phaseId: p.id, startWeek: offset, endWeek: offset + p.durationWeeks };
+      offset += p.durationWeeks;
+      return entry;
+    });
+    return { totalWeeks: offset, phaseSchedule };
+  }
+
+  // Detect circular dependencies via topological sort attempt
+  const visited = new Set();
+  const visiting = new Set();
+  let hasCycle = false;
+
+  function detectCycle(id) {
+    if (visiting.has(id)) { hasCycle = true; return; }
+    if (visited.has(id)) return;
+    visiting.add(id);
+    const phase = phaseMap.get(id);
+    if (phase && phase.dependencies) {
+      for (const depId of phase.dependencies) {
+        if (phaseMap.has(depId)) detectCycle(depId);
+      }
+    }
+    visiting.delete(id);
+    visited.add(id);
+  }
+
+  for (const p of phases) {
+    detectCycle(p.id);
+    if (hasCycle) break;
+  }
+
+  // If circular, fall back to sequential
+  if (hasCycle) {
+    let offset = 0;
+    const phaseSchedule = phases.map((p) => {
+      const entry = { phaseId: p.id, startWeek: offset, endWeek: offset + p.durationWeeks };
+      offset += p.durationWeeks;
+      return entry;
+    });
+    return { totalWeeks: offset, phaseSchedule };
+  }
+
+  // Calculate start/end using dependency graph
+  const endWeekMap = new Map();
+
+  function getEndWeek(id) {
+    if (endWeekMap.has(id)) return endWeekMap.get(id);
+    const phase = phaseMap.get(id);
+    if (!phase) return 0;
+
+    let startWeek = 0;
+    const deps = (phase.dependencies || []).filter((d) => phaseMap.has(d));
+    for (const depId of deps) {
+      startWeek = Math.max(startWeek, getEndWeek(depId));
+    }
+    const endWeek = startWeek + phase.durationWeeks;
+    endWeekMap.set(id, endWeek);
+    return endWeek;
+  }
+
+  for (const p of phases) getEndWeek(p.id);
+
+  const phaseSchedule = phases.map((p) => {
+    const endWeek = endWeekMap.get(p.id);
+    return { phaseId: p.id, startWeek: endWeek - p.durationWeeks, endWeek };
+  });
+
+  const totalWeeks = phaseSchedule.length > 0 ? Math.max(...phaseSchedule.map((s) => s.endWeek)) : 0;
+
+  return { totalWeeks, phaseSchedule };
+}
+
 export function formatCurrency(amount, currency = 'CAD') {
   const curr = CURRENCIES.find((c) => c.code === currency) || CURRENCIES[0];
   return new Intl.NumberFormat(curr.locale, {
