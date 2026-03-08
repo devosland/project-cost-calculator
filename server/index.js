@@ -7,7 +7,7 @@ import dataRoutes from './data.js';
 import projectRoutes from './projects.js';
 import templateRoutes from './templates.js';
 import { startScheduledBackups, createBackup, listBackups } from './backup.js';
-import { authenticate } from './middleware.js';
+import { authMiddleware } from './middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,12 +25,12 @@ app.use('/api/data', dataRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/templates', templateRoutes);
 
-// Backup endpoints (authenticated)
-app.get('/api/backups', authenticate, (req, res) => {
+// Backup endpoints (authMiddlewared)
+app.get('/api/backups', authMiddleware, (req, res) => {
   res.json(listBackups().map((b) => ({ name: b.name })));
 });
 
-app.post('/api/backups', authenticate, (req, res) => {
+app.post('/api/backups', authMiddleware, (req, res) => {
   const result = createBackup();
   if (result) {
     res.json({ success: true, message: 'Backup created' });
