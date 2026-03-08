@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { PlusCircle, Trash2, Pencil, Check, X, Flag } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, Check, X, Flag, Link2 } from 'lucide-react';
 import {
   HOURS_PER_WEEK,
   getHourlyRate,
@@ -10,7 +10,7 @@ import {
   formatCurrency,
 } from '../lib/costCalculations';
 
-const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange }) => {
+const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, allPhases = [] }) => {
   const fmt = (v) => formatCurrency(v, currency);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(phase.name);
@@ -281,6 +281,47 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange })
                 </div>
               ))}
           </div>
+
+          {allPhases.length > 1 && (
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-semibold flex items-center gap-2 mb-2">
+                <Link2 className="w-4 h-4 text-blue-500" />
+                {"Dépendances"}
+              </h4>
+              <div className="space-y-1">
+                {allPhases
+                  .filter((p) => p.id !== phase.id)
+                  .map((otherPhase) => {
+                    const deps = phase.dependencies || [];
+                    const isChecked = deps.includes(otherPhase.id);
+                    return (
+                      <label
+                        key={otherPhase.id}
+                        className="flex items-center gap-2 text-sm py-1 px-2 rounded hover:bg-secondary/30 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            const newDeps = isChecked
+                              ? deps.filter((d) => d !== otherPhase.id)
+                              : [...deps, otherPhase.id];
+                            update({ dependencies: newDeps });
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        {otherPhase.name}
+                      </label>
+                    );
+                  })}
+              </div>
+              {(!phase.dependencies || phase.dependencies.length === 0) && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {"Aucune dépendance. Cette phase peut démarrer immédiatement."}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
