@@ -357,6 +357,13 @@ router.post('/transitions/:id/apply', (req, res) => {
       return res.status(400).json({ error: 'missing_resources', ids: missingIds });
     }
 
+    // Helper: add weeks to YYYY-MM, return YYYY-MM
+    function addWeeksToMonth(ym, weeks) {
+      const [y, m] = ym.split('-').map(Number);
+      const d = new Date(y, m - 1, 1 + weeks * 7);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
     // Apply in a transaction
     const applyFn = db.transaction(() => {
       // First pass: collect original end dates before modifying assignments
@@ -378,12 +385,17 @@ router.post('/transitions/:id/apply', (req, res) => {
 
         for (const a of assignments) {
           const originalEnd = originalEndDates[`${a.resource_id}-${a.project_id}-${a.phase_id}`] || a.end_month;
+          const overlapWeeks = t.overlap_weeks || 0;
+          // Consultant stays until transition_date + overlap
+          const consultantEnd = overlapWeeks > 0 ? addWeeksToMonth(t.transition_date, overlapWeeks) : t.transition_date;
+          // Cap at original end
+          const cappedConsultantEnd = consultantEnd > originalEnd ? originalEnd : consultantEnd;
 
-          // Shorten consultant assignment to end at transition_date
+          // Shorten consultant assignment to end after overlap period
           db.prepare('UPDATE resource_assignments SET end_month = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-            .run(t.transition_date, a.id);
+            .run(cappedConsultantEnd, a.id);
 
-          // Create replacement assignment from transition_date to original end
+          // Create replacement assignment starting at transition_date to original end
           try {
             db.prepare(
               'INSERT INTO resource_assignments (resource_id, project_id, phase_id, allocation, start_month, end_month, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
@@ -427,9 +439,12 @@ router.post('/transitions/:id/apply', (req, res) => {
               ).get(t.consultant_resource_id, project_id, phase.id);
               const phaseStart = consultantAssignment?.start_month || t.transition_date;
 
-              // Set consultant period: original start → transition date
+              // Set consultant period: original start → transition date + overlap
+              const overlapWeeks = t.overlap_weeks || 0;
+              const consultantEndMonth = overlapWeeks > 0 ? addWeeksToMonth(t.transition_date, overlapWeeks) : t.transition_date;
+              const cappedEnd = (originalEnd && consultantEndMonth > originalEnd) ? originalEnd : consultantEndMonth;
               phase.teamMembers[consultantIdx].startMonth = phaseStart;
-              phase.teamMembers[consultantIdx].endMonth = t.transition_date;
+              phase.teamMembers[consultantIdx].endMonth = cappedEnd;
               changed = true;
 
               const alreadyHasReplacement = (phase.teamMembers || []).some(
