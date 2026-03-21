@@ -6,6 +6,7 @@ import { capacityApi } from '../lib/capacityApi';
 import { getMonthRange, calculateUtilization } from '../lib/capacityCalculations';
 import GanttBar from './GanttBar';
 import UtilizationSummary from './UtilizationSummary';
+import QuickTransition from './QuickTransition';
 
 const PROJECT_COLORS = [
   '#6366f1', '#10b981', '#f59e0b', '#ef4444',
@@ -27,6 +28,7 @@ const CapacityGantt = ({ rates }) => {
   );
   const [data, setData] = useState({ resources: [], assignments: [] });
   const [collapsed, setCollapsed] = useState({});
+  const [quickTransition, setQuickTransition] = useState(null);
 
   const endMonth = useMemo(() => addMonths(startMonth, 11), [startMonth]);
   const months = useMemo(() => getMonthRange(startMonth, endMonth), [startMonth, endMonth]);
@@ -152,7 +154,11 @@ const CapacityGantt = ({ rates }) => {
                         colStart={props.colStart}
                         colSpan={props.colSpan}
                         isConsultant={resource.level !== 'Employé interne'}
-                        onClick={() => {}}
+                        onClick={() => {
+                          if (resource.level !== 'Employé interne') {
+                            setQuickTransition({ consultant: resource, assignment: bar });
+                          }
+                        }}
                       />
                     );
                   })}
@@ -229,7 +235,11 @@ const CapacityGantt = ({ rates }) => {
                           colStart={props.colStart}
                           colSpan={props.colSpan}
                           isConsultant={resource.level !== 'Employé interne'}
-                          onClick={() => {}}
+                          onClick={() => {
+                            if (resource.level !== 'Employé interne') {
+                              setQuickTransition({ consultant: resource, assignment: bar });
+                            }
+                          }}
                         />
                       );
                     });
@@ -308,6 +318,19 @@ const CapacityGantt = ({ rates }) => {
           <UtilizationSummary resources={resources} assignments={assignments} months={months} />
         </div>
       </div>
+
+      {quickTransition && (
+        <QuickTransition
+          consultant={quickTransition.consultant}
+          assignment={quickTransition.assignment}
+          resources={resources}
+          rates={rates}
+          onClose={() => setQuickTransition(null)}
+          onApply={() => {
+            capacityApi.getGanttData(startMonth, endMonth).then(setData).catch(() => {});
+          }}
+        />
+      )}
     </div>
   );
 };
