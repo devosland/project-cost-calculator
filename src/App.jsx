@@ -320,7 +320,11 @@ function AppContent() {
 
       <main className="container mx-auto px-4 py-6">
         {view === 'capacity' ? (
-          <CapacityView rates={rates} onBack={() => setView('projects')} />
+          <CapacityView rates={rates} onBack={() => setView('projects')} onDataChanged={() => {
+            api.loadData().then((data) => {
+              if (data.projects) setProjects(data.projects);
+            }).catch(() => {});
+          }} />
         ) : compareIds ? (
           <ScenarioComparison
             projects={projects}

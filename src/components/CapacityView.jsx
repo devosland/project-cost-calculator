@@ -8,7 +8,7 @@ import TransitionList from './TransitionList';
 import TransitionPlanner from './TransitionPlanner';
 import { capacityApi } from '../lib/capacityApi';
 
-const CapacityView = ({ rates, onBack }) => {
+const CapacityView = ({ rates, onBack, onDataChanged }) => {
   const { t } = useLocale();
   const [activeTab, setActiveTab] = useState('gantt');
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -73,7 +73,7 @@ const CapacityView = ({ rates, onBack }) => {
             resources={resources}
             rates={rates}
             onClose={() => setShowPlanner(false)}
-            onSave={() => setShowPlanner(false)}
+            onSave={() => { setShowPlanner(false); if (onDataChanged) onDataChanged(); }}
           />
         ) : (
           <TransitionList

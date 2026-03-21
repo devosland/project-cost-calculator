@@ -250,7 +250,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     {t('phase.remove')}
                   </Button>
                 </div>
-                {member.resourceId && (
+                {member.resourceId && (member.startMonth || member.endMonth ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                     <span>{t('phase.period')} :</span>
                     <input
@@ -258,7 +258,6 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                       className="input-field text-xs py-0.5 w-32"
                       value={member.startMonth || ''}
                       onChange={(e) => updateTeamMember(index, 'startMonth', e.target.value || null)}
-                      placeholder={t('phase.start')}
                     />
                     <span>→</span>
                     <input
@@ -266,10 +265,31 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                       className="input-field text-xs py-0.5 w-32"
                       value={member.endMonth || ''}
                       onChange={(e) => updateTeamMember(index, 'endMonth', e.target.value || null)}
-                      placeholder={t('phase.end')}
                     />
+                    <button
+                      className="text-muted-foreground hover:text-foreground ml-1"
+                      onClick={() => {
+                        const updated = [...phase.teamMembers];
+                        updated[index] = { ...updated[index], startMonth: null, endMonth: null };
+                        update({ teamMembers: updated });
+                      }}
+                      title={t('phase.remove')}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
                   </div>
-                )}
+                ) : (
+                  <button
+                    className="text-xs text-primary/60 hover:text-primary pt-1"
+                    onClick={() => {
+                      const startDate = phase.teamMembers[0]?.startMonth || '';
+                      updateTeamMember(index, 'startMonth', startDate);
+                      updateTeamMember(index, 'endMonth', '');
+                    }}
+                  >
+                    + {t('phase.period')}
+                  </button>
+                ))}
                 {isAuthorized && (
                   <div className="text-xs text-muted-foreground grid grid-cols-3 gap-2 pt-1">
                     <div>{t('phase.rate')} : {fmt(details.hourlyRate)}/h</div>
