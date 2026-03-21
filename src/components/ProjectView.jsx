@@ -23,6 +23,7 @@ import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency, CURRENCIES,
 } from '../lib/costCalculations';
 import { useLocale } from '../lib/i18n';
+import { weekToMonth } from '../lib/capacityCalculations';
 
 const useQuery = () => new URLSearchParams(window.location.search);
 
@@ -125,6 +126,42 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
       setResourcePool((prev) => [...prev, resource]);
     } catch (err) {
       console.error('Failed to add resource to pool:', err);
+    }
+  };
+
+  const handleResourceLink = async (resourceId, phaseId, allocation) => {
+    try {
+      const startDate = project.settings?.startDate || new Date().toISOString().slice(0, 7);
+      const phaseIndex = project.phases.findIndex(p => p.id === phaseId);
+      const phase = project.phases[phaseIndex];
+      if (!phase) return;
+
+      // Calculate phase offset in weeks from dependencies
+      let startWeek = 0;
+      for (let i = 0; i < phaseIndex; i++) {
+        const deps = phase.dependencies || [];
+        if (deps.length === 0) break;
+      }
+      // Simple approach: sum durations of preceding phases
+      for (let i = 0; i < phaseIndex; i++) {
+        startWeek += project.phases[i].durationWeeks;
+      }
+
+      const startMonth = weekToMonth(startDate, startWeek);
+      const endMonth = weekToMonth(startDate, startWeek + phase.durationWeeks);
+
+      await capacityApi.createAssignment({
+        resource_id: resourceId,
+        project_id: project.id,
+        phase_id: phaseId,
+        allocation: allocation || 100,
+        start_month: startMonth,
+        end_month: endMonth,
+      });
+    } catch (err) {
+      if (!err.message?.includes('409')) {
+        console.error('Failed to create assignment:', err);
+      }
     }
   };
 
@@ -327,6 +364,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
                 allPhases={project.phases}
                 resourcePool={resourcePool}
                 onResourceAssign={handleResourceAssign}
+                onResourceLink={handleResourceLink}
               />
               {project.phases.length > 1 && (
                 <div className="absolute -right-10 top-4 hidden sm:block">

@@ -11,7 +11,7 @@ import {
 } from '../lib/costCalculations';
 import { useLocale, LEVEL_KEYS, getLevelLabel } from '../lib/i18n';
 
-const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, allPhases = [], resourcePool, onResourceAssign }) => {
+const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, allPhases = [], resourcePool, onResourceAssign, onResourceLink }) => {
   const { t } = useLocale();
   const fmt = (v) => formatCurrency(v, currency);
   const [editingName, setEditingName] = useState(false);
@@ -145,37 +145,54 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
               <div key={index} className="space-y-2 p-4 border rounded-xl bg-secondary/20 hover:bg-secondary/40 transition-colors">
                 {resourcePool && (
                   <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      className="input-field flex-1 text-sm"
-                      value={member.resourceName || ''}
-                      placeholder={t('resources.search')}
-                      onChange={(e) => updateTeamMember(index, 'resourceName', e.target.value)}
-                      onBlur={(e) => {
-                        const match = (resourcePool || []).find(r => r.name === e.target.value);
-                        if (match) {
-                          updateTeamMember(index, 'role', match.role);
-                          updateTeamMember(index, 'level', match.level);
-                          updateTeamMember(index, 'resourceId', match.id);
-                        }
-                      }}
-                      list={`resource-suggestions-${phase.id}-${index}`}
-                    />
-                    <datalist id={`resource-suggestions-${phase.id}-${index}`}>
-                      {(resourcePool || [])
-                        .filter(r => r.name.toLowerCase().includes((member.resourceName || '').toLowerCase()))
-                        .map(r => <option key={r.id} value={r.name} />)}
-                    </datalist>
-                    {member.resourceName && !(resourcePool || []).find(r => r.name === member.resourceName) && onResourceAssign && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-1 text-xs whitespace-nowrap"
-                        onClick={() => onResourceAssign({ name: member.resourceName, role: member.role, level: member.level })}
-                      >
-                        <UserPlus className="w-3 h-3" />
-                        {t('resources.addToPool')}
-                      </Button>
+                    {member.resourceId ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="input-field flex-1 text-sm bg-primary/5 font-medium">{member.resourceName}</span>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => {
+                          const updated = [...phase.teamMembers];
+                          updated[index] = { ...updated[index], resourceName: '', resourceId: null };
+                          update({ teamMembers: updated });
+                        }} title="Dissocier">
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          className="input-field flex-1 text-sm"
+                          value={member.resourceName || ''}
+                          placeholder={t('resources.search')}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateTeamMember(index, 'resourceName', val);
+                            const match = (resourcePool || []).find(r => r.name === val);
+                            if (match) {
+                              const updated = [...phase.teamMembers];
+                              updated[index] = { ...updated[index], resourceName: match.name, resourceId: match.id, role: match.role, level: match.level };
+                              update({ teamMembers: updated });
+                              if (onResourceLink) onResourceLink(match.id, phase.id, updated[index].allocation);
+                            }
+                          }}
+                          list={`resource-suggestions-${phase.id}-${index}`}
+                        />
+                        <datalist id={`resource-suggestions-${phase.id}-${index}`}>
+                          {(resourcePool || [])
+                            .filter(r => r.name.toLowerCase().includes((member.resourceName || '').toLowerCase()))
+                            .map(r => <option key={r.id} value={r.name} />)}
+                        </datalist>
+                        {member.resourceName && !(resourcePool || []).find(r => r.name === member.resourceName) && onResourceAssign && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-1 text-xs whitespace-nowrap"
+                            onClick={() => onResourceAssign({ name: member.resourceName, role: member.role, level: member.level })}
+                          >
+                            <UserPlus className="w-3 h-3" />
+                            {t('resources.addToPool')}
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
@@ -184,6 +201,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     className="select-field"
                     value={member.role}
                     onChange={(e) => updateTeamMember(index, 'role', e.target.value)}
+                    disabled={!!member.resourceId}
                   >
                     {roles.map((role) => (
                       <option key={role} value={role}>{role}</option>
@@ -194,6 +212,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     className="select-field"
                     value={member.level}
                     onChange={(e) => updateTeamMember(index, 'level', e.target.value)}
+                    disabled={!!member.resourceId}
                   >
                     {levels.map((level) => (
                       <option key={level} value={level}>{getLevelLabel(t, level)}</option>
