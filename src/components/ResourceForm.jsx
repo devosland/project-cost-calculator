@@ -43,7 +43,7 @@ const ResourceForm = ({ resource, rates, onSave, onCancel }) => {
           <label className="block text-sm font-medium mb-1">{t('resources.name')}</label>
           <input
             type="text"
-            className="p-2 border rounded w-full"
+            className="input-field w-full"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('resources.name')}
@@ -54,7 +54,7 @@ const ResourceForm = ({ resource, rates, onSave, onCancel }) => {
         <div>
           <label className="block text-sm font-medium mb-1">{t('resources.role')}</label>
           <select
-            className="p-2 border rounded w-full"
+            className="select-field w-full"
             value={role}
             onChange={(e) => setRole(e.target.value)}
           >
@@ -66,7 +66,7 @@ const ResourceForm = ({ resource, rates, onSave, onCancel }) => {
         <div>
           <label className="block text-sm font-medium mb-1">{t('resources.level')}</label>
           <select
-            className="p-2 border rounded w-full"
+            className="select-field w-full"
             value={level}
             onChange={(e) => setLevel(e.target.value)}
           >
@@ -79,7 +79,7 @@ const ResourceForm = ({ resource, rates, onSave, onCancel }) => {
           <label className="block text-sm font-medium mb-1">{t('resources.maxCapacity')}</label>
           <input
             type="number"
-            className="p-2 border rounded w-full"
+            className="input-field w-full"
             value={maxCapacity}
             onChange={(e) => setMaxCapacity(e.target.value)}
             min="0"
