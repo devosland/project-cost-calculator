@@ -116,7 +116,28 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
   const [resourcePool, setResourcePool] = useState([]);
 
   useEffect(() => {
-    capacityApi.getResources().then(setResourcePool).catch(() => {});
+    capacityApi.getResources().then((pool) => {
+      setResourcePool(pool);
+      // Sync role/level from pool for all linked members on load
+      if (pool.length > 0) {
+        let changed = false;
+        const updatedPhases = project.phases.map(phase => {
+          const updatedMembers = (phase.teamMembers || []).map(m => {
+            if (!m.resourceId) return m;
+            const res = pool.find(r => r.id === m.resourceId || String(r.id) === String(m.resourceId));
+            if (res && (m.role !== res.role || m.level !== res.level)) {
+              changed = true;
+              return { ...m, role: res.role, level: res.level };
+            }
+            return m;
+          });
+          return { ...phase, teamMembers: updatedMembers };
+        });
+        if (changed) {
+          onProjectChange({ ...project, phases: updatedPhases });
+        }
+      }
+    }).catch(() => {});
   }, []);
 
   const handleResourceAssign = async ({ name, role, level }) => {
@@ -183,7 +204,18 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
     updateProject({ phases: [...project.phases, phase] });
   };
   const updatePhase = (phaseId, updated) => {
-    updateProject({ phases: project.phases.map((p) => (p.id === phaseId ? updated : p)) });
+    // Sync role/level from resource pool for linked members before saving
+    const synced = {
+      ...updated,
+      teamMembers: (updated.teamMembers || []).map(m => {
+        if (m.resourceId && resourcePool.length > 0) {
+          const res = resourcePool.find(r => r.id === m.resourceId || String(r.id) === String(m.resourceId));
+          if (res) return { ...m, role: res.role, level: res.level };
+        }
+        return m;
+      }),
+    };
+    updateProject({ phases: project.phases.map((p) => (p.id === phaseId ? synced : p)) });
   };
   const removePhase = (phaseId) => {
     if (project.phases.length <= 1) return;

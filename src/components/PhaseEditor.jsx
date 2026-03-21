@@ -23,6 +23,17 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
   const roles = Object.keys(rates.CONSULTANT_RATES);
   const levels = LEVEL_KEYS;
 
+  // Resolve member role/level from resource pool if linked
+  const resolveMember = (member) => {
+    if (member.resourceId && resourcePool) {
+      const res = resourcePool.find(r => r.id === member.resourceId || String(r.id) === String(member.resourceId));
+      if (res) {
+        return { ...member, role: res.role, level: res.level };
+      }
+    }
+    return member;
+  };
+
   const update = (changes) => onChange({ ...phase, ...changes });
 
   const addTeamMember = () => {
@@ -67,11 +78,16 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
     update({ milestones: phase.milestones.filter((m) => m.id !== id) });
   };
 
-  const weeklyCost = calculatePhaseWeeklyCost(phase, rates);
-  const totalCost = calculatePhaseTotalCost(phase, rates);
+  // Resolve all members for cost calculation and display
+  const resolvedPhase = resourcePool
+    ? { ...phase, teamMembers: phase.teamMembers.map(resolveMember) }
+    : phase;
+
+  const totalCost = calculatePhaseTotalCost(resolvedPhase, rates);
 
   const getMemberDetails = (member) => {
-    const hourlyRate = getHourlyRate(rates, member.role, member.level);
+    const resolved = resolveMember(member);
+    const hourlyRate = getHourlyRate(rates, resolved.role, resolved.level);
     const weeklyHours = HOURS_PER_WEEK * (member.allocation / 100);
     const weeklyCost = hourlyRate * weeklyHours * member.quantity;
     return { hourlyRate, weeklyHours: weeklyHours.toFixed(1), weeklyCost };
@@ -197,27 +213,38 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                   </div>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center">
-                  <select
-                    className="select-field"
-                    value={member.role}
-                    onChange={(e) => updateTeamMember(index, 'role', e.target.value)}
-                    disabled={!!member.resourceId}
-                  >
-                    {roles.map((role) => (
-                      <option key={role} value={role}>{role}</option>
-                    ))}
-                  </select>
+                  {(() => {
+                    const resolved = resolveMember(member);
+                    return (
+                      <>
+                        <select
+                          className="select-field"
+                          value={resolved.role}
+                          onChange={(e) => updateTeamMember(index, 'role', e.target.value)}
+                          disabled={!!member.resourceId}
+                        >
+                          {roles.map((role) => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                          {/* Include current role if not in rates list (custom role) */}
+                          {resolved.role && !roles.includes(resolved.role) && (
+                            <option value={resolved.role}>{resolved.role}</option>
+                          )}
+                        </select>
 
-                  <select
-                    className="select-field"
-                    value={member.level}
-                    onChange={(e) => updateTeamMember(index, 'level', e.target.value)}
-                    disabled={!!member.resourceId}
-                  >
-                    {levels.map((level) => (
-                      <option key={level} value={level}>{getLevelLabel(t, level)}</option>
-                    ))}
+                        <select
+                          className="select-field"
+                          value={resolved.level}
+                          onChange={(e) => updateTeamMember(index, 'level', e.target.value)}
+                          disabled={!!member.resourceId}
+                        >
+                          {levels.map((level) => (
+                            <option key={level} value={level}>{getLevelLabel(t, level)}</option>
+                          ))}
                   </select>
+                      </>
+                    );
+                  })()}
 
                   <input
                     type="number"
