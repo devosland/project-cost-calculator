@@ -3,6 +3,7 @@ import { ArrowLeft, BarChart3, Users, ArrowLeftRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import ResourcePool from './ResourcePool';
+import CapacityGantt from './CapacityGantt';
 
 const CapacityView = ({ rates, onBack }) => {
   const { t } = useLocale();
@@ -48,9 +49,7 @@ const CapacityView = ({ rates, onBack }) => {
 
       {/* Tab content */}
       {activeTab === 'gantt' && (
-        <div className="text-center text-muted-foreground py-12">
-          {t('capacity.noData')}
-        </div>
+        <CapacityGantt rates={rates} />
       )}
       {activeTab === 'resources' && (
         <ResourcePool rates={rates} />
