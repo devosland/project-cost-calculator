@@ -305,7 +305,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             <div className="grid grid-cols-2 gap-4 pt-2">
               <div className="p-4 bg-secondary/50 rounded-xl">
                 <div className="text-xs text-muted-foreground">{t('phase.weeklyCost')}</div>
-                <div className="text-lg font-bold">{fmt(weeklyCost)}</div>
+                <div className="text-lg font-bold">{fmt(totalCost / phase.durationWeeks)}</div>
               </div>
               <div className="p-4 bg-primary/5 rounded-xl">
                 <div className="text-xs text-muted-foreground">

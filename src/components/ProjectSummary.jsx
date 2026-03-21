@@ -8,11 +8,17 @@ import {
   calculateProjectDurationWeeks,
   calculateLabourCost,
   calculateNonLabourCost,
-  calculatePhaseWeeklyCost,
   calculatePhaseTotalCost,
+  getHourlyRate,
   calculateBurnRate,
   formatCurrency,
 } from '../lib/costCalculations';
+
+function monthDiffInWeeks(start, end) {
+  const [sy, sm] = start.split('-').map(Number);
+  const [ey, em] = end.split('-').map(Number);
+  return Math.max(0, Math.round(((ey - sy) * 12 + (em - sm)) * 4.33));
+}
 
 const ProjectSummary = ({ project, rates }) => {
   const { t, locale } = useLocale();
@@ -130,8 +136,8 @@ const ProjectSummary = ({ project, rates }) => {
               </thead>
               <tbody>
                 {project.phases.map((phase) => {
-                  const wc = calculatePhaseWeeklyCost(phase, rates);
                   const tc = calculatePhaseTotalCost(phase, rates);
+                  const wc = phase.durationWeeks > 0 ? tc / phase.durationWeeks : 0;
                   const mc = phase.teamMembers.reduce((s, m) => s + m.quantity, 0);
                   return (
                     <tr key={phase.id} className="border-b last:border-b-0">
@@ -146,6 +152,52 @@ const ProjectSummary = ({ project, rates }) => {
               </tbody>
             </table>
           </div>
+
+          {project.phases.some(p => p.teamMembers?.some(m => m.resourceName)) && (
+            <div>
+              <h3 className="font-semibold mb-3">{t('capacity.resources')}</h3>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="p-2 text-muted-foreground font-medium">{t('resources.name')}</th>
+                    <th className="p-2 text-muted-foreground font-medium">{t('resources.role')}</th>
+                    <th className="p-2 text-muted-foreground font-medium">{t('resources.type')}</th>
+                    <th className="p-2 text-center text-muted-foreground font-medium">{t('phase.period')}</th>
+                    <th className="p-2 text-right text-muted-foreground font-medium">{t('summary.total')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {project.phases.flatMap(phase =>
+                    (phase.teamMembers || [])
+                      .filter(m => m.resourceName)
+                      .map(m => {
+                        const hourlyRate = getHourlyRate(rates, m.role, m.level);
+                        const weeks = (m.startMonth && m.endMonth)
+                          ? Math.min(monthDiffInWeeks(m.startMonth, m.endMonth), phase.durationWeeks)
+                          : phase.durationWeeks;
+                        const cost = hourlyRate * 37.5 * m.quantity * (m.allocation / 100) * weeks;
+                        const isPermanent = m.level === 'Employé interne';
+                        return (
+                          <tr key={`${phase.id}-${m.resourceName}`} className="border-b last:border-b-0">
+                            <td className="p-2 font-medium">{m.resourceName}</td>
+                            <td className="p-2">{m.role}</td>
+                            <td className="p-2">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isPermanent ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                                {isPermanent ? t('capacity.permanent') : t('capacity.consultant')}
+                              </span>
+                            </td>
+                            <td className="p-2 text-center text-xs">
+                              {m.startMonth && m.endMonth ? `${m.startMonth} → ${m.endMonth}` : `${phase.durationWeeks} ${t('dashboard.stats.weeks')}`}
+                            </td>
+                            <td className="p-2 text-right font-medium">{fmt(cost)}</td>
+                          </tr>
+                        );
+                      })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {(project.nonLabourCosts || []).length > 0 && (
             <div>
