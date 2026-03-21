@@ -95,6 +95,7 @@ const translations = {
     'project.exportJSON': 'Exporter JSON',
     'project.exportCSV': 'Exporter CSV',
     'project.budget': 'Budget du projet',
+    'project.startDate': 'Date de début',
     'project.noBudget': 'Aucun budget',
 
     // Webhook
@@ -416,6 +417,7 @@ const translations = {
     'project.exportJSON': 'Export JSON',
     'project.exportCSV': 'Export CSV',
     'project.budget': 'Project budget',
+    'project.startDate': 'Start date',
     'project.noBudget': 'No budget',
 
     // Webhook
