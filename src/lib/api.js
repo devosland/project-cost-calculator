@@ -53,6 +53,7 @@ export const api = {
   saveTemplate: (name, data) => request('/templates', { method: 'POST', body: JSON.stringify({ name, data }) }),
   deleteTemplate: (id) => request(`/templates/${id}`, { method: 'DELETE' }),
 
+  request,
   setToken,
   getToken,
   clearToken,
