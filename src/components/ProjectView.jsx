@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
@@ -18,6 +18,7 @@ import ProjectSummary from './ProjectSummary';
 import ResourceConflicts from './ResourceConflicts';
 import RiskRegister from './RiskRegister';
 import { createPhase, exportProject, exportProjectCSV } from '../lib/projectStore';
+import { capacityApi } from '../lib/capacityApi';
 import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency, CURRENCIES,
 } from '../lib/costCalculations';
@@ -112,6 +113,20 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
   const [activeTab, setActiveTab] = useState('phases');
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(project.name);
+  const [resourcePool, setResourcePool] = useState([]);
+
+  useEffect(() => {
+    capacityApi.getResources().then(setResourcePool).catch(() => {});
+  }, []);
+
+  const handleResourceAssign = async ({ name, role, level }) => {
+    try {
+      const resource = await capacityApi.createResource({ name, role, level, max_capacity: 100 });
+      setResourcePool((prev) => [...prev, resource]);
+    } catch (err) {
+      console.error('Failed to add resource to pool:', err);
+    }
+  };
 
   const currency = project.settings?.currency || 'CAD';
   const fmt = (v) => formatCurrency(v, currency);
@@ -310,6 +325,8 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
                 currency={currency}
                 onChange={(updated) => updatePhase(phase.id, updated)}
                 allPhases={project.phases}
+                resourcePool={resourcePool}
+                onResourceAssign={handleResourceAssign}
               />
               {project.phases.length > 1 && (
                 <div className="absolute -right-10 top-4 hidden sm:block">
