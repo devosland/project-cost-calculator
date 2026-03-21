@@ -98,13 +98,12 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
   const totals = useMemo(() => {
     let currentCost = 0;
     let afterCost = 0;
-    let totalSavings = 0;
     impacts.forEach((imp) => {
       if (!imp) return;
       currentCost += imp.consultantCost;
       afterCost += imp.replacementCost + imp.overlapCost;
-      totalSavings += imp.annualSavings;
     });
+    const totalSavings = currentCost - afterCost;
     return { currentCost, afterCost, totalSavings };
   }, [impacts]);
 
