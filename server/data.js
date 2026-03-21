@@ -65,6 +65,59 @@ router.put('/', (req, res) => {
 
     syncProjects();
 
+    // Sync resource_assignments with project teamMembers
+    try {
+      for (const project of projectsArray) {
+        if (!project.id) continue;
+        const phases = project.phases || [];
+        const phaseIds = phases.map(p => p.id);
+
+        // Delete assignments for removed phases
+        if (phaseIds.length > 0) {
+          db.prepare(
+            'DELETE FROM resource_assignments WHERE project_id = ? AND phase_id NOT IN (' + phaseIds.map(() => '?').join(',') + ')'
+          ).run(project.id, ...phaseIds);
+        }
+
+        // Sync each phase
+        for (const phase of phases) {
+          const linkedResourceIds = (phase.teamMembers || [])
+            .filter(m => m.resourceId)
+            .map(m => typeof m.resourceId === 'number' ? m.resourceId : parseInt(m.resourceId, 10));
+
+          // Delete assignments for resources no longer in this phase
+          const existing = db.prepare(
+            'SELECT * FROM resource_assignments WHERE project_id = ? AND phase_id = ?'
+          ).all(project.id, phase.id);
+
+          for (const a of existing) {
+            if (!linkedResourceIds.includes(a.resource_id)) {
+              db.prepare('DELETE FROM resource_assignments WHERE id = ?').run(a.id);
+            }
+          }
+
+          // Update dates for members with period changes
+          for (const member of (phase.teamMembers || [])) {
+            if (!member.resourceId) continue;
+            const resId = typeof member.resourceId === 'number' ? member.resourceId : parseInt(member.resourceId, 10);
+            const ex = db.prepare(
+              'SELECT * FROM resource_assignments WHERE resource_id = ? AND project_id = ? AND phase_id = ?'
+            ).get(resId, project.id, phase.id);
+
+            if (ex && member.startMonth && member.endMonth) {
+              if (ex.start_month !== member.startMonth || ex.end_month !== member.endMonth || ex.allocation !== member.allocation) {
+                db.prepare(
+                  'UPDATE resource_assignments SET start_month = ?, end_month = ?, allocation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+                ).run(member.startMonth, member.endMonth, member.allocation, ex.id);
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Resource assignment sync error:', e);
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error('Save data error:', err);
