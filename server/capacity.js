@@ -336,13 +336,22 @@ router.post('/transitions/:id/apply', (req, res) => {
       return res.status(400).json({ error: 'Plan has no transitions to apply' });
     }
 
+    // Normalize field names and parse IDs to integers
+    const normalized = transitions.map(t => ({
+      ...t,
+      consultant_resource_id: parseInt(t.consultant_resource_id, 10),
+      replacement_resource_id: parseInt(t.replacement_resource_id, 10),
+    }));
+
     // Validate all resource IDs exist
     const missingIds = [];
-    for (const t of transitions) {
-      const c = db.prepare('SELECT id FROM resources WHERE id = ? AND user_id = ?').get(t.consultant_id, req.user.id);
-      const r = db.prepare('SELECT id FROM resources WHERE id = ? AND user_id = ?').get(t.replacement_id, req.user.id);
-      if (!c) missingIds.push(t.consultant_id);
-      if (!r) missingIds.push(t.replacement_id);
+    for (const t of normalized) {
+      if (!db.prepare('SELECT id FROM resources WHERE id = ? AND user_id = ?').get(t.consultant_resource_id, req.user.id)) {
+        missingIds.push(t.consultant_resource_id);
+      }
+      if (t.replacement_resource_id && !db.prepare('SELECT id FROM resources WHERE id = ? AND user_id = ?').get(t.replacement_resource_id, req.user.id)) {
+        missingIds.push(t.replacement_resource_id);
+      }
     }
     if (missingIds.length > 0) {
       return res.status(400).json({ error: 'missing_resources', ids: missingIds });
@@ -350,21 +359,28 @@ router.post('/transitions/:id/apply', (req, res) => {
 
     // Apply in a transaction
     const applyFn = db.transaction(() => {
-      for (const t of transitions) {
+      for (const t of normalized) {
         // Get consultant assignments that extend past transition_date
         const assignments = db.prepare(
           'SELECT * FROM resource_assignments WHERE resource_id = ? AND end_month >= ?'
-        ).all(t.consultant_id, t.transition_date);
+        ).all(t.consultant_resource_id, t.transition_date);
 
         for (const a of assignments) {
           // Shorten consultant assignment to end at transition_date
           db.prepare('UPDATE resource_assignments SET end_month = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
             .run(t.transition_date, a.id);
 
-          // Create replacement assignment mirroring the consultant's work
-          db.prepare(
-            'INSERT INTO resource_assignments (resource_id, project_id, phase_id, allocation, start_month, end_month, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
-          ).run(t.replacement_id, a.project_id, a.phase_id + '-repl', a.allocation, t.transition_date, a.end_month);
+          // Create replacement assignment starting at transition_date
+          try {
+            db.prepare(
+              'INSERT INTO resource_assignments (resource_id, project_id, phase_id, allocation, start_month, end_month, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
+            ).run(t.replacement_resource_id, a.project_id, a.phase_id, a.allocation, t.transition_date, a.end_month);
+          } catch (e) {
+            // UNIQUE constraint — assignment already exists, update instead
+            db.prepare(
+              'UPDATE resource_assignments SET start_month = ?, end_month = ?, allocation = ?, updated_at = CURRENT_TIMESTAMP WHERE resource_id = ? AND project_id = ? AND phase_id = ?'
+            ).run(t.transition_date, a.end_month, a.allocation, t.replacement_resource_id, a.project_id, a.phase_id);
+          }
         }
       }
 
@@ -396,13 +412,15 @@ router.get('/transitions/:id/impact', (req, res) => {
     const transitions = data.transitions || [];
 
     const impacts = transitions.map(t => {
-      const consultant = getResourceById(t.consultant_id);
-      const replacement = getResourceById(t.replacement_id);
+      const consultantId = parseInt(t.consultant_resource_id, 10);
+      const replacementId = parseInt(t.replacement_resource_id, 10);
+      const consultant = getResourceById(consultantId);
+      const replacement = getResourceById(replacementId);
 
       // Get consultant assignments that would be affected
       const assignments = db.prepare(
         'SELECT * FROM resource_assignments WHERE resource_id = ? AND end_month >= ?'
-      ).all(t.consultant_id, t.transition_date);
+      ).all(consultantId, t.transition_date);
 
       // Calculate overlap weeks (rough: each month ~ 4.33 weeks)
       let overlapWeeks = 0;
