@@ -89,16 +89,53 @@ router.put('/:id', (req, res) => {
     const updatedData = data !== undefined ? JSON.stringify(data) : project.data;
     updateProjectRecord(req.params.id, updatedName, updatedData);
 
-    // Clean up resource assignments for deleted phases
+    // Sync resource assignments with project teamMembers
     try {
       const projectData = JSON.parse(updatedData);
       const phaseIds = (projectData.phases || []).map(p => p.id);
+
+      // Delete assignments for removed phases
       if (phaseIds.length > 0) {
         db.prepare(
           'DELETE FROM resource_assignments WHERE project_id = ? AND phase_id NOT IN (' + phaseIds.map(() => '?').join(',') + ')'
         ).run(req.params.id, ...phaseIds);
       } else {
         db.prepare('DELETE FROM resource_assignments WHERE project_id = ?').run(req.params.id);
+      }
+
+      // Sync each phase's assignments with its teamMembers
+      for (const phase of (projectData.phases || [])) {
+        const linkedResourceIds = (phase.teamMembers || [])
+          .filter(m => m.resourceId)
+          .map(m => typeof m.resourceId === 'number' ? m.resourceId : parseInt(m.resourceId, 10));
+
+        // Delete assignments for resources removed from this phase
+        const existingAssignments = db.prepare(
+          'SELECT * FROM resource_assignments WHERE project_id = ? AND phase_id = ?'
+        ).all(req.params.id, phase.id);
+
+        for (const a of existingAssignments) {
+          if (!linkedResourceIds.includes(a.resource_id)) {
+            db.prepare('DELETE FROM resource_assignments WHERE id = ?').run(a.id);
+          }
+        }
+
+        // Update dates for existing assignments if member has period changes
+        for (const member of (phase.teamMembers || [])) {
+          if (!member.resourceId) continue;
+          const resId = typeof member.resourceId === 'number' ? member.resourceId : parseInt(member.resourceId, 10);
+          const existing = db.prepare(
+            'SELECT * FROM resource_assignments WHERE resource_id = ? AND project_id = ? AND phase_id = ?'
+          ).get(resId, req.params.id, phase.id);
+
+          if (existing && member.startMonth && member.endMonth) {
+            if (existing.start_month !== member.startMonth || existing.end_month !== member.endMonth || existing.allocation !== member.allocation) {
+              db.prepare(
+                'UPDATE resource_assignments SET start_month = ?, end_month = ?, allocation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+              ).run(member.startMonth, member.endMonth, member.allocation, existing.id);
+            }
+          }
+        }
       }
     } catch (e) {
       // Non-critical: log but don't fail the save
