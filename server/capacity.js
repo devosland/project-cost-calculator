@@ -359,38 +359,49 @@ router.post('/transitions/:id/apply', (req, res) => {
 
     // Apply in a transaction
     const applyFn = db.transaction(() => {
+      // First pass: collect original end dates before modifying assignments
+      const originalEndDates = {};
       for (const t of normalized) {
-        // Get consultant assignments that extend past transition_date
+        const assignments = db.prepare(
+          'SELECT * FROM resource_assignments WHERE resource_id = ? AND end_month >= ?'
+        ).all(t.consultant_resource_id, t.transition_date);
+        for (const a of assignments) {
+          originalEndDates[`${a.resource_id}-${a.project_id}-${a.phase_id}`] = a.end_month;
+        }
+      }
+
+      // Second pass: modify assignments
+      for (const t of normalized) {
         const assignments = db.prepare(
           'SELECT * FROM resource_assignments WHERE resource_id = ? AND end_month >= ?'
         ).all(t.consultant_resource_id, t.transition_date);
 
         for (const a of assignments) {
+          const originalEnd = originalEndDates[`${a.resource_id}-${a.project_id}-${a.phase_id}`] || a.end_month;
+
           // Shorten consultant assignment to end at transition_date
           db.prepare('UPDATE resource_assignments SET end_month = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
             .run(t.transition_date, a.id);
 
-          // Create replacement assignment starting at transition_date
+          // Create replacement assignment from transition_date to original end
           try {
             db.prepare(
               'INSERT INTO resource_assignments (resource_id, project_id, phase_id, allocation, start_month, end_month, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
-            ).run(t.replacement_resource_id, a.project_id, a.phase_id, a.allocation, t.transition_date, a.end_month);
+            ).run(t.replacement_resource_id, a.project_id, a.phase_id, a.allocation, t.transition_date, originalEnd);
           } catch (e) {
-            // UNIQUE constraint — assignment already exists, update instead
             db.prepare(
               'UPDATE resource_assignments SET start_month = ?, end_month = ?, allocation = ?, updated_at = CURRENT_TIMESTAMP WHERE resource_id = ? AND project_id = ? AND phase_id = ?'
-            ).run(t.transition_date, a.end_month, a.allocation, t.replacement_resource_id, a.project_id, a.phase_id);
+            ).run(t.transition_date, originalEnd, a.allocation, t.replacement_resource_id, a.project_id, a.phase_id);
           }
         }
       }
 
-      // Update project teamMembers to reflect transitions
+      // Third pass: update project teamMembers with correct periods
       for (const t of normalized) {
         const consultant = db.prepare('SELECT * FROM resources WHERE id = ?').get(t.consultant_resource_id);
         const replacement = db.prepare('SELECT * FROM resources WHERE id = ?').get(t.replacement_resource_id);
         if (!consultant || !replacement) continue;
 
-        // Find all projects that have this consultant assigned
         const affectedProjects = db.prepare(
           'SELECT DISTINCT project_id FROM resource_assignments WHERE resource_id = ? OR resource_id = ?'
         ).all(t.consultant_resource_id, t.replacement_resource_id);
@@ -402,24 +413,23 @@ router.post('/transitions/:id/apply', (req, res) => {
             const projectData = JSON.parse(project.data);
             let changed = false;
             for (const phase of (projectData.phases || [])) {
-              // Find consultant team member and add replacement if not already present
               const consultantIdx = (phase.teamMembers || []).findIndex(
                 m => m.resourceId === t.consultant_resource_id || m.resourceName === consultant.name
               );
               if (consultantIdx === -1) continue;
 
-              // Get the phase's assignment to find start/end months
+              // Use original end date from our pre-collected map
+              const key = `${t.consultant_resource_id}-${project_id}-${phase.id}`;
+              const originalEnd = originalEndDates[key];
+              // Get consultant's original start from their assignment (now shortened but start unchanged)
               const consultantAssignment = db.prepare(
-                'SELECT * FROM resource_assignments WHERE resource_id = ? AND project_id = ? AND phase_id = ?'
+                'SELECT start_month FROM resource_assignments WHERE resource_id = ? AND project_id = ? AND phase_id = ?'
               ).get(t.consultant_resource_id, project_id, phase.id);
               const phaseStart = consultantAssignment?.start_month || t.transition_date;
-              const phaseEnd = consultantAssignment?.end_month || t.transition_date;
 
-              // Set consultant end date to transition date
+              // Set consultant period: original start → transition date
+              phase.teamMembers[consultantIdx].startMonth = phaseStart;
               phase.teamMembers[consultantIdx].endMonth = t.transition_date;
-              if (!phase.teamMembers[consultantIdx].startMonth) {
-                phase.teamMembers[consultantIdx].startMonth = phaseStart;
-              }
               changed = true;
 
               const alreadyHasReplacement = (phase.teamMembers || []).some(
@@ -435,7 +445,7 @@ router.post('/transitions/:id/apply', (req, res) => {
                   resourceName: replacement.name,
                   resourceId: t.replacement_resource_id,
                   startMonth: t.transition_date,
-                  endMonth: phaseEnd,
+                  endMonth: originalEnd,
                 });
               }
             }
