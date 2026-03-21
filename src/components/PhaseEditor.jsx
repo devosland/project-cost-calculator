@@ -116,7 +116,8 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
               className="input-field w-16 text-center"
               value={phase.durationWeeks}
               min="1"
-              onChange={(e) => update({ durationWeeks: Math.max(1, parseInt(e.target.value) || 1) })}
+              max="520"
+              onChange={(e) => update({ durationWeeks: Math.max(1, Math.min(520, parseInt(e.target.value) || 1)) })}
             />
             <span className="text-sm text-muted-foreground">{t('phase.weeks')}</span>
           </div>
@@ -177,9 +178,9 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                       type="number"
                       className="input-field w-full"
                       value={member.allocation}
-                      min="1"
+                      min="0"
                       max="100"
-                      onChange={(e) => updateTeamMember(index, 'allocation', parseInt(e.target.value) || 100)}
+                      onChange={(e) => updateTeamMember(index, 'allocation', Math.max(0, Math.min(100, parseInt(e.target.value) || 100)))}
                     />
                     <span className="text-sm text-muted-foreground">%</span>
                   </div>

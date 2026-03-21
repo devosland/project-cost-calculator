@@ -6,7 +6,7 @@ import { Dropdown } from './ui/dropdown';
 import {
   ArrowLeft, PlusCircle, Trash2, ChevronUp, ChevronDown,
   LayoutDashboard, Calendar, Settings, DollarSign, BarChart3, FileText,
-  Share2, History, AlertTriangle, Bell,
+  Share2, History, AlertTriangle, Bell, Pencil, Check, X, Download,
 } from 'lucide-react';
 import PhaseEditor from './PhaseEditor';
 import TimelineView from './TimelineView';
@@ -17,7 +17,7 @@ import CostCharts from './CostCharts';
 import ProjectSummary from './ProjectSummary';
 import ResourceConflicts from './ResourceConflicts';
 import RiskRegister from './RiskRegister';
-import { createPhase } from '../lib/projectStore';
+import { createPhase, exportProject, exportProjectCSV } from '../lib/projectStore';
 import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency, CURRENCIES,
 } from '../lib/costCalculations';
@@ -110,6 +110,8 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
   const query = useQuery();
   const isAuthorized = query.get('r') === 'true';
   const [activeTab, setActiveTab] = useState('phases');
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(project.name);
 
   const currency = project.settings?.currency || 'CAD';
   const fmt = (v) => formatCurrency(v, currency);
@@ -165,9 +167,48 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
             <ArrowLeft className="w-4 h-4 mr-1" />
             {t('project.back')}
           </Button>
-          <h1 className="text-2xl font-bold">{project.name}</h1>
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                className="input-field text-2xl font-bold w-64"
+                value={nameValue}
+                onChange={(e) => setNameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && nameValue.trim()) {
+                    onProjectChange({ ...project, name: nameValue.trim() });
+                    setEditingName(false);
+                  }
+                  if (e.key === 'Escape') setEditingName(false);
+                }}
+                autoFocus
+              />
+              <Button variant="ghost" size="sm" onClick={() => {
+                if (nameValue.trim()) onProjectChange({ ...project, name: nameValue.trim() });
+                setEditingName(false);
+              }}>
+                <Check className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setEditingName(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              {project.name}
+              <Button variant="ghost" size="sm" onClick={() => { setNameValue(project.name); setEditingName(true); }} className="text-muted-foreground hover:text-foreground">
+                <Pencil className="w-3 h-3" />
+              </Button>
+            </h1>
+          )}
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => exportProject(project)} className="text-muted-foreground hover:text-foreground" title={t('project.exportJSON')}>
+            <Download className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => exportProjectCSV(project, rates)} className="text-muted-foreground hover:text-foreground" title={t('project.exportCSV')}>
+            CSV
+          </Button>
           <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground hover:text-foreground" title={t('project.history')}>
             <History className="w-4 h-4" />
           </Button>

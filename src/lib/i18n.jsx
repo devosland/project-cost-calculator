@@ -92,6 +92,8 @@ const translations = {
     'project.totalDuration': 'Durée totale',
     'project.totalCost': 'Coût total',
     'project.deletePhase': 'Supprimer la phase',
+    'project.exportJSON': 'Exporter JSON',
+    'project.exportCSV': 'Exporter CSV',
     'project.budget': 'Budget du projet',
     'project.noBudget': 'Aucun budget',
 
@@ -296,6 +298,7 @@ const translations = {
     'risks.phase': 'Phase',
     'risks.mitigation': 'Atténuation',
     'risks.risk': 'Risque',
+    'risks.actions': 'Actions',
     'risks.riskPlaceholder': 'Nom du risque',
     'risks.phasePlaceholder': 'Phase',
     'risks.mitigationPlaceholder': "Stratégie d'atténuation",
@@ -410,6 +413,8 @@ const translations = {
     'project.totalDuration': 'Total duration',
     'project.totalCost': 'Total cost',
     'project.deletePhase': 'Delete phase',
+    'project.exportJSON': 'Export JSON',
+    'project.exportCSV': 'Export CSV',
     'project.budget': 'Project budget',
     'project.noBudget': 'No budget',
 
@@ -614,6 +619,7 @@ const translations = {
     'risks.phase': 'Phase',
     'risks.mitigation': 'Mitigation',
     'risks.risk': 'Risk',
+    'risks.actions': 'Actions',
     'risks.riskPlaceholder': 'Risk name',
     'risks.phasePlaceholder': 'Phase',
     'risks.mitigationPlaceholder': 'Mitigation strategy',
