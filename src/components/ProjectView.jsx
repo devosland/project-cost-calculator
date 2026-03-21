@@ -129,34 +129,33 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
     }
   };
 
+  const getPhaseMonths = (phaseId) => {
+    const startDate = project.settings?.startDate || new Date().toISOString().slice(0, 7);
+    // Sum durations of phases before this one for the offset
+    let startWeek = 0;
+    for (const p of project.phases) {
+      if (p.id === phaseId) break;
+      startWeek += p.durationWeeks;
+    }
+    const phase = project.phases.find(p => p.id === phaseId);
+    const durationWeeks = phase?.durationWeeks || 4;
+    // endMonth = startDate + (startWeek + duration - 1) weeks to stay in the last active month
+    return {
+      start_month: weekToMonth(startDate, startWeek),
+      end_month: weekToMonth(startDate, startWeek + durationWeeks - 1),
+    };
+  };
+
   const handleResourceLink = async (resourceId, phaseId, allocation) => {
     try {
-      const startDate = project.settings?.startDate || new Date().toISOString().slice(0, 7);
-      const phaseIndex = project.phases.findIndex(p => p.id === phaseId);
-      const phase = project.phases[phaseIndex];
-      if (!phase) return;
-
-      // Calculate phase offset in weeks from dependencies
-      let startWeek = 0;
-      for (let i = 0; i < phaseIndex; i++) {
-        const deps = phase.dependencies || [];
-        if (deps.length === 0) break;
-      }
-      // Simple approach: sum durations of preceding phases
-      for (let i = 0; i < phaseIndex; i++) {
-        startWeek += project.phases[i].durationWeeks;
-      }
-
-      const startMonth = weekToMonth(startDate, startWeek);
-      const endMonth = weekToMonth(startDate, startWeek + phase.durationWeeks);
-
+      const { start_month, end_month } = getPhaseMonths(phaseId);
       await capacityApi.createAssignment({
         resource_id: resourceId,
         project_id: project.id,
         phase_id: phaseId,
         allocation: allocation || 100,
-        start_month: startMonth,
-        end_month: endMonth,
+        start_month,
+        end_month,
       });
     } catch (err) {
       if (!err.message?.includes('409')) {
