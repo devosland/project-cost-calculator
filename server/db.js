@@ -90,6 +90,54 @@ db.exec(`
   )
 `);
 
+// Capacity management tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS resources (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    level TEXT NOT NULL,
+    max_capacity INTEGER DEFAULT 100,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, name)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS resource_assignments (
+    id INTEGER PRIMARY KEY,
+    resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    phase_id TEXT NOT NULL,
+    allocation INTEGER NOT NULL,
+    start_month TEXT NOT NULL,
+    end_month TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(resource_id, project_id, phase_id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS transition_plans (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    status TEXT DEFAULT 'draft',
+    data TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Capacity indexes
+db.exec(`CREATE INDEX IF NOT EXISTS idx_resources_user ON resources(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_assignments_resource_months ON resource_assignments(resource_id, start_month, end_month)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_assignments_project ON resource_assignments(project_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_transition_plans_user ON transition_plans(user_id)`);
+
 // Migration: move project data from user_data.projects into the projects table
 function migrateUserDataToProjects() {
   try {
@@ -304,6 +352,111 @@ function upsertProjectRecord(id, ownerId, name, data) {
   stmt.run(id, ownerId, name, data);
 }
 
+// Resource helpers
+function getResourcesByUser(userId) {
+  const stmt = db.prepare('SELECT * FROM resources WHERE user_id = ? ORDER BY name');
+  return stmt.all(userId);
+}
+
+function getResourceById(resourceId) {
+  const stmt = db.prepare('SELECT * FROM resources WHERE id = ?');
+  return stmt.get(resourceId);
+}
+
+function createResource(userId, name, role, level, maxCapacity = 100) {
+  const stmt = db.prepare(
+    'INSERT INTO resources (user_id, name, role, level, max_capacity, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
+  );
+  const result = stmt.run(userId, name, role, level, maxCapacity);
+  return { id: Number(result.lastInsertRowid), user_id: userId, name, role, level, max_capacity: maxCapacity };
+}
+
+function updateResource(resourceId, name, role, level, maxCapacity) {
+  const stmt = db.prepare(
+    'UPDATE resources SET name = ?, role = ?, level = ?, max_capacity = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  );
+  return stmt.run(name, role, level, maxCapacity, resourceId);
+}
+
+function deleteResource(resourceId) {
+  const stmt = db.prepare('DELETE FROM resources WHERE id = ?');
+  return stmt.run(resourceId);
+}
+
+// Assignment helpers
+function getAssignmentsByUser(userId) {
+  const stmt = db.prepare(`
+    SELECT ra.*, r.name AS resource_name, r.role AS resource_role, p.name AS project_name
+    FROM resource_assignments ra
+    JOIN resources r ON r.id = ra.resource_id
+    JOIN projects p ON p.id = ra.project_id
+    WHERE r.user_id = ?
+    ORDER BY ra.start_month
+  `);
+  return stmt.all(userId);
+}
+
+function getAssignmentsByResource(resourceId) {
+  const stmt = db.prepare('SELECT * FROM resource_assignments WHERE resource_id = ? ORDER BY start_month');
+  return stmt.all(resourceId);
+}
+
+function getAssignmentsByProject(projectId) {
+  const stmt = db.prepare('SELECT * FROM resource_assignments WHERE project_id = ? ORDER BY start_month');
+  return stmt.all(projectId);
+}
+
+function createAssignment(resourceId, projectId, phaseId, allocation, startMonth, endMonth) {
+  const stmt = db.prepare(
+    'INSERT INTO resource_assignments (resource_id, project_id, phase_id, allocation, start_month, end_month, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
+  );
+  const result = stmt.run(resourceId, projectId, phaseId, allocation, startMonth, endMonth);
+  return { id: Number(result.lastInsertRowid), resource_id: resourceId, project_id: projectId, phase_id: phaseId, allocation, start_month: startMonth, end_month: endMonth };
+}
+
+function updateAssignment(assignmentId, allocation, startMonth, endMonth) {
+  const stmt = db.prepare(
+    'UPDATE resource_assignments SET allocation = ?, start_month = ?, end_month = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  );
+  return stmt.run(allocation, startMonth, endMonth, assignmentId);
+}
+
+function deleteAssignment(assignmentId) {
+  const stmt = db.prepare('DELETE FROM resource_assignments WHERE id = ?');
+  return stmt.run(assignmentId);
+}
+
+// Transition plan helpers
+function getTransitionPlansByUser(userId) {
+  const stmt = db.prepare('SELECT * FROM transition_plans WHERE user_id = ? ORDER BY updated_at DESC');
+  return stmt.all(userId);
+}
+
+function getTransitionPlanById(planId) {
+  const stmt = db.prepare('SELECT * FROM transition_plans WHERE id = ?');
+  return stmt.get(planId);
+}
+
+function createTransitionPlan(userId, name, data = '{}') {
+  const stmt = db.prepare(
+    'INSERT INTO transition_plans (user_id, name, data, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
+  );
+  const result = stmt.run(userId, name, data);
+  return { id: Number(result.lastInsertRowid), user_id: userId, name, status: 'draft', data };
+}
+
+function updateTransitionPlan(planId, name, status, data) {
+  const stmt = db.prepare(
+    'UPDATE transition_plans SET name = ?, status = ?, data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  );
+  return stmt.run(name, status, data, planId);
+}
+
+function deleteTransitionPlan(planId) {
+  const stmt = db.prepare('DELETE FROM transition_plans WHERE id = ?');
+  return stmt.run(planId);
+}
+
 export {
   db,
   createUser,
@@ -329,5 +482,21 @@ export {
   getSnapshotById,
   createTemplate,
   getTemplatesByUser,
-  deleteTemplate
+  deleteTemplate,
+  getResourcesByUser,
+  getResourceById,
+  createResource,
+  updateResource,
+  deleteResource,
+  getAssignmentsByUser,
+  getAssignmentsByResource,
+  getAssignmentsByProject,
+  createAssignment,
+  updateAssignment,
+  deleteAssignment,
+  getTransitionPlansByUser,
+  getTransitionPlanById,
+  createTransitionPlan,
+  updateTransitionPlan,
+  deleteTransitionPlan
 };

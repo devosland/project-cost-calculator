@@ -8,5 +8,13 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.{test,spec}.{js,jsx}', 'server/**/*.{test,spec}.{js,jsx}'],
     passWithNoTests: true,
+    environmentMatchGlobs: [
+      ['server/**/*.{test,spec}.{js,jsx}', 'node'],
+    ],
+    server: {
+      deps: {
+        external: ['better-sqlite3'],
+      },
+    },
   },
 })
