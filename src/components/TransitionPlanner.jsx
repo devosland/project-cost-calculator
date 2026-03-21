@@ -126,16 +126,20 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
   };
 
   const handleApply = async () => {
-    if (!plan?.id) {
-      // Save first
-      setError('Please save the plan first.');
-      return;
-    }
     setApplying(true);
     setError(null);
     try {
-      const result = await capacityApi.applyTransition(plan.id);
-      if (result?.missing_resources?.length) {
+      let planId = plan?.id;
+      // Save first if new plan
+      if (!planId) {
+        const payload = { name: planName || 'Untitled plan', data: { transitions } };
+        const saved = await capacityApi.createTransition(payload);
+        planId = saved.id;
+      } else {
+        await capacityApi.updateTransition(planId, { name: planName, status, data: { transitions } });
+      }
+      const result = await capacityApi.applyTransition(planId);
+      if (result?.error === 'missing_resources') {
         setError(t('transitions.missingResources'));
         setApplying(false);
         return;
@@ -162,7 +166,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
         <label className="text-sm font-medium">{t('transitions.planName')}</label>
         <input
           type="text"
-          className="w-full border rounded px-3 py-2 text-sm bg-background"
+          className="input-field w-full"
           value={planName}
           onChange={(e) => setPlanName(e.target.value)}
           placeholder={t('transitions.planName')}
@@ -192,7 +196,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
                     {t('transitions.consultant')}
                   </label>
                   <select
-                    className="w-full border rounded px-3 py-2 text-sm bg-background"
+                    className="select-field w-full"
                     value={tr.consultant_resource_id}
                     onChange={(e) => updateTransition(tr.id, 'consultant_resource_id', e.target.value)}
                   >
@@ -211,7 +215,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
                     {t('transitions.replacement')}
                   </label>
                   <select
-                    className="w-full border rounded px-3 py-2 text-sm bg-background"
+                    className="select-field w-full"
                     value={tr.replacement_resource_id}
                     onChange={(e) => updateTransition(tr.id, 'replacement_resource_id', e.target.value)}
                   >
@@ -232,7 +236,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
                   </label>
                   <input
                     type="month"
-                    className="w-full border rounded px-3 py-2 text-sm bg-background"
+                    className="input-field w-full"
                     value={tr.transition_date}
                     onChange={(e) => updateTransition(tr.id, 'transition_date', e.target.value)}
                   />
@@ -247,7 +251,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
                     type="number"
                     min={0}
                     max={12}
-                    className="w-full border rounded px-3 py-2 text-sm bg-background"
+                    className="input-field w-full"
                     value={tr.overlap_weeks}
                     onChange={(e) =>
                       updateTransition(tr.id, 'overlap_weeks', Math.min(12, Math.max(0, Number(e.target.value))))
@@ -258,7 +262,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
 
               {/* Conflict warning */}
               {conflicts.length > 0 && (
-                <div className="flex items-center gap-2 text-amber-600 text-sm bg-amber-50 rounded px-3 py-2">
+                <div className="flex items-center gap-2 text-amber-600 text-sm bg-amber-50 dark:bg-amber-900/20 rounded px-3 py-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{t('transitions.conflict')}</span>
                 </div>
@@ -283,7 +287,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
       {/* Cost comparison cards */}
       {transitions.length > 0 && impacts.some(Boolean) && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="border rounded-lg p-4 text-center bg-red-50">
+          <div className="border rounded-lg p-4 text-center bg-red-50 dark:bg-red-900/20">
             <div className="text-xs font-medium text-muted-foreground mb-1">
               {t('transitions.costCurrent')}
             </div>
@@ -291,7 +295,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
               {formatCurrency(totals.currentCost)}
             </div>
           </div>
-          <div className="border rounded-lg p-4 text-center bg-green-50">
+          <div className="border rounded-lg p-4 text-center bg-green-50 dark:bg-green-900/20">
             <div className="text-xs font-medium text-muted-foreground mb-1">
               {t('transitions.costAfter')}
             </div>
@@ -318,13 +322,13 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
       {/* Actions */}
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="ghost" size="sm" onClick={onClose}>
-          {t('common.cancel')}
+          {t('resources.cancel')}
         </Button>
-        <Button variant="outline" size="sm" disabled={saving} onClick={handleSave}>
-          {saving ? '...' : plan?.id ? t('common.save') : t('transitions.add')}
+        <Button variant="outline" size="sm" disabled={saving || transitions.length === 0} onClick={handleSave}>
+          {saving ? '...' : t('resources.save')}
         </Button>
-        {plan?.id && status !== 'applied' && (
-          <Button size="sm" disabled={applying} onClick={handleApply}>
+        {status !== 'applied' && (
+          <Button size="sm" disabled={applying || transitions.length === 0} onClick={handleApply}>
             {applying ? '...' : t('transitions.apply')}
           </Button>
         )}
