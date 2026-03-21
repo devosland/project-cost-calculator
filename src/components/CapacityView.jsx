@@ -1,13 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, BarChart3, Users, ArrowLeftRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import ResourcePool from './ResourcePool';
 import CapacityGantt from './CapacityGantt';
+import TransitionList from './TransitionList';
+import TransitionPlanner from './TransitionPlanner';
+import { capacityApi } from '../lib/capacityApi';
 
 const CapacityView = ({ rates, onBack }) => {
   const { t } = useLocale();
   const [activeTab, setActiveTab] = useState('gantt');
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [showPlanner, setShowPlanner] = useState(false);
+  const [resources, setResources] = useState([]);
+
+  useEffect(() => {
+    capacityApi.getResources().then((data) => {
+      setResources(Array.isArray(data) ? data : []);
+    }).catch(() => {});
+  }, []);
 
   const TABS = [
     { id: 'gantt', icon: BarChart3, label: t('capacity.gantt') },
@@ -55,9 +67,20 @@ const CapacityView = ({ rates, onBack }) => {
         <ResourcePool rates={rates} />
       )}
       {activeTab === 'transitions' && (
-        <div className="text-center text-muted-foreground py-12">
-          {t('transitions.empty')}
-        </div>
+        showPlanner ? (
+          <TransitionPlanner
+            plan={selectedPlan}
+            resources={resources}
+            rates={rates}
+            onClose={() => setShowPlanner(false)}
+            onSave={() => setShowPlanner(false)}
+          />
+        ) : (
+          <TransitionList
+            onSelectPlan={(p) => { setSelectedPlan(p); setShowPlanner(true); }}
+            onNewPlan={() => { setSelectedPlan(null); setShowPlanner(true); }}
+          />
+        )
       )}
     </div>
   );
