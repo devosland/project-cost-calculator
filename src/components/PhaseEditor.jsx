@@ -250,6 +250,26 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     {t('phase.remove')}
                   </Button>
                 </div>
+                {member.resourceId && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                    <span>{t('phase.period')} :</span>
+                    <input
+                      type="month"
+                      className="input-field text-xs py-0.5 w-32"
+                      value={member.startMonth || ''}
+                      onChange={(e) => updateTeamMember(index, 'startMonth', e.target.value || null)}
+                      placeholder={t('phase.start')}
+                    />
+                    <span>→</span>
+                    <input
+                      type="month"
+                      className="input-field text-xs py-0.5 w-32"
+                      value={member.endMonth || ''}
+                      onChange={(e) => updateTeamMember(index, 'endMonth', e.target.value || null)}
+                      placeholder={t('phase.end')}
+                    />
+                  </div>
+                )}
                 {isAuthorized && (
                   <div className="text-xs text-muted-foreground grid grid-cols-3 gap-2 pt-1">
                     <div>{t('phase.rate')} : {fmt(details.hourlyRate)}/h</div>

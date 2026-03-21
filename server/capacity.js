@@ -408,6 +408,20 @@ router.post('/transitions/:id/apply', (req, res) => {
               );
               if (consultantIdx === -1) continue;
 
+              // Get the phase's assignment to find start/end months
+              const consultantAssignment = db.prepare(
+                'SELECT * FROM resource_assignments WHERE resource_id = ? AND project_id = ? AND phase_id = ?'
+              ).get(t.consultant_resource_id, project_id, phase.id);
+              const phaseStart = consultantAssignment?.start_month || t.transition_date;
+              const phaseEnd = consultantAssignment?.end_month || t.transition_date;
+
+              // Set consultant end date to transition date
+              phase.teamMembers[consultantIdx].endMonth = t.transition_date;
+              if (!phase.teamMembers[consultantIdx].startMonth) {
+                phase.teamMembers[consultantIdx].startMonth = phaseStart;
+              }
+              changed = true;
+
               const alreadyHasReplacement = (phase.teamMembers || []).some(
                 m => m.resourceId === t.replacement_resource_id || m.resourceName === replacement.name
               );
@@ -420,8 +434,9 @@ router.post('/transitions/:id/apply', (req, res) => {
                   allocation: phase.teamMembers[consultantIdx].allocation,
                   resourceName: replacement.name,
                   resourceId: t.replacement_resource_id,
+                  startMonth: t.transition_date,
+                  endMonth: phaseEnd,
                 });
-                changed = true;
               }
             }
             if (changed) {

@@ -17,6 +17,23 @@ export function getHourlyRate(rates, role, level) {
   return rates.CONSULTANT_RATES[role]?.[level] || 0;
 }
 
+export function getMemberWeeks(member, phase, projectStartMonth) {
+  // If member has explicit period, calculate overlap with phase
+  if (member.startMonth && member.endMonth && projectStartMonth) {
+    const phaseStartMonth = projectStartMonth; // simplified: assume single-phase offset handled by caller
+    const memberWeeks = monthDiffInWeeks(member.startMonth, member.endMonth);
+    return Math.min(memberWeeks, phase.durationWeeks);
+  }
+  return phase.durationWeeks;
+}
+
+function monthDiffInWeeks(startMonth, endMonth) {
+  const [sy, sm] = startMonth.split('-').map(Number);
+  const [ey, em] = endMonth.split('-').map(Number);
+  const months = (ey - sy) * 12 + (em - sm);
+  return Math.max(0, Math.round(months * 4.33));
+}
+
 export function calculatePhaseWeeklyCost(phase, rates) {
   return phase.teamMembers.reduce((total, member) => {
     const hourlyRate = getHourlyRate(rates, member.role, member.level);
@@ -25,6 +42,18 @@ export function calculatePhaseWeeklyCost(phase, rates) {
 }
 
 export function calculatePhaseTotalCost(phase, rates) {
+  // If any member has period constraints, calculate per-member
+  const hasConstrainedMembers = phase.teamMembers.some(m => m.startMonth && m.endMonth);
+  if (hasConstrainedMembers) {
+    return phase.teamMembers.reduce((total, member) => {
+      const hourlyRate = getHourlyRate(rates, member.role, member.level);
+      const weeklyCost = hourlyRate * HOURS_PER_WEEK * member.quantity * (member.allocation / 100);
+      const memberWeeks = (member.startMonth && member.endMonth)
+        ? Math.min(monthDiffInWeeks(member.startMonth, member.endMonth), phase.durationWeeks)
+        : phase.durationWeeks;
+      return total + weeklyCost * memberWeeks;
+    }, 0);
+  }
   return calculatePhaseWeeklyCost(phase, rates) * phase.durationWeeks;
 }
 
@@ -68,7 +97,10 @@ export function getCostByRole(project, rates) {
   for (const phase of project.phases) {
     for (const member of phase.teamMembers) {
       const hourlyRate = getHourlyRate(rates, member.role, member.level);
-      const cost = hourlyRate * HOURS_PER_WEEK * member.quantity * (member.allocation / 100) * phase.durationWeeks;
+      const weeks = (member.startMonth && member.endMonth)
+        ? Math.min(monthDiffInWeeks(member.startMonth, member.endMonth), phase.durationWeeks)
+        : phase.durationWeeks;
+      const cost = hourlyRate * HOURS_PER_WEEK * member.quantity * (member.allocation / 100) * weeks;
       roleMap[member.role] = (roleMap[member.role] || 0) + cost;
     }
   }
