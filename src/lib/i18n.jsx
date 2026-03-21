@@ -340,6 +340,7 @@ const translations = {
     'resources.nameExists': 'Une ressource avec ce nom existe déjà.',
     'resources.save': 'Enregistrer',
     'resources.cancel': 'Annuler',
+    'resources.addToPool': 'Ajouter au pool',
 
     // Transitions
     'transitions.title': 'Plans de transition',
@@ -722,6 +723,7 @@ const translations = {
     'resources.nameExists': 'A resource with this name already exists.',
     'resources.save': 'Save',
     'resources.cancel': 'Cancel',
+    'resources.addToPool': 'Add to pool',
 
     // Transitions
     'transitions.title': 'Transition plans',

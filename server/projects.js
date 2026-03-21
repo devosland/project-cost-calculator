@@ -88,6 +88,23 @@ router.put('/:id', (req, res) => {
     const updatedName = name ?? project.name;
     const updatedData = data !== undefined ? JSON.stringify(data) : project.data;
     updateProjectRecord(req.params.id, updatedName, updatedData);
+
+    // Clean up resource assignments for deleted phases
+    try {
+      const projectData = JSON.parse(updatedData);
+      const phaseIds = (projectData.phases || []).map(p => p.id);
+      if (phaseIds.length > 0) {
+        db.prepare(
+          'DELETE FROM resource_assignments WHERE project_id = ? AND phase_id NOT IN (' + phaseIds.map(() => '?').join(',') + ')'
+        ).run(req.params.id, ...phaseIds);
+      } else {
+        db.prepare('DELETE FROM resource_assignments WHERE project_id = ?').run(req.params.id);
+      }
+    } catch (e) {
+      // Non-critical: log but don't fail the save
+      console.error('Phase cleanup error:', e);
+    }
+
     res.json({ id: req.params.id, name: updatedName, data: JSON.parse(updatedData) });
   } catch (err) {
     console.error('Update project error:', err);
