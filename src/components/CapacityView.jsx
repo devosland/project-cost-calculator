@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, BarChart3, Users, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeft, BarChart3, Users, ArrowLeftRight, Settings } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import ResourcePool from './ResourcePool';
 import CapacityGantt from './CapacityGantt';
 import TransitionList from './TransitionList';
 import TransitionPlanner from './TransitionPlanner';
+import RolesRatesManager from './RolesRatesManager';
 import { capacityApi } from '../lib/capacityApi';
 
-const CapacityView = ({ rates, onBack, onDataChanged, initialTab }) => {
+const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab }) => {
   const { t } = useLocale();
-  const [activeTab, setActiveTab] = useState(initialTab || 'gantt');
+  const [activeTab, setActiveTab] = useState(initialTab || 'resources');
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [showPlanner, setShowPlanner] = useState(false);
   const [resources, setResources] = useState([]);
@@ -23,9 +24,10 @@ const CapacityView = ({ rates, onBack, onDataChanged, initialTab }) => {
   }, []);
 
   const TABS = [
-    { id: 'gantt', icon: BarChart3, label: t('capacity.gantt') },
     { id: 'resources', icon: Users, label: t('capacity.resources') },
+    { id: 'gantt', icon: BarChart3, label: t('capacity.gantt') },
     { id: 'transitions', icon: ArrowLeftRight, label: t('capacity.transitions') },
+    { id: 'rates', icon: Settings, label: t('tab.rates') },
   ];
 
   return (
@@ -82,6 +84,9 @@ const CapacityView = ({ rates, onBack, onDataChanged, initialTab }) => {
             onNewPlan={() => { setSelectedPlan(null); setShowPlanner(true); }}
           />
         )
+      )}
+      {activeTab === 'rates' && (
+        <RolesRatesManager rates={rates} onRatesChange={onRatesChange} />
       )}
     </div>
   );

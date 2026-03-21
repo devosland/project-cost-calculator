@@ -331,7 +331,7 @@ function AppContent() {
 
       <main className="container mx-auto px-4 py-6">
         {view === 'capacity' ? (
-          <CapacityView rates={rates} initialTab={hashTab || 'gantt'} onBack={() => setView('projects')} onDataChanged={() => {
+          <CapacityView rates={rates} initialTab={hashTab || 'resources'} onRatesChange={handleRatesChange} onBack={() => setView('projects')} onDataChanged={() => {
             api.loadData().then((data) => {
               if (data.projects) setProjects(data.projects);
             }).catch(() => {});
@@ -349,7 +349,6 @@ function AppContent() {
             rates={rates}
             initialTab={hashTab || 'phases'}
             onProjectChange={handleProjectChange}
-            onRatesChange={handleRatesChange}
             onBack={() => setActiveProjectId(null)}
             onOpenShare={handleOpenShare}
             onOpenHistory={handleOpenHistory}

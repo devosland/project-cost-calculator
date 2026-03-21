@@ -5,12 +5,11 @@ import { Label } from './ui/label';
 import { Dropdown } from './ui/dropdown';
 import {
   ArrowLeft, PlusCircle, Trash2, ChevronUp, ChevronDown,
-  LayoutDashboard, Calendar, Settings, DollarSign, BarChart3, FileText,
+  LayoutDashboard, Calendar, DollarSign, BarChart3, FileText,
   Share2, History, AlertTriangle, Bell, Pencil, Check, X, Download,
 } from 'lucide-react';
 import PhaseEditor from './PhaseEditor';
 import TimelineView from './TimelineView';
-import RolesRatesManager from './RolesRatesManager';
 import BudgetTracker from './BudgetTracker';
 import NonLabourCosts from './NonLabourCosts';
 import CostCharts from './CostCharts';
@@ -107,7 +106,7 @@ const WebhookSettings = ({ project, updateSettings }) => {
   );
 };
 
-const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, onOpenShare, onOpenHistory, initialTab }) => {
+const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onOpenHistory, initialTab }) => {
   const { t } = useLocale();
   const query = useQuery();
   const isAuthorized = query.get('r') === 'true';
@@ -174,7 +173,6 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
     { id: 'charts', label: t('tab.charts'), icon: BarChart3 },
     { id: 'summary', label: t('tab.summary'), icon: FileText },
     { id: 'risks', label: t('tab.risks'), icon: AlertTriangle },
-    { id: 'rates', label: t('tab.rates'), icon: Settings },
   ];
 
   const updateProject = (changes) => onProjectChange({ ...project, ...changes });
@@ -437,7 +435,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
 
       {activeTab === 'charts' && <CostCharts project={project} rates={rates} />}
       {activeTab === 'summary' && <ProjectSummary project={project} rates={rates} />}
-      {activeTab === 'rates' && <RolesRatesManager rates={rates} onRatesChange={onRatesChange} />}
+      {/* Rates tab moved to CapacityView */}
     </div>
   );
 };
