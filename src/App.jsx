@@ -16,6 +16,7 @@ import SaveIndicator from './components/SaveIndicator'
 import ThemeToggle from './components/ThemeToggle'
 import { LocaleProvider, useLocale } from './lib/i18n'
 import { useHashRouter } from './lib/useHashRouter'
+import OnboardingGuide from './components/OnboardingGuide'
 import './App.css'
 
 function AppContent() {
@@ -354,6 +355,17 @@ function AppContent() {
             onOpenHistory={handleOpenHistory}
           />
         ) : (
+          <>
+          <OnboardingGuide
+            projects={projects}
+            onNavigate={(section, tab) => {
+              if (section === 'capacity') {
+                navigate(tab ? `capacity/${tab}` : 'capacity');
+              } else {
+                navigate('projects');
+              }
+            }}
+          />
           <Dashboard
             projects={projects}
             rates={rates}
@@ -367,6 +379,7 @@ function AppContent() {
             showTemplates={showTemplates}
             onToggleTemplates={() => setShowTemplates(true)}
           />
+          </>
         )}
       </main>
 

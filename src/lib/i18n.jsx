@@ -307,6 +307,26 @@ const translations = {
     'risks.phasePlaceholder': 'Phase',
     'risks.mitigationPlaceholder': "Stratégie d'atténuation",
 
+    // Onboarding
+    'onboarding.title': 'Guide de démarrage',
+    'onboarding.subtitle': 'Suivez ces étapes pour configurer votre planification de capacité.',
+    'onboarding.completeTitle': 'Configuration terminée !',
+    'onboarding.completeDesc': 'Votre environnement est prêt. Vous pouvez consulter le Gantt de capacité.',
+    'onboarding.help': 'Guide',
+    'onboarding.done': 'Fait',
+    'onboarding.step1Title': '1. Vérifier les taux horaires',
+    'onboarding.step1Desc': 'La grille tarifaire par défaut est pré-configurée. Ajustez-la au besoin.',
+    'onboarding.step1Action': 'Voir les taux',
+    'onboarding.step2Title': '2. Ajouter vos ressources',
+    'onboarding.step2Desc': 'Créez les membres de votre équipe (nom, rôle, permanent ou consultant).',
+    'onboarding.step2Action': 'Ajouter des ressources',
+    'onboarding.step3Title': '3. Créer un projet',
+    'onboarding.step3Desc': 'Définissez vos phases, durées et assignez vos ressources.',
+    'onboarding.step3Action': 'Créer un projet',
+    'onboarding.step4Title': '4. Consulter la capacité',
+    'onboarding.step4Desc': "Visualisez l'occupation de vos ressources et planifiez les transitions.",
+    'onboarding.step4Action': 'Voir le Gantt',
+
     // Cost categories (for getCostByCategory)
     'category.labour': "Main-d'oeuvre",
 
@@ -692,6 +712,26 @@ const translations = {
     'risks.riskPlaceholder': 'Risk name',
     'risks.phasePlaceholder': 'Phase',
     'risks.mitigationPlaceholder': 'Mitigation strategy',
+
+    // Onboarding
+    'onboarding.title': 'Getting Started',
+    'onboarding.subtitle': 'Follow these steps to set up your capacity planning.',
+    'onboarding.completeTitle': 'Setup complete!',
+    'onboarding.completeDesc': 'Your environment is ready. Check out the capacity Gantt.',
+    'onboarding.help': 'Guide',
+    'onboarding.done': 'Done',
+    'onboarding.step1Title': '1. Review hourly rates',
+    'onboarding.step1Desc': 'The default rate card is pre-configured. Adjust as needed.',
+    'onboarding.step1Action': 'View rates',
+    'onboarding.step2Title': '2. Add your resources',
+    'onboarding.step2Desc': 'Create your team members (name, role, permanent or consultant).',
+    'onboarding.step2Action': 'Add resources',
+    'onboarding.step3Title': '3. Create a project',
+    'onboarding.step3Desc': 'Define phases, durations and assign your resources.',
+    'onboarding.step3Action': 'Create project',
+    'onboarding.step4Title': '4. View capacity',
+    'onboarding.step4Desc': 'Visualize resource utilization and plan transitions.',
+    'onboarding.step4Action': 'View Gantt',
 
     // Cost categories
     'category.labour': 'Labour',
