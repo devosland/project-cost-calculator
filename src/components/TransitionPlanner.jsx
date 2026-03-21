@@ -13,7 +13,12 @@ function generateId() {
 const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
   const { t } = useLocale();
   const [planName, setPlanName] = useState(plan?.name || '');
-  const [transitions, setTransitions] = useState(plan?.data?.transitions || []);
+  const [transitions, setTransitions] = useState(() => {
+    const d = plan?.data;
+    if (!d) return [];
+    const parsed = typeof d === 'string' ? JSON.parse(d) : d;
+    return parsed.transitions || [];
+  });
   const [status, setStatus] = useState(plan?.status || 'draft');
   const [saving, setSaving] = useState(false);
   const [applying, setApplying] = useState(false);

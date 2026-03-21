@@ -384,6 +384,56 @@ router.post('/transitions/:id/apply', (req, res) => {
         }
       }
 
+      // Update project teamMembers to reflect transitions
+      for (const t of normalized) {
+        const consultant = db.prepare('SELECT * FROM resources WHERE id = ?').get(t.consultant_resource_id);
+        const replacement = db.prepare('SELECT * FROM resources WHERE id = ?').get(t.replacement_resource_id);
+        if (!consultant || !replacement) continue;
+
+        // Find all projects that have this consultant assigned
+        const affectedProjects = db.prepare(
+          'SELECT DISTINCT project_id FROM resource_assignments WHERE resource_id = ? OR resource_id = ?'
+        ).all(t.consultant_resource_id, t.replacement_resource_id);
+
+        for (const { project_id } of affectedProjects) {
+          const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(project_id);
+          if (!project) continue;
+          try {
+            const projectData = JSON.parse(project.data);
+            let changed = false;
+            for (const phase of (projectData.phases || [])) {
+              // Find consultant team member and add replacement if not already present
+              const consultantIdx = (phase.teamMembers || []).findIndex(
+                m => m.resourceId === t.consultant_resource_id || m.resourceName === consultant.name
+              );
+              if (consultantIdx === -1) continue;
+
+              const alreadyHasReplacement = (phase.teamMembers || []).some(
+                m => m.resourceId === t.replacement_resource_id || m.resourceName === replacement.name
+              );
+
+              if (!alreadyHasReplacement) {
+                phase.teamMembers.push({
+                  role: replacement.role,
+                  level: replacement.level,
+                  quantity: 1,
+                  allocation: phase.teamMembers[consultantIdx].allocation,
+                  resourceName: replacement.name,
+                  resourceId: t.replacement_resource_id,
+                });
+                changed = true;
+              }
+            }
+            if (changed) {
+              db.prepare('UPDATE projects SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+                .run(JSON.stringify(projectData), project_id);
+            }
+          } catch (e) {
+            console.error('Failed to update project teamMembers:', e);
+          }
+        }
+      }
+
       // Mark plan as applied
       db.prepare('UPDATE transition_plans SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
         .run('applied', planId);

@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
+
+function parseData(plan) {
+  if (!plan.data) return [];
+  try {
+    const d = typeof plan.data === 'string' ? JSON.parse(plan.data) : plan.data;
+    return d.transitions || [];
+  } catch { return []; }
+}
 
 const statusColors = {
   draft: 'bg-gray-100 text-gray-700',
@@ -55,28 +63,52 @@ const TransitionList = ({ onSelectPlan, onNewPlan }) => {
         <div className="grid gap-3">
           {plans.map((plan) => {
             const status = plan.status || 'draft';
-            const transitions = plan.data?.transitions || [];
+            const transitions = parseData(plan);
+            // When selecting, pass parsed data so TransitionPlanner gets an object
+            const parsedPlan = {
+              ...plan,
+              data: { transitions },
+            };
             return (
-              <button
+              <div
                 key={plan.id}
-                className="w-full text-left border rounded-lg p-4 hover:border-primary/50 hover:bg-muted/30 transition-colors"
-                onClick={() => onSelectPlan(plan)}
+                className="border rounded-lg p-4 hover:border-primary/50 hover:bg-muted/30 transition-colors flex items-center gap-3"
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{plan.name}</span>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColors[status] || statusColors.draft}`}>
-                    {t(`transitions.status.${status}`)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                  {plan.created_at && (
-                    <span>{new Date(plan.created_at).toLocaleDateString()}</span>
-                  )}
-                  <span>
-                    {transitions.length} {transitions.length === 1 ? 'transition' : 'transitions'}
-                  </span>
-                </div>
-              </button>
+                <button
+                  className="flex-1 text-left"
+                  onClick={() => onSelectPlan(parsedPlan)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{plan.name}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColors[status] || statusColors.draft}`}>
+                      {t(`transitions.status.${status}`)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                    {plan.created_at && (
+                      <span>{new Date(plan.created_at).toLocaleDateString()}</span>
+                    )}
+                    <span>
+                      {transitions.length} transition{transitions.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-red-500 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm(t('resources.confirmDelete'))) {
+                      capacityApi.deleteTransition(plan.id).then(() => {
+                        setPlans((prev) => prev.filter((p) => p.id !== plan.id));
+                      }).catch(() => {});
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             );
           })}
         </div>
