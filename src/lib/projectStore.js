@@ -27,6 +27,7 @@ export function createProject(name) {
       contingencyPercentage: 10,
       includeTaxes: false,
       currency: 'CAD',
+      startDate: null,
     },
     budget: null,
     nonLabourCosts: [],

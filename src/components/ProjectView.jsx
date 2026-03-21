@@ -274,6 +274,16 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
               />
             </div>
             <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">{t('project.startDate')}</Label>
+              <input
+                type="month"
+                className="input-field w-36"
+                value={project.settings?.startDate || ''}
+                onChange={(e) => updateSettings({ startDate: e.target.value || null })}
+                placeholder={new Date().toISOString().slice(0, 7)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">{t('project.currency')}</Label>
               <Dropdown
                 value={currency}
