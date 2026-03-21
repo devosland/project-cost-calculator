@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { PlusCircle, Trash2, Pencil, Check, X, Flag, Link2 } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, Check, X, Flag, Link2, UserPlus } from 'lucide-react';
 import {
   HOURS_PER_WEEK,
   getHourlyRate,
@@ -11,7 +11,7 @@ import {
 } from '../lib/costCalculations';
 import { useLocale, LEVEL_KEYS, getLevelLabel } from '../lib/i18n';
 
-const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, allPhases = [] }) => {
+const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, allPhases = [], resourcePool, onResourceAssign }) => {
   const { t } = useLocale();
   const fmt = (v) => formatCurrency(v, currency);
   const [editingName, setEditingName] = useState(false);
@@ -143,6 +143,42 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             const details = getMemberDetails(member);
             return (
               <div key={index} className="space-y-2 p-4 border rounded-xl bg-secondary/20 hover:bg-secondary/40 transition-colors">
+                {resourcePool && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      className="input-field flex-1 text-sm"
+                      value={member.resourceName || ''}
+                      placeholder={t('resources.search')}
+                      onChange={(e) => updateTeamMember(index, 'resourceName', e.target.value)}
+                      onBlur={(e) => {
+                        const match = (resourcePool || []).find(r => r.name === e.target.value);
+                        if (match) {
+                          updateTeamMember(index, 'role', match.role);
+                          updateTeamMember(index, 'level', match.level);
+                          updateTeamMember(index, 'resourceId', match.id);
+                        }
+                      }}
+                      list={`resource-suggestions-${phase.id}-${index}`}
+                    />
+                    <datalist id={`resource-suggestions-${phase.id}-${index}`}>
+                      {(resourcePool || [])
+                        .filter(r => r.name.toLowerCase().includes((member.resourceName || '').toLowerCase()))
+                        .map(r => <option key={r.id} value={r.name} />)}
+                    </datalist>
+                    {member.resourceName && !(resourcePool || []).find(r => r.name === member.resourceName) && onResourceAssign && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-1 text-xs whitespace-nowrap"
+                        onClick={() => onResourceAssign({ name: member.resourceName, role: member.role, level: member.level })}
+                      >
+                        <UserPlus className="w-3 h-3" />
+                        {t('resources.addToPool')}
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center">
                   <select
                     className="select-field"
