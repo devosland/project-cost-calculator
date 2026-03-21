@@ -14,6 +14,7 @@ const CapacityView = ({ rates, onBack, onDataChanged }) => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [showPlanner, setShowPlanner] = useState(false);
   const [resources, setResources] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     capacityApi.getResources().then((data) => {
@@ -61,7 +62,7 @@ const CapacityView = ({ rates, onBack, onDataChanged }) => {
 
       {/* Tab content */}
       {activeTab === 'gantt' && (
-        <CapacityGantt rates={rates} />
+        <CapacityGantt rates={rates} key={refreshKey} />
       )}
       {activeTab === 'resources' && (
         <ResourcePool rates={rates} />
@@ -73,7 +74,7 @@ const CapacityView = ({ rates, onBack, onDataChanged }) => {
             resources={resources}
             rates={rates}
             onClose={() => setShowPlanner(false)}
-            onSave={() => { setShowPlanner(false); if (onDataChanged) onDataChanged(); }}
+            onSave={() => { setShowPlanner(false); setRefreshKey(k => k + 1); if (onDataChanged) onDataChanged(); }}
           />
         ) : (
           <TransitionList
