@@ -6,6 +6,7 @@ import authRoutes from './auth.js';
 import dataRoutes from './data.js';
 import projectRoutes from './projects.js';
 import templateRoutes from './templates.js';
+import capacityRouter from './capacity.js';
 import { startScheduledBackups, createBackup, listBackups } from './backup.js';
 import { authMiddleware } from './middleware.js';
 
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/api/capacity', capacityRouter);
 
 // Backup endpoints (authMiddlewared)
 app.get('/api/backups', authMiddleware, (req, res) => {
