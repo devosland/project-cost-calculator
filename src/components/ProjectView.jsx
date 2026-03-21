@@ -107,11 +107,11 @@ const WebhookSettings = ({ project, updateSettings }) => {
   );
 };
 
-const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, onOpenShare, onOpenHistory }) => {
+const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, onOpenShare, onOpenHistory, initialTab }) => {
   const { t } = useLocale();
   const query = useQuery();
   const isAuthorized = query.get('r') === 'true';
-  const [activeTab, setActiveTab] = useState('phases');
+  const [activeTab, setActiveTab] = useState(initialTab || 'phases');
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(project.name);
   const [resourcePool, setResourcePool] = useState([]);
@@ -285,7 +285,7 @@ const ProjectView = ({ project, rates, onProjectChange, onRatesChange, onBack, o
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               }`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); window.location.hash = `#/projects/${project.id}/${tab.id}`; }}
             >
               <Icon className="w-4 h-4" />
               {tab.label}

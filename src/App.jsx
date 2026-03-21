@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import AuthPage from './components/AuthPage'
 import Dashboard from './components/Dashboard'
 import ProjectView from './components/ProjectView'
@@ -15,6 +15,7 @@ import { Button } from './components/ui/button'
 import SaveIndicator from './components/SaveIndicator'
 import ThemeToggle from './components/ThemeToggle'
 import { LocaleProvider, useLocale } from './lib/i18n'
+import { useHashRouter } from './lib/useHashRouter'
 import './App.css'
 
 function AppContent() {
@@ -23,10 +24,21 @@ function AppContent() {
   const [authChecked, setAuthChecked] = useState(false);
   const [rates, setRates] = useState(null);
   const [projects, setProjects] = useState([]);
-  const [activeProjectId, setActiveProjectId] = useState(null);
   const [compareIds, setCompareIds] = useState(null);
   const [saveStatus, setSaveStatus] = useState('idle');
   const saveTimer = useRef(null);
+  const { segments, navigate } = useHashRouter();
+
+  // Derive view state from URL hash
+  const view = segments[0] === 'capacity' ? 'capacity' : 'projects';
+  const activeProjectId = (view === 'projects' && segments[1]) ? segments[1] : null;
+  const hashTab = segments[2] || null;
+
+  const setView = useCallback((v) => navigate(v === 'capacity' ? 'capacity' : 'projects'), [navigate]);
+  const setActiveProjectId = useCallback((id) => {
+    if (id) navigate(`projects/${id}`);
+    else navigate('projects');
+  }, [navigate]);
 
   // Phase 2 state
   const [templates, setTemplates] = useState([]);
@@ -35,7 +47,6 @@ function AppContent() {
   const [shares, setShares] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [snapshots, setSnapshots] = useState([]);
-  const [view, setView] = useState('projects');
 
   // Apply saved theme on mount
   useEffect(() => {
@@ -320,7 +331,7 @@ function AppContent() {
 
       <main className="container mx-auto px-4 py-6">
         {view === 'capacity' ? (
-          <CapacityView rates={rates} onBack={() => setView('projects')} onDataChanged={() => {
+          <CapacityView rates={rates} initialTab={hashTab || 'gantt'} onBack={() => setView('projects')} onDataChanged={() => {
             api.loadData().then((data) => {
               if (data.projects) setProjects(data.projects);
             }).catch(() => {});
@@ -336,6 +347,7 @@ function AppContent() {
           <ProjectView
             project={activeProject}
             rates={rates}
+            initialTab={hashTab || 'phases'}
             onProjectChange={handleProjectChange}
             onRatesChange={handleRatesChange}
             onBack={() => setActiveProjectId(null)}

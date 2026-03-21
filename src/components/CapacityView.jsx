@@ -8,9 +8,9 @@ import TransitionList from './TransitionList';
 import TransitionPlanner from './TransitionPlanner';
 import { capacityApi } from '../lib/capacityApi';
 
-const CapacityView = ({ rates, onBack, onDataChanged }) => {
+const CapacityView = ({ rates, onBack, onDataChanged, initialTab }) => {
   const { t } = useLocale();
-  const [activeTab, setActiveTab] = useState('gantt');
+  const [activeTab, setActiveTab] = useState(initialTab || 'gantt');
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [showPlanner, setShowPlanner] = useState(false);
   const [resources, setResources] = useState([]);
@@ -51,7 +51,7 @@ const CapacityView = ({ rates, onBack, onDataChanged }) => {
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               }`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); window.location.hash = '#/capacity/' + tab.id; }}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
