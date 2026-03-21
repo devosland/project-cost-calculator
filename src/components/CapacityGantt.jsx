@@ -129,25 +129,22 @@ const CapacityGantt = ({ rates }) => {
               if (!resource) return null;
               const resAssignments = projAssignments.filter((a) => a.resource_id === rid);
 
+              // Deduplicate bars (one per assignment)
+              const uniqueBars = resAssignments.filter((a, i, arr) =>
+                arr.findIndex((b) => b.id === a.id) === i
+              );
               return (
-                <div key={`${projectId}-${rid}`} className="contents">
+                <div key={`${projectId}-${rid}`} style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
                   <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-background z-10">
                     {renderResourceDot(resource)}
                     {resource.name}
                   </div>
-                  {months.map((month) => {
-                    const bar = resAssignments.find(
-                      (a) => a.start_month <= month && a.end_month >= month
-                    );
-                    if (!bar) return <div key={month} />;
-                    // Only render bar on first month of this assignment visible in range
-                    const visStart = bar.start_month < startMonth ? startMonth : bar.start_month;
-                    if (month !== visStart) return <div key={month} />;
+                  {uniqueBars.map((bar) => {
                     const props = getBarProps(bar);
-                    if (!props) return <div key={month} />;
+                    if (!props) return null;
                     return (
                       <GanttBar
-                        key={month}
+                        key={bar.id}
                         color={color}
                         allocation={bar.allocation}
                         label={resource.name}
@@ -192,57 +189,35 @@ const CapacityGantt = ({ rates }) => {
             sectionResources.map((resource) => {
               const resAssignments = assignments.filter((a) => a.resource_id === resource.id);
 
+              const uniqueBars = resAssignments.filter((a, i, arr) =>
+                arr.findIndex((b) => b.id === a.id) === i
+              );
               return (
-                <div key={resource.id} className="contents">
+                <div key={resource.id} style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
                   <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-background z-10">
                     {renderResourceDot(resource)}
                     {resource.name}
                   </div>
-                  {months.map((month) => {
-                    const util = calculateUtilization(assignments, resource.id, month);
-                    const overAllocated = util > (resource.max_capacity || 100);
-
-                    // Find assignments for this month
-                    const monthAssignments = resAssignments.filter(
-                      (a) => a.start_month <= month && a.end_month >= month
+                  {uniqueBars.map((bar) => {
+                    const props = getBarProps(bar);
+                    if (!props) return null;
+                    const color = projectColorMap[bar.project_id] || PROJECT_COLORS[0];
+                    return (
+                      <GanttBar
+                        key={bar.id}
+                        color={color}
+                        allocation={bar.allocation}
+                        label={projectNameMap[bar.project_id] || `Project ${bar.project_id}`}
+                        colStart={props.colStart}
+                        colSpan={props.colSpan}
+                        isConsultant={resource.level !== 'Employé interne'}
+                        onClick={() => {
+                          if (resource.level !== 'Employé interne') {
+                            setQuickTransition({ consultant: resource, assignment: bar });
+                          }
+                        }}
+                      />
                     );
-
-                    // Render bars only on their first visible month
-                    const bars = monthAssignments.filter((a) => {
-                      const visStart = a.start_month < startMonth ? startMonth : a.start_month;
-                      return month === visStart;
-                    });
-
-                    if (bars.length === 0) {
-                      return (
-                        <div
-                          key={month}
-                          className={overAllocated ? 'bg-red-100 rounded' : ''}
-                        />
-                      );
-                    }
-
-                    return bars.map((bar) => {
-                      const props = getBarProps(bar);
-                      if (!props) return <div key={`${month}-${bar.id}`} />;
-                      const color = projectColorMap[bar.project_id] || PROJECT_COLORS[0];
-                      return (
-                        <GanttBar
-                          key={`${month}-${bar.id}`}
-                          color={color}
-                          allocation={bar.allocation}
-                          label={projectNameMap[bar.project_id] || `Project ${bar.project_id}`}
-                          colStart={props.colStart}
-                          colSpan={props.colSpan}
-                          isConsultant={resource.level !== 'Employé interne'}
-                          onClick={() => {
-                            if (resource.level !== 'Employé interne') {
-                              setQuickTransition({ consultant: resource, assignment: bar });
-                            }
-                          }}
-                        />
-                      );
-                    });
                   })}
                 </div>
               );
@@ -315,7 +290,7 @@ const CapacityGantt = ({ rates }) => {
           {viewMode === 'project' ? renderByProject() : renderByType()}
 
           {/* Utilization summary */}
-          <UtilizationSummary resources={resources} assignments={assignments} months={months} />
+          <UtilizationSummary resources={resources} assignments={assignments} months={months} gridCols={gridCols} />
         </div>
       </div>
 

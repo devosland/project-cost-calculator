@@ -2,11 +2,11 @@ import React from 'react';
 import { calculateUtilization } from '../lib/capacityCalculations';
 import { useLocale } from '../lib/i18n';
 
-const UtilizationSummary = ({ resources, assignments, months }) => {
+const UtilizationSummary = ({ resources, assignments, months, gridCols }) => {
   const { t } = useLocale();
 
   return (
-    <>
+    <div style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
       <div className="font-medium text-sm py-1 pr-2 text-right sticky left-0 bg-background z-10">
         {t('capacity.utilization')}
       </div>
@@ -18,11 +18,11 @@ const UtilizationSummary = ({ resources, assignments, months }) => {
         );
         const pct = totalCapacity > 0 ? Math.round((totalAllocation / totalCapacity) * 100) : 0;
 
-        let bgColor = 'bg-green-100 text-green-800';
+        let bgColor = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
         if (pct >= 100) {
-          bgColor = 'bg-red-100 text-red-800';
+          bgColor = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
         } else if (pct >= 80) {
-          bgColor = 'bg-amber-100 text-amber-800';
+          bgColor = 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
         }
 
         return (
@@ -34,7 +34,7 @@ const UtilizationSummary = ({ resources, assignments, months }) => {
           </div>
         );
       })}
-    </>
+    </div>
   );
 };
 
