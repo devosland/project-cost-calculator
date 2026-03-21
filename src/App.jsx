@@ -3,13 +3,14 @@ import AuthPage from './components/AuthPage'
 import Dashboard from './components/Dashboard'
 import ProjectView from './components/ProjectView'
 import ScenarioComparison from './components/ScenarioComparison'
+import CapacityView from './components/CapacityView'
 import TemplateManager from './components/TemplateManager'
 import ShareDialog from './components/ShareDialog'
 import VersionHistory from './components/VersionHistory'
 import { getRatesConfig } from './config/rates'
 import { api } from './lib/api'
 import { createProject } from './lib/projectStore'
-import { LogOut, User } from 'lucide-react'
+import { LogOut, User, LayoutDashboard, BarChart3 } from 'lucide-react'
 import { Button } from './components/ui/button'
 import SaveIndicator from './components/SaveIndicator'
 import ThemeToggle from './components/ThemeToggle'
@@ -34,6 +35,7 @@ function AppContent() {
   const [shares, setShares] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [snapshots, setSnapshots] = useState([]);
+  const [view, setView] = useState('projects');
 
   // Apply saved theme on mount
   useEffect(() => {
@@ -267,6 +269,26 @@ function AppContent() {
               <span className="text-white font-bold text-sm">PC</span>
             </div>
             <span className="font-semibold text-lg tracking-tight">{t('app.name')}</span>
+            <div className="flex items-center gap-1 ml-4">
+              <Button
+                variant={view === 'projects' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => { setView('projects'); setActiveProjectId(null); }}
+                className="flex items-center gap-1.5"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                {t('dashboard.title')}
+              </Button>
+              <Button
+                variant={view === 'capacity' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => { setView('capacity'); setActiveProjectId(null); }}
+                className="flex items-center gap-1.5"
+              >
+                <BarChart3 className="w-4 h-4" />
+                {t('capacity.title')}
+              </Button>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -297,7 +319,9 @@ function AppContent() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        {compareIds ? (
+        {view === 'capacity' ? (
+          <CapacityView rates={rates} onBack={() => setView('projects')} />
+        ) : compareIds ? (
           <ScenarioComparison
             projects={projects}
             rates={rates}
