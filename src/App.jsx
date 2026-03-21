@@ -284,7 +284,7 @@ function AppContent() {
               <Button
                 variant={view === 'projects' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => { setView('projects'); setActiveProjectId(null); }}
+                onClick={() => setView('projects')}
                 className="flex items-center gap-1.5"
               >
                 <LayoutDashboard className="w-4 h-4" />
@@ -293,7 +293,7 @@ function AppContent() {
               <Button
                 variant={view === 'capacity' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => { setView('capacity'); setActiveProjectId(null); }}
+                onClick={() => setView('capacity')}
                 className="flex items-center gap-1.5"
               >
                 <BarChart3 className="w-4 h-4" />
