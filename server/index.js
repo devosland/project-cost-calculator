@@ -29,7 +29,24 @@ app.use('/api/data', dataRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/capacity', capacityRouter);
-app.use('/api/v1', publicApiRouter);
+
+// Public API v1 with CORS whitelist
+const publicApiOrigins = (process.env.PUBLIC_API_ALLOWED_ORIGINS || '')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+const publicApiCors = (req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && publicApiOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
+    res.setHeader('Vary', 'Origin');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+};
+
+app.use('/api/v1', publicApiCors, publicApiRouter);
 
 // Backup endpoints (authMiddlewared)
 app.get('/api/backups', authMiddleware, (req, res) => {
