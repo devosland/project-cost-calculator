@@ -13,7 +13,7 @@ export default defineConfig({
     ],
     server: {
       deps: {
-        external: ['better-sqlite3'],
+        external: ['better-sqlite3', 'jsonwebtoken'],
       },
     },
   },

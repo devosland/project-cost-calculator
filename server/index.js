@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authRoutes from './auth.js';
+import apiKeysRouter from './apiKeysRoutes.js';
 import dataRoutes from './data.js';
 import projectRoutes from './projects.js';
 import templateRoutes from './templates.js';
@@ -22,6 +23,7 @@ app.use(cors());
 app.use(express.json());
 
 // API routes
+app.use('/api/auth/api-keys', apiKeysRouter);
 app.use('/api/auth', authRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/projects', projectRoutes);
