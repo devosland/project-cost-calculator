@@ -405,6 +405,32 @@ const translations = {
     'error.access_denied': 'Accès refusé',
     'error.project_not_found': 'Projet introuvable',
     'error.unknown': 'Une erreur est survenue',
+
+    // Common
+    'common.cancel': 'Annuler',
+
+    // Profile
+    'profile.title': 'Profil',
+
+    // API Keys
+    'apiKeys.title': 'Clés d\'API',
+    'apiKeys.subtitle': 'Gérez les clés d\'API pour permettre à des outils externes d\'intégrer votre compte',
+    'apiKeys.create': 'Créer une clé',
+    'apiKeys.keyName': 'Nom',
+    'apiKeys.keyNamePlaceholder': 'ex: Intégration Roadmap',
+    'apiKeys.scopes': 'Permissions',
+    'apiKeys.scopeRoadmapImport': 'Importer des projets depuis une roadmap',
+    'apiKeys.scopeRoadmapRead': 'Lire l\'état d\'imports roadmap',
+    'apiKeys.copyOnce': 'Copiez cette clé maintenant — elle ne sera plus affichée.',
+    'apiKeys.copy': 'Copier',
+    'apiKeys.copied': 'Copiée',
+    'apiKeys.revoke': 'Révoquer',
+    'apiKeys.revokeConfirm': 'Révoquer cette clé ? Les intégrations qui l\'utilisent cesseront immédiatement de fonctionner.',
+    'apiKeys.lastUsed': 'Dernière utilisation',
+    'apiKeys.never': 'Jamais',
+    'apiKeys.active': 'Active',
+    'apiKeys.revoked': 'Révoquée',
+    'apiKeys.noKeys': 'Aucune clé. Cliquez sur « Créer une clé » pour en générer une.',
   },
 
   en: {
@@ -811,6 +837,32 @@ const translations = {
     'error.access_denied': 'Access denied',
     'error.project_not_found': 'Project not found',
     'error.unknown': 'An error occurred',
+
+    // Common
+    'common.cancel': 'Cancel',
+
+    // Profile
+    'profile.title': 'Profile',
+
+    // API Keys
+    'apiKeys.title': 'API Keys',
+    'apiKeys.subtitle': 'Manage API keys to allow external tools to integrate with your account',
+    'apiKeys.create': 'Create a key',
+    'apiKeys.keyName': 'Name',
+    'apiKeys.keyNamePlaceholder': 'ex: Roadmap Integration',
+    'apiKeys.scopes': 'Permissions',
+    'apiKeys.scopeRoadmapImport': 'Import projects from a roadmap',
+    'apiKeys.scopeRoadmapRead': 'Read roadmap import status',
+    'apiKeys.copyOnce': 'Copy this key now — it will not be shown again.',
+    'apiKeys.copy': 'Copy',
+    'apiKeys.copied': 'Copied',
+    'apiKeys.revoke': 'Revoke',
+    'apiKeys.revokeConfirm': 'Revoke this key? Integrations using it will stop working immediately.',
+    'apiKeys.lastUsed': 'Last used',
+    'apiKeys.never': 'Never',
+    'apiKeys.active': 'Active',
+    'apiKeys.revoked': 'Revoked',
+    'apiKeys.noKeys': 'No keys. Click "Create a key" to generate one.',
   },
 };
 
