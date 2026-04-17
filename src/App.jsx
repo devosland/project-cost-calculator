@@ -7,6 +7,7 @@ import CapacityView from './components/CapacityView'
 import TemplateManager from './components/TemplateManager'
 import ShareDialog from './components/ShareDialog'
 import VersionHistory from './components/VersionHistory'
+import ProfileView from './components/ProfileView'
 import { getRatesConfig } from './config/rates'
 import { api } from './lib/api'
 import { createProject } from './lib/projectStore'
@@ -31,11 +32,15 @@ function AppContent() {
   const { segments, navigate } = useHashRouter();
 
   // Derive view state from URL hash
-  const view = segments[0] === 'capacity' ? 'capacity' : 'projects';
+  const view = segments[0] === 'capacity' ? 'capacity' : segments[0] === 'profile' ? 'profile' : 'projects';
   const activeProjectId = (view === 'projects' && segments[1]) ? segments[1] : null;
   const hashTab = segments[2] || null;
 
-  const setView = useCallback((v) => navigate(v === 'capacity' ? 'capacity' : 'projects'), [navigate]);
+  const setView = useCallback((v) => {
+    if (v === 'capacity') navigate('capacity');
+    else if (v === 'profile') navigate('profile');
+    else navigate('projects');
+  }, [navigate]);
   const setActiveProjectId = useCallback((id) => {
     if (id) navigate(`projects/${id}`);
     else navigate('projects');
@@ -303,10 +308,15 @@ function AppContent() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Button
+              variant={view === 'profile' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setView('profile')}
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+            >
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">{user.name}</span>
-            </div>
+            </Button>
             <SaveIndicator status={saveStatus} />
             <ThemeToggle />
             <Button
@@ -331,7 +341,9 @@ function AppContent() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        {view === 'capacity' ? (
+        {view === 'profile' ? (
+          <ProfileView user={user} />
+        ) : view === 'capacity' ? (
           <CapacityView rates={rates} initialTab={hashTab || 'resources'} onRatesChange={handleRatesChange} onBack={() => setView('projects')} onDataChanged={() => {
             api.loadData().then((data) => {
               if (data.projects) setProjects(data.projects);

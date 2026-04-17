@@ -132,11 +132,44 @@ db.exec(`
   )
 `);
 
+// API key tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS api_keys (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    key_prefix TEXT NOT NULL,
+    key_hash TEXT NOT NULL,
+    scopes TEXT NOT NULL DEFAULT '[]',
+    rate_limit_per_min INTEGER NOT NULL DEFAULT 60,
+    last_used_at TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TEXT,
+    UNIQUE(key_hash)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS api_key_usage (
+    id INTEGER PRIMARY KEY,
+    api_key_id INTEGER NOT NULL REFERENCES api_keys(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL,
+    method TEXT NOT NULL,
+    status_code INTEGER NOT NULL,
+    ip TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 // Capacity indexes
 db.exec(`CREATE INDEX IF NOT EXISTS idx_resources_user ON resources(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_assignments_resource_months ON resource_assignments(resource_id, start_month, end_month)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_assignments_project ON resource_assignments(project_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_transition_plans_user ON transition_plans(user_id)`);
+
+// API key indexes
+db.exec(`CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id) WHERE revoked_at IS NULL`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_api_key_usage_key ON api_key_usage(api_key_id, created_at)`);
 
 // Migration: move project data from user_data.projects into the projects table
 function migrateUserDataToProjects() {
@@ -457,6 +490,50 @@ function deleteTransitionPlan(planId) {
   return stmt.run(planId);
 }
 
+// API key helpers
+function createApiKeyRecord(userId, name, keyPrefix, keyHash, scopes, rateLimit) {
+  const stmt = db.prepare(
+    'INSERT INTO api_keys (user_id, name, key_prefix, key_hash, scopes, rate_limit_per_min) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+  const result = stmt.run(userId, name, keyPrefix, keyHash, JSON.stringify(scopes), rateLimit);
+  return Number(result.lastInsertRowid);
+}
+
+function findApiKeyByHash(keyHash) {
+  return db.prepare('SELECT * FROM api_keys WHERE key_hash = ? AND revoked_at IS NULL').get(keyHash);
+}
+
+function getApiKeysByUser(userId) {
+  return db.prepare(
+    'SELECT id, name, key_prefix, scopes, rate_limit_per_min, last_used_at, created_at, revoked_at FROM api_keys WHERE user_id = ? ORDER BY created_at DESC'
+  ).all(userId);
+}
+
+function revokeApiKey(keyId, userId) {
+  return db.prepare(
+    "UPDATE api_keys SET revoked_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND revoked_at IS NULL"
+  ).run(keyId, userId);
+}
+
+function touchApiKey(keyId) {
+  db.prepare('UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?').run(keyId);
+}
+
+function logApiKeyUsage(keyId, endpoint, method, statusCode, ip) {
+  db.prepare(
+    'INSERT INTO api_key_usage (api_key_id, endpoint, method, status_code, ip) VALUES (?, ?, ?, ?, ?)'
+  ).run(keyId, endpoint, method, statusCode, ip);
+}
+
+function findProjectByExternalId(userId, externalId) {
+  return db.prepare(`
+    SELECT * FROM projects
+    WHERE owner_id = ?
+      AND json_extract(data, '$.externalId') = ?
+    LIMIT 1
+  `).get(userId, externalId);
+}
+
 export {
   db,
   createUser,
@@ -498,5 +575,12 @@ export {
   getTransitionPlanById,
   createTransitionPlan,
   updateTransitionPlan,
-  deleteTransitionPlan
+  deleteTransitionPlan,
+  createApiKeyRecord,
+  findApiKeyByHash,
+  getApiKeysByUser,
+  revokeApiKey,
+  touchApiKey,
+  logApiKeyUsage,
+  findProjectByExternalId
 };
