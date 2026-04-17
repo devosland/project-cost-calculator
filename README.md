@@ -55,6 +55,35 @@ A full-featured project planning, budgeting, and capacity management tool built 
 - Auto-save with status indicator
 - Responsive layout for mobile and desktop
 
+## Public API (v1)
+
+Endpoint public permettant à des outils externes (ex: roadmap tools) de créer des projets via un import structuré.
+
+**Documentation d'intégration complète** : voir [`docs/integration-api-roadmap.md`](docs/integration-api-roadmap.md)
+
+### Authentification
+
+Les appels à `/api/v1/*` utilisent une **clé d'API** (`X-API-Key: ckc_live_...`) distincte du JWT utilisateur. Les clés sont générées depuis le profil (`#/profile`), scopées (`roadmap:import`, `roadmap:read`), et révocables à tout moment.
+
+### Endpoints disponibles
+
+- `POST /api/v1/roadmap/import` — Créer (ou upsert avec `?upsert=true`) un projet depuis une roadmap
+- `GET /api/v1/roadmap/import/:externalId/status` — Vérifier si un `externalId` a déjà été importé
+
+### Configuration requise
+
+Variables d'environnement :
+- `PUBLIC_API_ALLOWED_ORIGINS` — Origines CORS autorisées (liste CSV)
+- `PUBLIC_BASE_URL` — URL publique pour construire les liens retournés aux clients
+
+### Sécurité
+
+- Clés d'API hashées SHA-256 en DB (lookup direct, 192 bits d'entropie)
+- Rate limiting : 60 requêtes/minute par clé
+- CORS whitelist stricte sur `/api/v1/*`
+- Audit log de chaque utilisation (`api_key_usage` table)
+- Validation Zod stricte du payload (schéma, dates ISO, graphe de dépendances sans cycles)
+
 ## Tech Stack
 
 | Layer | Technology |
