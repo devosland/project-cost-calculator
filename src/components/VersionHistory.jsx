@@ -1,8 +1,26 @@
+/**
+ * Slide-in right-panel for project version history (snapshots). Allows the
+ * user to create a labelled snapshot of the current project state and restore
+ * any previous snapshot. The panel uses a CSS transform slide animation rather
+ * than conditional rendering so it can animate in and out smoothly. Snapshots
+ * are fetched by the parent (App) before opening and passed in via props.
+ */
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { X, History, RotateCcw, Save } from 'lucide-react';
 import { useLocale, getDateLocale } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {boolean} props.open - Whether the panel is visible (drives CSS transform).
+ * @param {function(): void} props.onClose - Close the panel.
+ * @param {Array<{id: string, label: string, created_at: string}>} props.snapshots
+ *   Existing snapshots for the active project, newest first.
+ * @param {function(string|undefined): void} props.onCreateSnapshot - Create a
+ *   new snapshot with an optional label.
+ * @param {function(string): void} props.onRestoreSnapshot - Restore a snapshot
+ *   by ID and close the panel.
+ */
 const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreSnapshot }) => {
   const { t, locale } = useLocale();
   const [label, setLabel] = useState('');

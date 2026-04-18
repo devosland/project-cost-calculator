@@ -1,3 +1,13 @@
+/**
+ * Side-by-side comparison of two or more project scenarios. Renders a metric
+ * table (total cost, labour, non-labour, duration, burn rate, phases, members,
+ * budget) with a delta column showing the spread between the min and max values.
+ * The cheapest total cost is highlighted green, the most expensive red. A
+ * proportional bar chart below the table gives a quick visual cost comparison.
+ *
+ * Scenarios are existing projects from the project list — no separate
+ * scenario store. Comparison is computed entirely client-side.
+ */
 import React from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -12,6 +22,13 @@ import {
   formatCurrency,
 } from '../lib/costCalculations';
 
+/**
+ * @param {Object} props
+ * @param {Array<Object>} props.projects    - Full project list; filtered by selectedIds.
+ * @param {Object}        props.rates       - Enterprise rate table for cost calculations.
+ * @param {Array<string>} props.selectedIds - IDs of projects to compare (≥ 2).
+ * @param {function(): void} props.onClose  - Return to the Dashboard.
+ */
 const ScenarioComparison = ({ projects, rates, selectedIds, onClose }) => {
   const { t } = useLocale();
   const selected = projects.filter((p) => selectedIds.includes(p.id));

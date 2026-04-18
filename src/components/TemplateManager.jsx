@@ -1,9 +1,29 @@
+/**
+ * Modal for saving the current project as a reusable template and loading
+ * existing templates as new projects. Two-tab layout: Save (name input) and
+ * Load (template list with use/delete actions). Templates are stored server-side
+ * and managed via App handlers; this component is purely presentational.
+ */
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { X, Trash2, Save, FolderOpen } from 'lucide-react';
 import { useLocale, getDateLocale } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {boolean} props.open - Whether the modal is visible.
+ * @param {function(): void} props.onClose - Close the modal.
+ * @param {Array<{id: string, name: string, created_at: string, data: Object}>} props.templates
+ *   Saved templates list.
+ * @param {function(string): void} props.onSaveTemplate - Save current project as
+ *   template with the given name.
+ * @param {function(Object): void} props.onLoadTemplate - Create a new project from
+ *   the selected template object.
+ * @param {function(string): void} props.onDeleteTemplate - Delete a template by ID.
+ * @param {Object|null} props.currentProject - Active project; used to prefill the
+ *   template name with "{projectName} - Template".
+ */
 const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTemplate, onDeleteTemplate, currentProject }) => {
   const { t, locale } = useLocale();
   const [activeTab, setActiveTab] = useState('save');

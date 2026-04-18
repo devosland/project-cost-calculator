@@ -1,3 +1,11 @@
+/**
+ * Visual timeline (Gantt-style) for project phases with cost breakdown table
+ * and milestone list. Phase bars are positioned using percentage offsets
+ * derived from calculateProjectDurationWithDependencies so parallel phases
+ * (with dependency links) are placed correctly. Week markers adapt their
+ * density to the total duration (every 1, 2, or 4 weeks). Supports iCal
+ * export of milestones via exportCalendar.
+ */
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -23,6 +31,12 @@ const LIGHT_COLORS = [
   'bg-orange-100 text-orange-700', 'bg-teal-100 text-teal-700',
 ];
 
+/**
+ * @param {Object} props
+ * @param {Object} props.project        - Full project with phases, milestones, settings.
+ * @param {Object} props.rates          - Enterprise rate table for cost calculations.
+ * @param {string} [props.currency='CAD'] - ISO currency code for the cost breakdown table.
+ */
 const TimelineView = ({ project, rates, currency = 'CAD' }) => {
   const { t } = useLocale();
   const fmt = (v) => formatCurrency(v, currency);
@@ -41,6 +55,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
   const scheduleMap = new Map(phaseSchedule.map((s) => [s.phaseId, s]));
 
   const weekMarkers = [];
+  // Adapt marker density to avoid label crowding on long timelines.
   const markerStep = totalWeeks <= 12 ? 1 : totalWeeks <= 24 ? 2 : 4;
   for (let i = 0; i <= totalWeeks; i += markerStep) weekMarkers.push(i);
   if (weekMarkers[weekMarkers.length - 1] !== totalWeeks) weekMarkers.push(totalWeeks);

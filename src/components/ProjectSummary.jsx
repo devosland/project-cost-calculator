@@ -1,3 +1,13 @@
+/**
+ * Print-ready project summary report. Renders total cost, duration, burn rate,
+ * budget variance, per-phase breakdown, named resource cost table, non-labour
+ * costs, and chronological milestones. Includes a browser-print button.
+ *
+ * Resource cost calculation in this component mirrors the logic in
+ * costCalculations but is applied locally per member with prorating by
+ * startMonth/endMonth, capped to the phase duration — kept local to avoid
+ * changing the shared library for a single display use-case.
+ */
 import React from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -14,12 +24,26 @@ import {
   formatCurrency,
 } from '../lib/costCalculations';
 
+/**
+ * Converts a month range (YYYY-MM strings) to an approximate week count using
+ * 4.33 weeks/month. Capped at 0 to handle reversed ranges gracefully.
+ *
+ * @param {string} start - Start month in YYYY-MM format.
+ * @param {string} end   - End month in YYYY-MM format.
+ * @returns {number} Rounded number of weeks between the two months.
+ */
 function monthDiffInWeeks(start, end) {
   const [sy, sm] = start.split('-').map(Number);
   const [ey, em] = end.split('-').map(Number);
   return Math.max(0, Math.round(((ey - sy) * 12 + (em - sm)) * 4.33));
 }
 
+/**
+ * @param {Object} props
+ * @param {Object} props.project - Full project object with phases, settings,
+ *   budget, and nonLabourCosts.
+ * @param {Object} props.rates - Enterprise rate table for labour cost derivation.
+ */
 const ProjectSummary = ({ project, rates }) => {
   const { t, locale } = useLocale();
   const currency = project.settings?.currency || 'CAD';
@@ -176,6 +200,8 @@ const ProjectSummary = ({ project, rates }) => {
                           ? Math.min(monthDiffInWeeks(m.startMonth, m.endMonth), phase.durationWeeks)
                           : phase.durationWeeks;
                         const cost = hourlyRate * 37.5 * m.quantity * (m.allocation / 100) * weeks;
+                        // 'Employé interne' is the canonical level key for permanent staff;
+                        // the Permanent badge is derived at runtime, not stored separately.
                         const isPermanent = m.level === 'Employé interne';
                         return (
                           <tr key={`${phase.id}-${m.resourceName}`} className="border-b last:border-b-0">

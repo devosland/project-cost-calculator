@@ -1,3 +1,13 @@
+/**
+ * Legacy standalone cost calculator — the original MVP before the multi-phase
+ * project model was introduced. Computes weekly / monthly / yearly cost for a
+ * flat team composition (no phases, no timelines). The ?r=true query parameter
+ * reveals hourly rate details, a remnant of the early access-control model.
+ *
+ * Note: ce composant est un legacy wrapper autour de la logique pré-ProjectView,
+ * possiblement supprimable. Il n'est plus importé dans App.jsx ni dans aucun
+ * composant actif — vérifier avant de supprimer.
+ */
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -9,6 +19,11 @@ const useQuery = () => {
   return new URLSearchParams(window.location.search);
 }
 
+/**
+ * @param {Object} props
+ * @param {Object} props.rates - Rate table ({ INTERNAL_RATE, CONSULTANT_RATES })
+ *   used to look up hourly rates for each role/level combination.
+ */
 const ProjectCostCalculator = ({ rates }) => {
   const query = useQuery();
   const isAuthorized = query.get('r') === 'true';

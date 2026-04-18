@@ -1,9 +1,25 @@
+/**
+ * List of consultant-to-permanent transition plans with status badges and
+ * actions (open in TransitionPlanner, delete). Plan data is stored as a JSON
+ * string in the SQLite DB (plan.data); parseData() handles the deserialisation
+ * before passing a fully-parsed plan object to the parent's onSelectPlan
+ * handler. Inline deletion calls the API directly and optimistically removes
+ * the plan from local state.
+ */
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
 
+/**
+ * Safely parses plan.data from the DB. plan.data is stored as a JSON string
+ * in SQLite; it must be parsed before use. Returns an empty array on any
+ * parse failure so callers never receive null/undefined.
+ *
+ * @param {{data: string|Object|null}} plan - Plan object from the API.
+ * @returns {Array<Object>} Array of transition entries (may be empty).
+ */
 function parseData(plan) {
   if (!plan.data) return [];
   try {
@@ -18,6 +34,13 @@ const statusColors = {
   applied: 'bg-green-100 text-green-700',
 };
 
+/**
+ * @param {Object} props
+ * @param {function(Object): void} props.onSelectPlan - Called with the selected
+ *   plan (data already parsed to an object) to open it in TransitionPlanner.
+ * @param {function(): void} props.onNewPlan - Open TransitionPlanner for a new
+ *   (blank) plan.
+ */
 const TransitionList = ({ onSelectPlan, onNewPlan }) => {
   const { t } = useLocale();
   const [plans, setPlans] = useState([]);

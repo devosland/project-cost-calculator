@@ -1,9 +1,25 @@
+/**
+ * Enterprise-level rate editor for INTERNAL_RATE and CONSULTANT_RATES.
+ * Rates are stored at the enterprise level (not per-project) — they were
+ * migrated from per-project storage in an earlier PR to enforce a single
+ * source of truth. Editing a cell updates the rate table globally and
+ * immediately persists via the onRatesChange callback (which triggers the
+ * debounced auto-save in App). Roles can be added or removed; each new role
+ * is initialised with zero rates for all consultant levels.
+ */
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { PlusCircle, Trash2, Pencil, Check, X } from 'lucide-react';
 import { useLocale, CONSULTANT_LEVEL_KEYS, getConsultantLevelLabel } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {{INTERNAL_RATE: number, CONSULTANT_RATES: Record<string, Record<string, number>>}} props.rates
+ *   Current enterprise rate table.
+ * @param {function(Object): void} props.onRatesChange - Called with the full
+ *   updated rates object after any edit; triggers global persistence via App.
+ */
 const RolesRatesManager = ({ rates, onRatesChange }) => {
   const { t, locale } = useLocale();
   const [editingCell, setEditingCell] = useState(null);

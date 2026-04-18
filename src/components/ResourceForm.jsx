@@ -1,8 +1,24 @@
+/**
+ * Inline create/edit form for a single resource in the capacity pool. Used by
+ * ResourcePool for both new-resource creation and existing-resource editing.
+ * When a resource prop is provided the form initialises from it; the same
+ * component is reused for both modes. Pressing Escape cancels without saving.
+ */
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Check, X } from 'lucide-react';
 import { useLocale, LEVEL_KEYS, getLevelLabel } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {Object|null} props.resource - Existing resource to edit, or null for create.
+ *   Expected shape: { name, role, level, max_capacity }.
+ * @param {Object} props.rates - Rate table; CONSULTANT_RATES keys provide the
+ *   list of available roles.
+ * @param {function({name: string, role: string, level: string, max_capacity: number}): void} props.onSave
+ *   Called with the validated form data on submit.
+ * @param {function(): void} props.onCancel - Close the form without saving.
+ */
 const ResourceForm = ({ resource, rates, onSave, onCancel }) => {
   const { t } = useLocale();
   const roles = Object.keys(rates.CONSULTANT_RATES);

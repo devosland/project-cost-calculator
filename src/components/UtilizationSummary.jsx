@@ -1,7 +1,26 @@
+/**
+ * Summary row rendered at the bottom of the CapacityGantt grid showing overall
+ * team utilisation per month. For each month, total allocation across all
+ * resources is divided by total available capacity (sum of max_capacity values)
+ * to produce a percentage. Colour thresholds: green < 80%, amber 80–99%,
+ * red ≥ 100% (over-allocated). Rendered as a full-width CSS grid row that
+ * spans all month columns.
+ */
 import React from 'react';
 import { calculateUtilization } from '../lib/capacityCalculations';
 import { useLocale } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {Array<{id: number, max_capacity: number}>} props.resources
+ *   All resources in the pool; used to compute total available capacity.
+ * @param {Array<Object>} props.assignments - All Gantt assignments; passed to
+ *   calculateUtilization to sum allocation per resource per month.
+ * @param {Array<string>} props.months - Ordered array of YYYY-MM month strings
+ *   matching the Gantt grid columns.
+ * @param {string} props.gridCols - CSS grid-template-columns value that matches
+ *   the parent Gantt grid so the row aligns perfectly.
+ */
 const UtilizationSummary = ({ resources, assignments, months, gridCols }) => {
   const { t } = useLocale();
 
