@@ -100,7 +100,9 @@ app.use(express.static(distPath));
 
 // Catch-all for client-side routes: any request that didn't match an API route
 // or a static file gets index.html so the React router can handle it.
-app.get('*', (req, res) => {
+// Express 5 requires named wildcards — `/{*splat}` matches both `/` and any
+// deeper path (the braces make the wildcard optional).
+app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
