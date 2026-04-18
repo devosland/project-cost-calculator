@@ -42,3 +42,72 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  smoke:
+    # End-to-end runtime check that mirrors production deployment.
+    #
+    # Why this job exists: unit tests import the server code but never call
+    # app.listen(), so validation errors that throw at server boot are missed.
+    # Historical incidents this would have caught:
+    #   - express-rate-limit v8 ERR_ERL_KEY_GEN_IPV6 (thrown during rateLimit() factory)
+    #   - Express 5 path-to-regexp rejecting `app.get('*', ...)` (thrown at route registration)
+    #   - Docker image build failures on native deps (better-sqlite3, bcryptjs)
+    # Runs in parallel with test/lint so feedback stays fast.
+    name: Docker Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject host port mapping for smoke test
+        # docker-compose.yml is committed without a ports: block (the VPS
+        # uses Traefik labels / nginx-proxy-manager). For the smoke test
+        # we need to expose the container on localhost:3002.
+        run: |
+          sed -i '/restart: unless-stopped/a\    ports:\n      - "3002:80"' docker-compose.yml
+
+      - name: Build and start container
+        run: docker compose up -d --build --force-recreate
+
+      - name: Wait for server to respond
+        # Retries for up to ~60s. If the server crashes on boot (like the
+        # express-rate-limit / path-to-regexp incidents), it never listens
+        # and this step times out, dumping logs to make the failure obvious.
+        run: |
+          MAX_ATTEMPTS=30
+          ATTEMPT=1
+          HTTP_CODE=""
+          until [ "$ATTEMPT" -gt "$MAX_ATTEMPTS" ]; do
+            HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 http://localhost:3002 || true)
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "304" ]; then
+              echo "OK: Server responded with $HTTP_CODE after attempt $ATTEMPT"
+              break
+            fi
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: got ${HTTP_CODE:-curl_failed}; retrying..."
+            sleep 2
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "304" ]; then
+            echo "FAIL: Server did not become healthy after $MAX_ATTEMPTS attempts"
+            echo "=== Container status ==="
+            docker compose ps
+            echo "=== Container logs ==="
+            docker compose logs --tail 100 web
+            exit 1
+          fi
+
+      - name: Smoke test public API endpoint
+        # Exercises route registration and middleware stack — would catch
+        # path-to-regexp / auth middleware errors that only trigger on request.
+        run: |
+          API_CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3002/api/v1/roadmap/import)
+          if [ "$API_CODE" != "401" ]; then
+            echo "FAIL: /api/v1/roadmap/import without auth expected 401, got $API_CODE"
+            docker compose logs --tail 50 web
+            exit 1
+          fi
+          echo "OK: /api/v1/roadmap/import correctly returned 401 unauthenticated"
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down --volumes --remove-orphans
