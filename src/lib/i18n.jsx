@@ -467,6 +467,13 @@ const translations = {
     'apiTester.apiKeyHelper': 'Non persistée — à coller à chaque session.',
     'apiTester.copyFailed': 'Échec de la copie',
     'apiTester.noPhases': 'Aucune phase. Cliquez sur « {addPhase} ».',
+    'apiTester.labelName': 'name',
+    'apiTester.labelExternalId': 'externalId',
+    'apiTester.labelStartDate': 'startDate',
+    'apiTester.labelDescription': 'description',
+    'apiTester.required': '*',
+    'apiTester.placeholderProjectName': 'Nom du projet',
+    'apiTester.placeholderOptional': 'Optionnel',
   },
 
   en: {
@@ -935,6 +942,13 @@ const translations = {
     'apiTester.apiKeyHelper': 'Not persisted — paste each session.',
     'apiTester.copyFailed': 'Copy failed',
     'apiTester.noPhases': 'No phases. Click "{addPhase}" to add one.',
+    'apiTester.labelName': 'name',
+    'apiTester.labelExternalId': 'externalId',
+    'apiTester.labelStartDate': 'startDate',
+    'apiTester.labelDescription': 'description',
+    'apiTester.required': '*',
+    'apiTester.placeholderProjectName': 'Project name',
+    'apiTester.placeholderOptional': 'Optional',
   },
 };
 

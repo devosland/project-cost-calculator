@@ -40,10 +40,14 @@ function shellEscapeSingleQuotes(str) {
   return str.replace(/'/g, "'\\''");
 }
 
+function shellEscapeDoubleQuote(str) {
+  return String(str).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 function curlFromRequest(method, url, apiKey, body) {
   const lines = [
     `curl -X ${method} "${window.location.origin}${url}"`,
-    `  -H "X-API-Key: ${apiKey}"`,
+    `  -H "X-API-Key: ${shellEscapeDoubleQuote(apiKey)}"`,
   ];
   if (body) {
     const json = JSON.stringify(body);
@@ -215,8 +219,10 @@ function TabImport({ apiKey, t }) {
   const [curlCmd, setCurlCmd] = useState('');
 
   // Sync form → json when switching to raw mode
+  // Show the full payload (including empty optional fields) so the round-trip
+  // form→JSON→form is lossless. cleanPayload is only used at send time.
   function switchToJson() {
-    setRawJson(JSON.stringify(cleanPayload(stripInternalFields(payload)), null, 2));
+    setRawJson(JSON.stringify(stripInternalFields(payload), null, 2));
     setJsonError('');
     setMode('json');
   }
@@ -232,6 +238,10 @@ function TabImport({ apiKey, t }) {
         },
         phases: Array.isArray(parsed?.phases)
           ? parsed.phases.map(p => ({
+              id: '',
+              name: '',
+              order: 1,
+              durationMonths: 1,
               startDate: '',
               endDate: '',
               dependsOn: [],
@@ -273,15 +283,22 @@ function TabImport({ apiKey, t }) {
   }
 
   async function handleSend() {
+    let payloadToSend;
+    if (mode === 'json') {
+      try {
+        payloadToSend = JSON.parse(rawJson);
+      } catch (err) {
+        setJsonError(t('apiTester.invalidJson') + ': ' + err.message);
+        return;
+      }
+    } else {
+      payloadToSend = cleanPayload(stripInternalFields(payload));
+    }
+    setJsonError('');
     setSending(true);
     setResult(null);
     try {
-      let body;
-      if (mode === 'json') {
-        body = JSON.parse(rawJson);
-      } else {
-        body = cleanPayload(stripInternalFields(payload));
-      }
+      const body = payloadToSend;
       const url = '/api/v1/roadmap/import' + (upsert ? '?upsert=true' : '');
       const t0 = performance.now();
       const response = await fetch(url, {
@@ -385,17 +402,17 @@ function TabImport({ apiKey, t }) {
             <h3 className="text-sm font-semibold">{t('apiTester.project')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium block mb-1">name *</label>
+                <label className="text-xs font-medium block mb-1">{t('apiTester.labelName')} {t('apiTester.required')}</label>
                 <input
                   className="input-field w-full"
                   value={payload.project.name}
                   onChange={e => setPayload(p => ({ ...p, project: { ...p.project, name: e.target.value } }))}
-                  placeholder="Nom du projet"
+                  placeholder={t('apiTester.placeholderProjectName')}
                   maxLength={200}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium block mb-1">externalId *</label>
+                <label className="text-xs font-medium block mb-1">{t('apiTester.labelExternalId')} {t('apiTester.required')}</label>
                 <input
                   className="input-field w-full font-mono text-sm"
                   value={payload.project.externalId}
@@ -405,7 +422,7 @@ function TabImport({ apiKey, t }) {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium block mb-1">startDate *</label>
+                <label className="text-xs font-medium block mb-1">{t('apiTester.labelStartDate')} {t('apiTester.required')}</label>
                 <input
                   type="date"
                   className="input-field w-full"
@@ -414,13 +431,13 @@ function TabImport({ apiKey, t }) {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium block mb-1">description</label>
+                <label className="text-xs font-medium block mb-1">{t('apiTester.labelDescription')}</label>
                 <textarea
                   className="input-field w-full resize-none"
                   rows={2}
                   value={payload.project.description}
                   onChange={e => setPayload(p => ({ ...p, project: { ...p.project, description: e.target.value } }))}
-                  placeholder="Optionnel"
+                  placeholder={t('apiTester.placeholderOptional')}
                   maxLength={2000}
                 />
               </div>
