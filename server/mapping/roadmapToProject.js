@@ -21,7 +21,7 @@ export function mapRoadmapToProject(payload) {
     order: p.order,
     durationWeeks: (p.startDate && p.endDate)
       ? datesToWeeks(p.startDate, p.endDate)
-      : monthsToWeeks(p.durationMonths),
+      : (p.durationMonths !== undefined ? monthsToWeeks(p.durationMonths) : 0),
     startDate: p.startDate ?? null,
     endDate: p.endDate ?? null,
     dependsOn: p.dependsOn ?? [],

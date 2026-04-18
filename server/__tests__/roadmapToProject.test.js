@@ -84,4 +84,16 @@ describe('mapRoadmapToProject', () => {
     });
     expect(r.phases[0].milestones).toEqual([]);
   });
+
+  it('handles phase with dates but no durationMonths', () => {
+    const r = mapRoadmapToProject({
+      project: { name: 'P', externalId: 'RM-1', startDate: '2026-06-01' },
+      phases: [{
+        id: 'a', name: 'A', order: 1,
+        startDate: '2026-06-01', endDate: '2026-09-01',
+        // no durationMonths
+      }],
+    });
+    expect(r.phases[0].durationWeeks).toBe(13);
+  });
 });

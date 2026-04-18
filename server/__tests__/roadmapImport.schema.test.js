@@ -71,4 +71,29 @@ describe('roadmap import schema', () => {
     });
     expect(r.ok).toBe(true);
   });
+
+  it('accepts phase with dates but without durationMonths', () => {
+    const r = validateRoadmapImport({
+      ...valid,
+      phases: [{ id: 'a', name: 'A', order: 1, startDate: '2026-06-01', endDate: '2026-09-01' }],
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it('rejects phase with neither durationMonths nor both dates', () => {
+    const r = validateRoadmapImport({
+      ...valid,
+      phases: [{ id: 'a', name: 'A', order: 1 }],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.issues.some(i => i.path.includes('durationMonths'))).toBe(true);
+  });
+
+  it('rejects phase with only startDate (no endDate, no durationMonths)', () => {
+    const r = validateRoadmapImport({
+      ...valid,
+      phases: [{ id: 'a', name: 'A', order: 1, startDate: '2026-06-01' }],
+    });
+    expect(r.ok).toBe(false);
+  });
 });
