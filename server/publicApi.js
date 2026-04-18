@@ -6,7 +6,7 @@
  * n'impacte les autres.
  */
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 import { randomBytes } from 'crypto';
 import { apiKeyAuth } from './apiKeyAuth.js';
 import { validateRoadmapImport } from './schemas/roadmapImport.js';
@@ -23,7 +23,11 @@ const router = Router();
 const perKeyLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: (req) => req.apiKey?.rateLimit ?? 60,
-  keyGenerator: (req) => req.apiKey?.id?.toString() ?? req.ip,
+  // express-rate-limit v8 requires ipKeyGenerator() for any req.ip fallback
+  // (IPv6 addresses are subnet-masked /56 to prevent per-address evasion).
+  // apiKeyAuth runs before this limiter so the fallback should never trigger
+  // in practice, but the static validator checks the function body.
+  keyGenerator: (req) => req.apiKey?.id?.toString() ?? ipKeyGenerator(req.ip),
   handler: (req, res) => res.status(429).json({ error: 'rate_limit_exceeded', retryAfter: 60 }),
 });
 
