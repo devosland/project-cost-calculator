@@ -1,3 +1,10 @@
+/**
+ * Four-step interactive onboarding guide displayed on the Dashboard for new
+ * users: (1) Configure rates, (2) Add resources, (3) Create a project,
+ * (4) Assign resources to the Gantt. Each step shows a CTA button pointing to
+ * the relevant section. Once dismissed, collapses to a floating help button so
+ * the user can re-open it at any time without losing progress state.
+ */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -5,10 +12,19 @@ import { CheckCircle2, Circle, ArrowRight, DollarSign, Users, FolderOpen, BarCha
 import { useLocale } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
 
+/**
+ * @param {Object} props
+ * @param {Array<Object>} props.projects - All projects; used to detect whether
+ *   the user has created a project and assigned resources (steps 3 & 4).
+ * @param {function(string, string=): void} props.onNavigate - Navigate to a
+ *   section. Called as onNavigate('capacity', 'rates') or onNavigate('projects').
+ */
 const OnboardingGuide = ({ projects, onNavigate }) => {
   const { t } = useLocale();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Persist dismissal in localStorage only — no backend record needed; this is
+  // a pure client-side UX preference that resets on localStorage clear.
   const [dismissed, setDismissed] = useState(() => localStorage.getItem('onboarding_dismissed') === 'true');
   const [showGuide, setShowGuide] = useState(false);
 

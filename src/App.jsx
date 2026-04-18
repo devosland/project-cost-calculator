@@ -1,3 +1,12 @@
+/**
+ * Top-level application orchestrator. Mounts the hash-based router, manages
+ * global auth state, performs bulk data load on login, runs a 1-second debounced
+ * auto-save to the API on every data mutation, and routes between the four main
+ * views: Dashboard, ProjectView, CapacityView, and ProfileView.
+ *
+ * Navigation is entirely URL-hash-driven (useHashRouter) so deep links and
+ * browser back/forward work without a server-side router.
+ */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import AuthPage from './components/AuthPage'
 import Dashboard from './components/Dashboard'
@@ -54,7 +63,8 @@ function AppContent() {
   const [showHistory, setShowHistory] = useState(false);
   const [snapshots, setSnapshots] = useState([]);
 
-  // Apply saved theme on mount
+  // Apply saved theme on mount — mirrors ThemeToggle's localStorage key so the
+  // choice persists across sessions without a backend preference store.
   useEffect(() => {
     const saved = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -63,7 +73,9 @@ function AppContent() {
     }
   }, []);
 
-  // Check existing token on mount
+  // Validate the stored JWT on mount so the session is restored without a
+  // re-login. If the token is expired or invalid, it is cleared and the user
+  // is sent back to AuthPage.
   useEffect(() => {
     const token = api.getToken();
     if (token) {
@@ -81,7 +93,9 @@ function AppContent() {
     }
   }, []);
 
-  // Load data from API when user is authenticated
+  // Bulk load on auth: projects, rates, and templates are fetched together so
+  // the app is fully hydrated before the first render. Falls back to locale
+  // defaults if the user has no saved rates yet (first login).
   useEffect(() => {
     if (!user) return;
 
@@ -112,7 +126,9 @@ function AppContent() {
     api.getTemplates().then(setTemplates).catch(() => {});
   }, [user]);
 
-  // Debounced save to API
+  // Debounced auto-save: collapses rapid successive edits into a single API
+  // call fired 1 second after the last mutation. The timer is stored in a ref
+  // so it survives re-renders without creating closure issues.
   const saveToApi = useCallback((newProjects, newRates) => {
     if (!user) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);

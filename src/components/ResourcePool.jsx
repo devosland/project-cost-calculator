@@ -1,3 +1,14 @@
+/**
+ * CRUD list of enterprise-level resources (the capacity pool). Each resource
+ * has a name, role, level, and max_capacity percentage. Resources are fetched
+ * from the capacity API and displayed in a filterable table. Inline editing is
+ * handled by toggling ResourceForm in place of the row. Duplicate name conflicts
+ * (HTTP 409) are surfaced as alert() messages.
+ *
+ * The "Permanent" / "Consultant" type badge is derived at runtime from the
+ * resource level field: level === 'Employé interne' → Permanent, anything else
+ * → Consultant. This classification is not stored as a separate column.
+ */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -6,6 +17,11 @@ import { useLocale, getLevelLabel } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
 import ResourceForm from './ResourceForm';
 
+/**
+ * @param {Object} props
+ * @param {Object} props.rates - Enterprise rate table; passed to ResourceForm
+ *   so role options are derived from CONSULTANT_RATES keys.
+ */
 const ResourcePool = ({ rates }) => {
   const { t } = useLocale();
   const [resources, setResources] = useState([]);
@@ -68,6 +84,8 @@ const ResourcePool = ({ rates }) => {
     }
   };
 
+  // 'Employé interne' is the canonical level key that marks a resource as a
+  // permanent employee. The badge is purely a display-layer derivation.
   const getTypeBadge = (level) => {
     const isPermanent = level === 'Employé interne';
     if (isPermanent) {

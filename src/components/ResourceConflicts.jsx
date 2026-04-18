@@ -1,9 +1,23 @@
+/**
+ * Detects and displays over-allocation conflicts across project phases.
+ * For each role/level combination, total allocation is computed per week
+ * (accounting for phase schedule from calculateProjectDurationWithDependencies).
+ * Weeks where total allocation exceeds available capacity (quantity × 100%)
+ * are grouped into consecutive ranges and reported as warnings. Returns null
+ * when there are no phases or no schedule data to analyse.
+ */
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { calculateProjectDurationWithDependencies } from '../lib/costCalculations';
 import { useLocale } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {Object} props.project - Full project object with phases and team members.
+ * @param {Object} props.rates   - Rate table (passed for signature compatibility;
+ *   not used in conflict detection itself).
+ */
 const ResourceConflicts = ({ project, rates }) => {
   const { t } = useLocale();
   const { phaseSchedule } = calculateProjectDurationWithDependencies(project);
@@ -13,7 +27,8 @@ const ResourceConflicts = ({ project, rates }) => {
 
   const scheduleMap = new Map(phaseSchedule.map((s) => [s.phaseId, s]));
 
-  // Build a list of all role+level allocations per week
+  // Aggregate allocation per role+level key per absolute week number, then
+  // scan for weeks where total allocation / quantity > 100 (over-allocated).
   const weekAllocations = {};
 
   for (const phase of phases) {

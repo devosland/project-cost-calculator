@@ -1,3 +1,11 @@
+/**
+ * Modal popover for a single-consultant → single-permanent-employee transition.
+ * Launched from a consultant's Gantt bar. Lets the planner pick a replacement
+ * from the Internal Employee pool, set a transition date and overlap period,
+ * preview the cost impact (savings / annual savings), then create and immediately
+ * apply the transition plan in one action. The cost preview is computed
+ * client-side via calculateTransitionCostImpact; no round-trip until Apply.
+ */
 import React, { useState, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { Button } from './ui/button';
@@ -6,10 +14,19 @@ import { capacityApi } from '../lib/capacityApi';
 import { calculateTransitionCostImpact } from '../lib/capacityCalculations';
 import { formatCurrency } from '../lib/costCalculations';
 
+/** Generates a short collision-resistant ID for a new transition entry. */
 function generateId() {
   return 'tr-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+/**
+ * Converts a month range to weeks (4.33 weeks/month). Used to compute the
+ * remaining consultant weeks between transition date and assignment end.
+ *
+ * @param {string} fromYM - Start month YYYY-MM.
+ * @param {string} toYM   - End month YYYY-MM.
+ * @returns {number} Rounded weeks, minimum 0.
+ */
 function monthDiffInWeeks(fromYM, toYM) {
   const [fy, fm] = fromYM.split('-').map(Number);
   const [ty, tm] = toYM.split('-').map(Number);
@@ -17,6 +34,18 @@ function monthDiffInWeeks(fromYM, toYM) {
   return Math.max(0, Math.round(months * 4.33));
 }
 
+/**
+ * @param {Object} props
+ * @param {Object} props.consultant  - Resource object for the consultant being replaced.
+ * @param {Object} props.assignment  - Current Gantt assignment ({ project_name,
+ *   allocation, end_month, ... }).
+ * @param {Array<Object>} props.resources - Full resource pool; filtered internally
+ *   to Internal Employee level for the replacement picker.
+ * @param {Object} props.rates       - Enterprise rate table for cost impact preview.
+ * @param {function(): void} props.onClose  - Close the popover without applying.
+ * @param {function(): void} props.onApply  - Called after the plan is created and
+ *   applied; triggers a Gantt refresh in the parent.
+ */
 const QuickTransition = ({ consultant, assignment, resources, rates, onClose, onApply }) => {
   const { t } = useLocale();
   const [replacementId, setReplacementId] = useState('');
@@ -24,6 +53,8 @@ const QuickTransition = ({ consultant, assignment, resources, rates, onClose, on
   const [overlapWeeks, setOverlapWeeks] = useState(2);
   const [applying, setApplying] = useState(false);
 
+  // 'Employé interne' is the canonical level key for permanent staff; type
+  // is derived at runtime from this field, not stored as a separate column.
   const permanents = useMemo(
     () => resources.filter((r) => r.level === 'Employé interne'),
     [resources]

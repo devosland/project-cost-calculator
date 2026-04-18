@@ -1,3 +1,11 @@
+/**
+ * Modal dialog for sharing a project with other users. Supports two roles:
+ * viewer (read-only) and editor (can modify the project). Invitees must already
+ * have an account — the API resolves the email to an existing user and returns
+ * an error if the user is not found. The current share list is fetched by the
+ * parent (App) before opening and passed in via props; removals update the
+ * parent's state optimistically.
+ */
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Mail, UserPlus, X, Shield } from 'lucide-react';
@@ -8,6 +16,16 @@ const roleBadgeStyles = {
   editor: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
 };
 
+/**
+ * @param {Object} props
+ * @param {boolean} props.open - Whether the dialog is visible.
+ * @param {function(): void} props.onClose - Close the dialog.
+ * @param {Array<{user_id: string, name: string, email: string, role: string}>} props.shares
+ *   Current list of users with access to the active project.
+ * @param {function(string, string): Promise<void>} props.onShare
+ *   Called with (email, role) to invite a user.
+ * @param {function(string): void} props.onUnshare - Remove a share by user_id.
+ */
 const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
   const { t } = useLocale();
   const [email, setEmail] = useState('');

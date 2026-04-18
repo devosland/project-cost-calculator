@@ -1,3 +1,10 @@
+/**
+ * Project list with aggregate stats, inline rename, compare mode, and
+ * import/export actions. Projects are sorted by most-recently-updated first.
+ * Compare mode lets the user select ≥ 2 projects then hand the IDs to the
+ * parent which mounts ScenarioComparison. The stats row (total cost, avg
+ * duration, member count) is only shown when at least one project exists.
+ */
 import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -17,6 +24,22 @@ import {
 
 import { useLocale, getDateLocale } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {Array<Object>} props.projects - Full list of project objects.
+ * @param {Object} props.rates - Enterprise rate table for cost display.
+ * @param {function(Array<Object>): void} props.onProjectsChange - Replace the
+ *   full projects array (create, duplicate, delete, rename all go through here).
+ * @param {function(string): void} props.onOpenProject - Open a project by ID.
+ * @param {function(Array<string>): void} props.onCompare - Trigger scenario
+ *   comparison with the given project IDs.
+ * @param {Array<Object>} props.templates - Available saved templates.
+ * @param {function(string): void} props.onSaveTemplate - Save current project as template.
+ * @param {function(Object): void} props.onLoadTemplate - Create a new project from template.
+ * @param {function(string): void} props.onDeleteTemplate - Delete a template by ID.
+ * @param {boolean} props.showTemplates - Whether the TemplateManager modal is open.
+ * @param {function(): void} props.onToggleTemplates - Open the TemplateManager modal.
+ */
 const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare, templates, onSaveTemplate, onLoadTemplate, onDeleteTemplate, showTemplates, onToggleTemplates }) => {
   const { t, locale } = useLocale();
   const [renamingId, setRenamingId] = useState(null);

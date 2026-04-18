@@ -1,3 +1,11 @@
+/**
+ * Parent container for the Capacity section. Manages four tabs — Resources,
+ * Gantt, Transitions, and Rates — via local state mirrored to the URL hash
+ * (#/capacity/<tab>) so deep links work. The Transitions tab toggles between
+ * TransitionList and TransitionPlanner inline (no separate route). Resources
+ * are pre-fetched here so QuickTransition popups inside CapacityGantt can
+ * receive the pool without re-fetching.
+ */
 import { useState, useEffect } from 'react';
 import { ArrowLeft, BarChart3, Users, ArrowLeftRight, Settings } from 'lucide-react';
 import { Button } from './ui/button';
@@ -9,6 +17,17 @@ import TransitionPlanner from './TransitionPlanner';
 import RolesRatesManager from './RolesRatesManager';
 import { capacityApi } from '../lib/capacityApi';
 
+/**
+ * @param {Object} props
+ * @param {Object} props.rates - Enterprise rate table passed down to sub-tabs.
+ * @param {function(): void} props.onBack - Navigate back to the Dashboard.
+ * @param {function(): void} props.onDataChanged - Called after a transition is
+ *   applied so App re-fetches projects (capacity changes affect project costs).
+ * @param {function(Object): void} props.onRatesChange - Propagates rate edits
+ *   from the Rates tab up to App for persistence.
+ * @param {string} [props.initialTab='resources'] - Tab to activate on mount;
+ *   used by deep-link navigation from OnboardingGuide.
+ */
 const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab }) => {
   const { t } = useLocale();
   const [activeTab, setActiveTab] = useState(initialTab || 'resources');
@@ -53,7 +72,8 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               }`}
-              onClick={() => { setActiveTab(tab.id); window.location.hash = '#/capacity/' + tab.id; }}
+              // Mirror tab to URL hash so the browser back button and direct links work.
+          onClick={() => { setActiveTab(tab.id); window.location.hash = '#/capacity/' + tab.id; }}
             >
               <Icon className="w-4 h-4" />
               {tab.label}

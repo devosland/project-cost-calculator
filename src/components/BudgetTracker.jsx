@@ -1,3 +1,11 @@
+/**
+ * Budget health bar and alert panel for a project. Displays a colour-coded
+ * progress bar (green / amber / red) against the project budget, a variance
+ * card, and a cost/burn-rate/duration summary grid. Shows a configurable
+ * threshold warning (default 80%) before the budget is fully exhausted.
+ * Renders nothing special when no budget is set — the grid simply omits the
+ * variance card.
+ */
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { AlertTriangle } from 'lucide-react';
@@ -11,6 +19,14 @@ import {
 } from '../lib/costCalculations';
 import { useLocale } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {Object} props.project - Full project object including budget,
+ *   settings (currency, budgetAlertThreshold, webhookUrl, includeContingency,
+ *   includeTaxes), phases, and nonLabourCosts.
+ * @param {Object} props.rates - Enterprise rate table ({ INTERNAL_RATE,
+ *   CONSULTANT_RATES }) used to compute labour cost.
+ */
 const BudgetTracker = ({ project, rates }) => {
   const { t } = useLocale();
   const currency = project.settings?.currency || 'CAD';

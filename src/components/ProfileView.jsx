@@ -1,9 +1,20 @@
+/**
+ * User profile page composing three sections: user identity header, API key
+ * management (ApiKeysView), and the API endpoint tester (ApiTester). Acts as
+ * a layout shell — no business logic lives here; each sub-section is
+ * self-contained.
+ */
 import React from 'react';
 import { User } from 'lucide-react';
 import { useLocale } from '../lib/i18n';
 import ApiKeysView from './ApiKeysView';
 import ApiTester from './ApiTester';
 
+/**
+ * @param {Object} props
+ * @param {{name: string, email: string}} props.user - Authenticated user object
+ *   displayed in the header. ApiKeysView and ApiTester fetch their own data.
+ */
 export default function ProfileView({ user }) {
   const { t } = useLocale();
 

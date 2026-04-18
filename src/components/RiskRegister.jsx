@@ -1,3 +1,10 @@
+/**
+ * Project risk register with an inline-editable table and a 5×5 probability ×
+ * impact heat-map matrix. Risk score = probability × impact; colour thresholds
+ * are green ≤ 6, amber ≤ 15, red > 15. The matrix cell count shows how many
+ * risks land at each coordinate. All changes are propagated immediately via
+ * the onChange callback.
+ */
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -8,6 +15,11 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+/**
+ * Returns Tailwind badge classes for a risk score.
+ * Green ≤ 6 (low), Amber ≤ 15 (medium), Red > 15 (high).
+ * @param {number} score - probability × impact value (1–25).
+ */
 function getScoreColor(score) {
   if (score <= 6) return 'bg-green-100 text-green-800';
   if (score <= 15) return 'bg-amber-100 text-amber-800';
@@ -20,6 +32,11 @@ function getScoreBgColor(score) {
   return 'bg-red-500';
 }
 
+/**
+ * 5×5 heat-map grid. Probability on Y-axis (5 → 1 top to bottom) and impact
+ * on X-axis (1 → 5). Each cell shows the count of risks at that coordinate
+ * and is shaded by score severity.
+ */
 const RiskMatrix = ({ risks, t }) => {
   // Build a 5x5 matrix (probability on Y axis top-to-bottom 5->1, impact on X axis 1->5)
   const matrix = {};
@@ -82,6 +99,14 @@ const RiskMatrix = ({ risks, t }) => {
   );
 };
 
+/**
+ * @param {Object} props
+ * @param {Array<{id: string, name: string, description: string, probability: number,
+ *   impact: number, phase: string, mitigation: string}>} [props.risks=[]]
+ *   Current list of risk items.
+ * @param {function(Array): void} props.onChange - Called with the updated full
+ *   risk array after any add, remove, or field edit.
+ */
 const RiskRegister = ({ risks = [], onChange }) => {
   const { t } = useLocale();
   const addRisk = () => {

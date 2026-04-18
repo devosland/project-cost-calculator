@@ -1,3 +1,11 @@
+/**
+ * Inline-editable table of non-labour cost line items (infrastructure,
+ * licences, SaaS, travel, training, equipment, other). Supports adding new
+ * items via a transient form row, editing existing values inline, and deleting
+ * rows. Shows a category subtotal breakdown when more than one category is
+ * present. All changes are pushed up immediately via onChange — there is no
+ * local draft state; the parent owns the source of truth.
+ */
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -5,6 +13,14 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../lib/costCalculations';
 import { useLocale } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {Array<{id: string, name: string, category: string, amount: number}>} props.costs
+ *   Current list of non-labour cost items.
+ * @param {string} props.currency - ISO currency code for formatting (e.g. 'CAD').
+ * @param {function(Array): void} props.onChange - Called with the updated full
+ *   array after any add, remove, or inline edit.
+ */
 const NonLabourCosts = ({ costs, currency, onChange }) => {
   const { t } = useLocale();
 

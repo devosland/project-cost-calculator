@@ -1,3 +1,9 @@
+/**
+ * Cost visualisation panel with three switchable breakdown views: by role,
+ * by phase, and by category (labour vs non-labour). Renders a custom SVG pie
+ * chart with hover highlighting alongside a sorted horizontal bar chart.
+ * Both charts are purely client-side — no charting library dependency.
+ */
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import {
@@ -14,6 +20,16 @@ const CHART_COLORS = [
   '#ec4899', '#3b82f6', '#84cc16', '#a855f7',
 ];
 
+/**
+ * SVG pie chart rendered without an external library. Computes arc paths from
+ * polar coordinates; handles the degenerate single-slice case with a full
+ * circle path to avoid an invisible arc.
+ *
+ * @param {Object} props
+ * @param {Record<string, number>} props.data - Label → value map; zero-value entries are filtered.
+ * @param {string} props.currency - ISO currency code for the legend tooltip.
+ * @param {number} [props.size=200] - SVG width/height in px.
+ */
 const PieChart = ({ data, currency, size = 200 }) => {
   const [hovered, setHovered] = useState(null);
   const total = Object.values(data).reduce((s, v) => s + v, 0);
@@ -83,6 +99,14 @@ const PieChart = ({ data, currency, size = 200 }) => {
   );
 };
 
+/**
+ * Horizontal proportional bar chart sorted descending by value. Bar widths
+ * are relative to the maximum entry so the tallest bar always fills 100%.
+ *
+ * @param {Object} props
+ * @param {Record<string, number>} props.data - Label → value map.
+ * @param {string} props.currency - ISO currency code for formatted labels.
+ */
 const BarChart = ({ data, currency }) => {
   const total = Object.values(data).reduce((s, v) => s + v, 0);
   if (total === 0) return null;
@@ -115,6 +139,11 @@ const BarChart = ({ data, currency }) => {
   );
 };
 
+/**
+ * @param {Object} props
+ * @param {Object} props.project - Full project object used to derive cost breakdowns.
+ * @param {Object} props.rates - Enterprise rate table for labour cost calculations.
+ */
 const CostCharts = ({ project, rates }) => {
   const { t } = useLocale();
   const [view, setView] = useState('role');

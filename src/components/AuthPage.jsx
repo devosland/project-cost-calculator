@@ -1,12 +1,27 @@
+/**
+ * Authentication page handling four modes on a single component: login,
+ * register, forgot-password, and password-reset. Mode is toggled via local
+ * state; no page navigation occurs. On successful login or registration the
+ * JWT token is stored via api.setToken() and the onAuth callback is invoked
+ * to hand control back to App.
+ */
 import React, { useState } from 'react';
 import { Mail, Lock, User, LogIn, KeyRound } from 'lucide-react';
 import { Button } from './ui/button';
 import { api } from '../lib/api';
 import { useLocale } from '../lib/i18n';
 
+/**
+ * @param {Object} props
+ * @param {function({id: string, name: string, email: string}): void} props.onAuth
+ *   Called with the authenticated user object after a successful login or
+ *   registration. The JWT has already been stored before this callback fires.
+ */
 export default function AuthPage({ onAuth }) {
   const { t } = useLocale();
-  const [mode, setMode] = useState('login'); // login, register, forgot, reset
+  // Single component handles four flows; bascule between them clears errors
+  // to avoid stale messages carrying over between form views.
+  const [mode, setMode] = useState('login'); // login | register | forgot | reset
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
