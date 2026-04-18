@@ -93,7 +93,7 @@ Content-Type: application/json
     id: string;                // Obligatoire. Identifiant local à l'import (référencé par dependsOn). Slug-like.
     name: string;              // Obligatoire. Max 100 caractères.
     order: number;             // Obligatoire. Entier ≥ 1. Détermine l'ordre visuel par défaut.
-    durationMonths: number;    // Obligatoire. Nombre positif (accepte décimales : 1.5 = 6 semaines).
+    durationMonths?: number;   // Obligatoire SAUF si startDate ET endDate sont fournis. Nombre positif (accepte décimales : 1.5 = 6 semaines).
 
     // Optionnels — si fournis, écrasent le calcul séquentiel basé sur durationMonths :
     startDate?: string;        // ISO 8601 date
@@ -114,7 +114,7 @@ Content-Type: application/json
 4. **Pas de cycles** dans le graphe de dépendances (A → B → A rejeté)
 5. Au moins **une phase sans `dependsOn`** doit exister (point d'entrée du graphe)
 6. Si `startDate` et `endDate` sont fournis sur une phase, `endDate > startDate`
-7. `durationMonths` : valeur numérique positive (convertie en semaines via 1 mois = 4.33 semaines)
+7. `durationMonths` : valeur numérique positive. Obligatoire si `startDate` ou `endDate` sont absents ; optionnel si les deux sont fournis (dans ce cas, la durée est calculée à partir des dates).
 
 ### Exemple minimal
 
@@ -310,7 +310,7 @@ Contraintes :
 
 - Accepte décimales (ex: `1.5` = 1 mois et demi)
 - Conversion interne : `semaines = durationMonths × 4.33` (arrondi à 1 décimale)
-- Si vous fournissez `startDate` + `endDate` sur une phase, `durationMonths` est ignoré (mais reste obligatoire dans le payload pour rester explicite)
+- Si vous fournissez `startDate` + `endDate` sur une phase, `durationMonths` est optionnel (la durée est calculée à partir des dates). Sinon, `durationMonths` est obligatoire.
 
 ### `order`
 
@@ -340,6 +340,7 @@ Contraintes :
 | `422` | `dependency_cycle` | Cycle détecté dans le graphe `dependsOn` |
 | `422` | `dangling_dependency` | `dependsOn` référence une phase absente du payload |
 | `422` | `no_root_phase` | Toutes les phases ont une dépendance (pas de point d'entrée) |
+| `422` | `validation_error` | `durationMonths` manquant sur une phase qui n'a pas `startDate` + `endDate` |
 | `429` | `rate_limit_exceeded` | Quota atteint (60 req/min par défaut) |
 | `500` | `internal_error` | Erreur serveur — réessayer avec backoff |
 

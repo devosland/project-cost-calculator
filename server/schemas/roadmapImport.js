@@ -6,12 +6,17 @@ const phaseSchema = z.object({
   id: z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-_]*$/i, 'id must be slug-like'),
   name: z.string().min(1).max(100),
   order: z.number().int().positive(),
-  durationMonths: z.number().positive(),
+  durationMonths: z.number().positive().optional(),
   startDate: isoDate.optional(),
   endDate: isoDate.optional(),
   dependsOn: z.array(z.string()).optional(),
   description: z.string().max(1000).optional(),
-}).refine(
+})
+.refine(
+  p => p.durationMonths !== undefined || (p.startDate && p.endDate),
+  { message: 'durationMonths is required unless both startDate and endDate are provided', path: ['durationMonths'] }
+)
+.refine(
   p => !(p.startDate && p.endDate) || p.endDate > p.startDate,
   { message: 'endDate must be after startDate', path: ['endDate'] }
 );
