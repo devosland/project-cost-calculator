@@ -1,5 +1,27 @@
+/**
+ * Lightweight custom i18n system for FR/EN bilingual support.
+ *
+ * Chosen over i18next and react-intl because the translation surface is small
+ * (flat dot-notation keys, two locales) and a custom implementation avoids
+ * adding a heavy dependency for a feature that needs no pluralisation rules,
+ * no ICU message format, and no lazy-loading. The entire translation table
+ * is bundled synchronously so there is no locale-loading flash.
+ *
+ * Public surface:
+ *   <LocaleProvider>   — wrap the app root to inject the locale context.
+ *   useLocale()        — returns { t, locale, setLocale } in any child component.
+ *   t(key, params?)    — translate a key, interpolating {placeholder} tokens.
+ *   getDateLocale()    — map app locale to an Intl locale string.
+ *   getLevelLabel()    — translate a stored level key to a display string.
+ */
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
+// ---------------------------------------------------------------------------
+// Translation table
+// Keys use dot-notation namespacing (e.g. 'auth.login', 'phase.duration').
+// The FR locale is the source-of-truth; EN is a mirror. If a key is missing
+// from EN, t() falls back to FR so the UI never shows a raw key string.
+// ---------------------------------------------------------------------------
 const translations = {
   fr: {
     // App / Header
@@ -952,7 +974,16 @@ const translations = {
   },
 };
 
-// Detect locale from browser
+// ---------------------------------------------------------------------------
+// Locale detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Determine the initial locale on first load.
+ * Priority: persisted user choice (localStorage) → browser language → 'fr'.
+ * Falls back to 'fr' for any browser language other than English.
+ * @returns {'fr'|'en'}
+ */
 function detectLocale() {
   const saved = localStorage.getItem('locale');
   if (saved && translations[saved]) return saved;
@@ -960,28 +991,67 @@ function detectLocale() {
   return browserLang.startsWith('fr') ? 'fr' : 'en';
 }
 
-// Get locale for date/currency formatting
+/**
+ * Map the app locale to an Intl-compatible locale string for date and number
+ * formatting. Both locales use Canadian conventions (CA suffix) because the
+ * application targets a Canadian organisation.
+ *
+ * @param {'fr'|'en'} locale - App locale.
+ * @returns {'fr-CA'|'en-CA'}
+ */
 export function getDateLocale(locale) {
   return locale === 'fr' ? 'fr-CA' : 'en-CA';
 }
 
-// Context
+// ---------------------------------------------------------------------------
+// React context
+// ---------------------------------------------------------------------------
+
+/** @type {React.Context<{t: Function, locale: string, setLocale: Function}|null>} */
 const LocaleContext = createContext(null);
 
+/**
+ * Wraps the application (or a subtree) and provides locale state to all
+ * descendant components via `useLocale()`.
+ *
+ * Syncs `document.documentElement.lang` on every locale change so that
+ * browser accessibility tools and CSS `:lang()` selectors work correctly.
+ *
+ * @param {object}      props          - Component props.
+ * @param {React.ReactNode} props.children - Child tree to wrap.
+ */
 export function LocaleProvider({ children }) {
   const [locale, setLocaleState] = useState(detectLocale);
 
+  /**
+   * Change the active locale. Persists the choice to localStorage so it
+   * survives page reloads, and updates the <html lang> attribute immediately.
+   * @param {'fr'|'en'} newLocale
+   */
   const setLocale = useCallback((newLocale) => {
     setLocaleState(newLocale);
     localStorage.setItem('locale', newLocale);
     document.documentElement.lang = newLocale;
   }, []);
 
+  // Keep lang attribute in sync even when locale is set externally (e.g.
+  // during hydration from SSR, though we don't do SSR — defensive coding).
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  /**
+   * Translate a dot-notation key into the current locale's string.
+   * Falls back to the FR string, then to the raw key if both are missing.
+   * Supports {placeholder} interpolation via the params object.
+   *
+   * @param {string} key    - Translation key (e.g. 'auth.login').
+   * @param {object} [params] - Optional substitution map ({ count: 3 }).
+   * @returns {string}
+   */
   const t = useCallback((key, params) => {
+    // FR is the canonical fallback — a missing EN key should never show as a
+    // raw dot-notation string to the user.
     let str = translations[locale]?.[key] || translations.fr[key] || key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
@@ -998,16 +1068,41 @@ export function LocaleProvider({ children }) {
   );
 }
 
+/**
+ * Access the current locale context.
+ * Must be called inside a component rendered within `<LocaleProvider>`.
+ * Throws a descriptive error if used outside the provider so misconfigured
+ * trees fail loudly at development time.
+ *
+ * @returns {{ t: Function, locale: 'fr'|'en', setLocale: Function }}
+ */
 export function useLocale() {
   const context = useContext(LocaleContext);
   if (!context) throw new Error('useLocale must be used within LocaleProvider');
   return context;
 }
 
-// Exported level keys for data storage (these are stored in project data)
+// ---------------------------------------------------------------------------
+// Level key helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Canonical level keys as stored in project data (language-neutral).
+ * These French strings are the single source of truth for level identity —
+ * they are stored in the DB and in exported JSON. Display strings are
+ * obtained via `getLevelLabel(t, key)`.
+ */
 export const LEVEL_KEYS = ['Employé interne', 'Junior', 'Intermédiaire', 'Sénior', 'Expert'];
 
-// Get display label for a level key
+/**
+ * Translate a stored level key to a localised display label.
+ * Falls back to the raw key when no mapping exists (forward-compatible with
+ * custom levels that may be added in future).
+ *
+ * @param {Function} t        - Translation function from `useLocale()`.
+ * @param {string}   levelKey - Stored level key (one of LEVEL_KEYS).
+ * @returns {string} Localised display string.
+ */
 export function getLevelLabel(t, levelKey) {
   const map = {
     'Employé interne': t('level.internal'),
@@ -1019,9 +1114,21 @@ export function getLevelLabel(t, levelKey) {
   return map[levelKey] || levelKey;
 }
 
-// Display-only level keys (no internal employee)
+/**
+ * Subset of LEVEL_KEYS excluding internal employees.
+ * Used when a UI element should only show consultant seniority levels
+ * (e.g. the resource pool type selector for consultants).
+ */
 export const CONSULTANT_LEVEL_KEYS = ['Junior', 'Intermédiaire', 'Sénior', 'Expert'];
 
+/**
+ * Alias for `getLevelLabel` scoped to consultant levels.
+ * Exists for call-site clarity — the underlying logic is identical.
+ *
+ * @param {Function} t        - Translation function from `useLocale()`.
+ * @param {string}   levelKey - Consultant level key.
+ * @returns {string} Localised display string.
+ */
 export function getConsultantLevelLabel(t, levelKey) {
   return getLevelLabel(t, levelKey);
 }
