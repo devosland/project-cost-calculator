@@ -1,0 +1,47 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            cd /home/ubuntu/project-cost-calculator
+            echo "=== Pulling latest changes ==="
+            git fetch origin main
+            git reset --hard origin/main
+            echo "=== Applying nginx-proxy-manager port mapping ==="
+            # docker-compose.yml is committed for Traefik (no ports mapping), but
+            # this VPS uses nginx-proxy-manager which routes by host port, so we
+            # inject the port mapping on the fly and revert the file after the
+            # rebuild so git stays clean.
+            sed -i '/restart: unless-stopped/a\    ports:\n      - "3002:80"' docker-compose.yml
+            echo "=== Building and starting container ==="
+            docker compose up -d --build --force-recreate
+            git checkout docker-compose.yml
+            echo "=== Health check ==="
+            sleep 3
+            HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3002)
+            if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "304" ]; then
+              echo "FAIL: Health check returned $HTTP_CODE"
+              docker compose logs --tail 30
+              exit 1
+            fi
+            echo "OK: Health check passed ($HTTP_CODE)"
