@@ -20,10 +20,18 @@ jobs:
           cache: 'npm'
 
       - name: Install root dependencies
-        run: npm ci
+        # Using `npm install` rather than `npm ci` because the lockfile is generated
+        # on Windows (developer environment) and misses Linux-specific optional deps
+        # like esbuild's Linux binary and @emnapi/*. `npm install` resolves these
+        # on the CI runner without failing.
+        run: npm install --no-audit --no-fund
 
       - name: Install server dependencies
-        run: npm ci
+        # Using `npm install` rather than `npm ci` because the lockfile is generated
+        # on Windows (developer environment) and misses Linux-specific optional deps
+        # like esbuild's Linux binary and @emnapi/*. `npm install` resolves these
+        # on the CI runner without failing.
+        run: npm install --no-audit --no-fund
         working-directory: ./server
 
       - name: Run ESLint
