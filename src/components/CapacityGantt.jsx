@@ -48,6 +48,19 @@ function addMonths(ym, count) {
 }
 
 /**
+ * Returns the month immediately after `ym` (YYYY-MM).
+ * Used to compute the start of the "removed" red segment:
+ * since end_month is inclusive in getBarProps, the removed portion starts
+ * at the month AFTER newEndMonth.
+ *
+ * @param {string} ym - Month in YYYY-MM format.
+ * @returns {string} Following month in YYYY-MM format.
+ */
+function nextMonth(ym) {
+  return addMonths(ym, 1);
+}
+
+/**
  * Gantt de capacité sur 12 mois glissants.
  *
  * Affiche les ressources du pool et leurs assignments projet sur une fenêtre
@@ -62,7 +75,7 @@ function addMonths(ym, count) {
  *   When set, the Gantt overlays projected bars (hatched) on top of current bars (solid).
  * @param {function}     [props.onExitPreview] - Callback to clear the preview selection.
  */
-const CapacityGantt = ({ rates, previewPlanId, onExitPreview }) => {
+const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
   const { t, locale } = useLocale();
   const [viewMode, setViewMode] = useState('project');
   const now = new Date();
@@ -212,33 +225,38 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview }) => {
     const bars = [];
 
     if (shortenedEntry) {
-      // Render the "removed" portion (originalEnd → newEnd) in red hatching
-      const removedBar = {
-        ...bar,
-        start_month: shortenedEntry.newEndMonth,
-        end_month: shortenedEntry.originalEndMonth,
-      };
-      const props = getBarProps(removedBar);
-      if (props) {
-        bars.push(
-          <div
-            key={`shortened-${bar.id}`}
-            style={{
-              gridColumnStart: props.colStart,
-              gridColumnEnd: `span ${props.colSpan}`,
-              ...hatchStyle('#ef4444'),
-              height: '22px',
-              margin: '1px 0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '10px',
-              color: '#ef4444',
-              overflow: 'hidden',
-            }}
-            title={`${label} — raccourci`}
-          />
-        );
+      // Render the "removed" portion in red hatching.
+      // end_month is inclusive in getBarProps, so the removed segment starts at
+      // the month AFTER newEndMonth. Skip entirely when newEndMonth === originalEndMonth
+      // (nothing was removed — e.g. transition without overlap extending past original end).
+      if (shortenedEntry.newEndMonth !== shortenedEntry.originalEndMonth) {
+        const removedBar = {
+          ...bar,
+          start_month: nextMonth(shortenedEntry.newEndMonth),
+          end_month: shortenedEntry.originalEndMonth,
+        };
+        const props = getBarProps(removedBar);
+        if (props) {
+          bars.push(
+            <div
+              key={`shortened-${bar.id}`}
+              style={{
+                gridColumnStart: props.colStart,
+                gridColumnEnd: `span ${props.colSpan}`,
+                ...hatchStyle('#ef4444'),
+                height: '22px',
+                margin: '1px 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '10px',
+                color: '#ef4444',
+                overflow: 'hidden',
+              }}
+              title={`${label} — ${t('capacity.previewMode.tooltipShortened')}`}
+            />
+          );
+        }
       }
 
       // Render the overlap window in yellow hatching
@@ -257,7 +275,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview }) => {
                 margin: '1px 0',
                 opacity: 0.7,
               }}
-              title={`Overlap — transition en cours`}
+              title={t('capacity.previewMode.tooltipOverlap')}
             />
           );
         }
@@ -284,7 +302,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview }) => {
               color: '#10b981',
               overflow: 'hidden',
             }}
-            title={`${label} — remplaçant`}
+            title={`${label} — ${t('capacity.previewMode.tooltipReplacement')}`}
           />
         );
       }
@@ -488,10 +506,10 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview }) => {
           <div className="flex items-center gap-3 flex-wrap">
             <span className="font-medium text-amber-800 dark:text-amber-300">
               {previewError
-                ? 'Erreur : plan introuvable.'
+                ? t('capacity.previewMode.planNotFound')
                 : previewPlan
                   ? t('capacity.previewMode.banner', { name: previewPlan.name })
-                  : '…'}
+                  : t('capacity.previewMode.loading')}
             </span>
             {previewResult && (
               <label className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 cursor-pointer select-none">

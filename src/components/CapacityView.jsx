@@ -64,8 +64,11 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
     const params = new URLSearchParams(hash.slice(qIndex + 1));
     const pid = params.get('preview');
     if (pid) {
-      setActiveTab('gantt');
-      setPreviewPlanId(Number(pid));
+      const parsed = Number(pid);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        setActiveTab('gantt');
+        setPreviewPlanId(parsed);
+      }
     }
   }, []);
 
@@ -114,10 +117,11 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
         <div className="space-y-3">
           {/* Draft plan preview selector */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+            <label htmlFor="preview-plan-select" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
               {t('capacity.previewMode.selectPlan')}
             </label>
             <select
+              id="preview-plan-select"
               className="text-sm border rounded px-2 py-1 bg-background"
               value={previewPlanId ?? ''}
               onChange={(e) => setPreviewPlanId(e.target.value ? Number(e.target.value) : null)}

@@ -165,6 +165,8 @@ export function projectAssignmentsWithPlan(currentAssignments, draftPlan) {
 
   // Pass 1: collect original end dates for all consultant assignments that will
   // be touched — critical because pass 2 may modify them in-place.
+  // Always overwrite (mirrors server: last row seen for a key wins), so that
+  // client and server converge on the same originalEndDates values.
   const originalEndDates = {}; // key = `${resource_id}-${project_id}-${phase_id}`
   for (const t of transitions) {
     if (!t.consultant_resource_id) continue;
@@ -173,19 +175,22 @@ export function projectAssignmentsWithPlan(currentAssignments, draftPlan) {
     for (const a of currentAssignments) {
       if (a.resource_id === t.consultant_resource_id && a.end_month >= transitionDate) {
         const key = `${a.resource_id}-${a.project_id}-${a.phase_id}`;
-        if (!originalEndDates[key]) originalEndDates[key] = a.end_month;
+        originalEndDates[key] = a.end_month; // always overwrite — mirrors server behaviour
       }
     }
   }
 
   // Pass 2: apply each transition.
+  // Filter consultant assignments from `projected` (not `currentAssignments`) so that
+  // sequential transitions within the same plan see the shortenings applied by prior
+  // transitions — mirrors the server which re-queries the DB after each UPDATE.
   for (const t of transitions) {
     if (!t.consultant_resource_id || !t.transition_date) continue;
     const transitionDate = t.transition_date;
     const overlapWeeks = t.overlap_weeks || 0;
 
     // Find all consultant assignments that extend into/past the transition date.
-    const consultantAssignments = currentAssignments.filter(
+    const consultantAssignments = projected.filter(
       (a) => a.resource_id === t.consultant_resource_id && a.end_month >= transitionDate
     );
 
