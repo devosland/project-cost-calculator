@@ -1,3 +1,9 @@
+/**
+ * Vue principale d'édition d'un projet : onglets (Phases, Timeline, Budget,
+ * Charts, Sommaire, Risques), sync du rôle/niveau depuis le pool de ressources
+ * sur chaque load ET à chaque updatePhase (single source of truth), et gestion
+ * des assignments capacity via PUT /api/data.
+ */
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
@@ -26,6 +32,14 @@ import { weekToMonth } from '../lib/capacityCalculations';
 
 const useQuery = () => new URLSearchParams(window.location.search);
 
+/**
+ * Formulaire de configuration webhook : URL + seuil d'alerte budget.
+ * Sous-composant interne — pas exporté, utilisé uniquement dans l'onglet Budget.
+ *
+ * @param {object} props
+ * @param {object} props.project - Projet courant (pour lire settings.webhookUrl / budgetAlertThreshold)
+ * @param {function} props.updateSettings - Callback(partialSettings) pour persister les changements
+ */
 const WebhookSettings = ({ project, updateSettings }) => {
   const { t } = useLocale();
   const [testStatus, setTestStatus] = useState(null);
@@ -106,6 +120,22 @@ const WebhookSettings = ({ project, updateSettings }) => {
   );
 };
 
+/**
+ * Vue principale d'édition d'un projet.
+ *
+ * Gère les onglets Phases / Timeline / Budget / Charts / Sommaire / Risques,
+ * le renommage inline du projet, et la synchronisation des rôles/niveaux
+ * depuis le pool de ressources (single source of truth).
+ *
+ * @param {object} props
+ * @param {object} props.project - Projet complet (id, name, phases, settings, budget, risks, nonLabourCosts)
+ * @param {object} props.rates - Rates enterprise (INTERNAL_RATE, CONSULTANT_RATES)
+ * @param {function} props.onProjectChange - Callback(updatedProject) — déclenche l'auto-save debounce dans App
+ * @param {function} props.onBack - Callback() — retour à la liste des projets
+ * @param {function} props.onOpenShare - Callback() — ouvre la modale de partage
+ * @param {function} props.onOpenHistory - Callback() — ouvre l'historique de versions
+ * @param {string} [props.initialTab] - Onglet actif au montage (défaut : 'phases')
+ */
 const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onOpenHistory, initialTab }) => {
   const { t } = useLocale();
   const query = useQuery();
@@ -115,10 +145,13 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
   const [nameValue, setNameValue] = useState(project.name);
   const [resourcePool, setResourcePool] = useState([]);
 
+  // On load: fetch the resource pool and sync role/level for all linked team members.
+  // Why: the project JSON stores role/level as a cache for display performance, but the
+  // resource pool is the single source of truth. A mismatch caused a historic bug where
+  // renamed resources kept showing stale role/level values in cost calculations.
   useEffect(() => {
     capacityApi.getResources().then((pool) => {
       setResourcePool(pool);
-      // Sync role/level from pool for all linked members on load
       if (pool.length > 0) {
         let changed = false;
         const updatedPhases = project.phases.map(phase => {
@@ -140,6 +173,10 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
     }).catch(() => {});
   }, []);
 
+  /**
+   * Crée une ressource dans le pool capacity quand un member est tapé manuellement
+   * et n'existe pas encore dans le pool (bouton "Ajouter au pool").
+   */
   const handleResourceAssign = async ({ name, role, level }) => {
     try {
       const resource = await capacityApi.createResource({ name, role, level, max_capacity: 100 });
@@ -149,6 +186,17 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
     }
   };
 
+  /**
+   * Calcule les mois de début et de fin d'une phase dans le calendrier projet.
+   *
+   * Pourquoi project.settings.startDate et non new Date() :
+   * utiliser today() comme fallback causait un bug où les permanents récemment
+   * bookés apparaissaient en mars (mois courant) au lieu du mois réel du projet.
+   * Le fallback est maintenu ici uniquement comme guard pour les projets sans date.
+   *
+   * @param {string} phaseId - ID de la phase à localiser
+   * @returns {{ start_month: string, end_month: string }} format 'YYYY-MM'
+   */
   const getPhaseMonths = (phaseId) => {
     const startDate = project.settings?.startDate || new Date().toISOString().slice(0, 7);
     // Sum durations of phases before this one for the offset
@@ -166,6 +214,13 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
     };
   };
 
+  /**
+   * Crée un assignment capacity quand une ressource du pool est liée à un member.
+   * Les assignments sont persistés via capacityApi (PUT /api/data bulk),
+   * indépendamment du projet lui-même — le projet ne contient que l'ID de référence.
+   *
+   * Note: 409 (assignment déjà existant) est silencieux — ce n'est pas une erreur.
+   */
   const handleResourceLink = async (resourceId, phaseId, allocation) => {
     try {
       const { start_month, end_month } = getPhaseMonths(phaseId);
@@ -203,6 +258,13 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
     const phase = createPhase(`Phase ${project.phases.length + 1}`, project.phases.length);
     updateProject({ phases: [...project.phases, phase] });
   };
+
+  /**
+   * Met à jour une phase et re-synce les rôles/niveaux depuis le pool avant de sauvegarder.
+   * Double protection : le useEffect sync au load, et ici on sync à chaque mutation,
+   * garantissant qu'un changement de rôle dans le pool se propage immédiatement
+   * sans nécessiter un reload de page.
+   */
   const updatePhase = (phaseId, updated) => {
     // Sync role/level from resource pool for linked members before saving
     const synced = {
@@ -217,6 +279,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
     };
     updateProject({ phases: project.phases.map((p) => (p.id === phaseId ? synced : p)) });
   };
+
   const removePhase = (phaseId) => {
     if (project.phases.length <= 1) return;
     updateProject({
@@ -224,10 +287,12 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
         .filter((p) => p.id !== phaseId)
         .map((p) => ({
           ...p,
+          // Clean up dangling dependency references when a phase is deleted
           dependencies: (p.dependencies || []).filter((d) => d !== phaseId),
         })),
     });
   };
+
   const movePhase = (index, direction) => {
     const newIndex = index + direction;
     if (newIndex < 0 || newIndex >= project.phases.length) return;
@@ -241,7 +306,8 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
 
   return (
     <div className="w-full max-w-5xl mx-auto">
-      {/* Header */}
+
+      {/* --- Header : nom du projet (édition inline) + actions (export, history, share) + coût total --- */}
       <div className="flex items-center justify-between mb-8 print:hidden">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
@@ -303,7 +369,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* --- Onglets de navigation --- */}
       <nav className="flex gap-1 border-b mb-8 print:hidden overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;
@@ -324,7 +390,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
         })}
       </nav>
 
-      {/* Phases Tab */}
+      {/* --- Onglet Phases : paramètres projet + liste des PhaseEditors --- */}
       {activeTab === 'phases' && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-5 bg-white border rounded-xl shadow-sm">
@@ -411,6 +477,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
             {t('project.addPhase')}
           </Button>
 
+          {/* --- Récapitulatif coût/durée/phases en bas de l'onglet --- */}
           <div className="p-6 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
               <div>
@@ -432,8 +499,10 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
         </div>
       )}
 
+      {/* --- Onglet Timeline --- */}
       {activeTab === 'timeline' && <TimelineView project={project} rates={rates} currency={currency} />}
 
+      {/* --- Onglet Budget : enveloppe + webhook + tracker + non-labour --- */}
       {activeTab === 'budget' && (
         <div className="space-y-6">
           <div className="flex items-center gap-4 p-5 bg-white border rounded-xl shadow-sm">
@@ -458,6 +527,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
         </div>
       )}
 
+      {/* --- Onglet Risques --- */}
       {activeTab === 'risks' && (
         <RiskRegister
           risks={project.risks || []}
@@ -465,9 +535,10 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
         />
       )}
 
+      {/* --- Onglets Charts et Sommaire --- */}
       {activeTab === 'charts' && <CostCharts project={project} rates={rates} />}
       {activeTab === 'summary' && <ProjectSummary project={project} rates={rates} />}
-      {/* Rates tab moved to CapacityView */}
+      {/* Note: l'onglet Rates a été déplacé dans CapacityView (Rates tab moved to CapacityView) */}
     </div>
   );
 };

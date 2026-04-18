@@ -1,3 +1,16 @@
+/**
+ * Gantt 12 mois pour la vue capacité : affichage des assignments par ressource,
+ * groupés par projet (vue "By Project") ou par type employé/consultant (vue "By Type").
+ *
+ * Architecture nested grids : chaque ressource est rendue dans sa propre grille CSS
+ * avec la même définition de colonnes que la grille parente — ce sont des grilles
+ * indépendantes plutôt qu'une grille flat, car une grille plate nécessiterait des
+ * divs vides pour remplir les colonnes sans bar, créant des lignes fantômes en trop.
+ *
+ * refreshKey pattern : le composant refetch les données via capacityApi à chaque
+ * changement de [startMonth, endMonth]. Le parent incrémente une prop refreshKey
+ * (ou change la plage) pour forcer un re-fetch après un save ou une transition.
+ */
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from './ui/button';
@@ -8,17 +21,40 @@ import GanttBar from './GanttBar';
 import UtilizationSummary from './UtilizationSummary';
 import QuickTransition from './QuickTransition';
 
+/** Palette de couleurs cyclique pour distinguer les projets dans la vue "By Project". */
 const PROJECT_COLORS = [
   '#6366f1', '#10b981', '#f59e0b', '#ef4444',
   '#06b6d4', '#f97316', '#8b5cf6', '#14b8a6',
 ];
 
+/**
+ * Ajoute `count` mois à une chaîne 'YYYY-MM' et retourne la nouvelle chaîne 'YYYY-MM'.
+ * Gère correctement les débordements d'année (ex: 2024-12 + 1 = 2025-01).
+ *
+ * @param {string} ym - Mois source au format 'YYYY-MM'
+ * @param {number} count - Nombre de mois à ajouter (négatif pour soustraire)
+ * @returns {string} Nouveau mois au format 'YYYY-MM'
+ */
 function addMonths(ym, count) {
   const [y, m] = ym.split('-').map(Number);
   const d = new Date(y, m - 1 + count, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/**
+ * Gantt de capacité sur 12 mois glissants.
+ *
+ * Affiche les ressources du pool et leurs assignments projet sur une fenêtre
+ * de 12 mois navigable. Deux modes de grouping : par projet ou par type
+ * (Employés internes / Consultants). Chaque barre consultant est cliquable
+ * pour ouvrir QuickTransition.
+ *
+ * @param {object} props
+ * @param {object} props.rates - Rates enterprise (INTERNAL_RATE, CONSULTANT_RATES) — transmis à QuickTransition
+ * @param {number} [props.refreshKey] - Incrémenter cette prop force un re-fetch des données Gantt.
+ *   Le Gantt ne sait pas quand une transition ou un save se produit ailleurs dans l'app ;
+ *   le parent signale le besoin de rafraîchir via ce pattern plutôt qu'un event bus.
+ */
 const CapacityGantt = ({ rates }) => {
   const { t, locale } = useLocale();
   const [viewMode, setViewMode] = useState('project');
@@ -30,9 +66,12 @@ const CapacityGantt = ({ rates }) => {
   const [collapsed, setCollapsed] = useState({});
   const [quickTransition, setQuickTransition] = useState(null);
 
+  // endMonth = toujours 11 mois après startMonth → fenêtre fixe de 12 mois
   const endMonth = useMemo(() => addMonths(startMonth, 11), [startMonth]);
   const months = useMemo(() => getMonthRange(startMonth, endMonth), [startMonth, endMonth]);
 
+  // Re-fetch à chaque changement de fenêtre temporelle.
+  // Le parent peut aussi forcer ce fetch en changeant startMonth via refreshKey (pattern externe).
   useEffect(() => {
     capacityApi.getGanttData(startMonth, endMonth).then(setData).catch(() => {});
   }, [startMonth, endMonth]);
@@ -42,6 +81,10 @@ const CapacityGantt = ({ rates }) => {
   const toggleCollapse = (key) =>
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
 
+  /**
+   * Formate un mois 'YYYY-MM' en abréviation localisée (ex: "jan.", "Feb").
+   * Utilise 'fr-CA' ou 'en-CA' selon la locale active.
+   */
   const formatMonth = (ym) => {
     const [y, m] = ym.split('-').map(Number);
     return new Date(y, m - 1).toLocaleDateString(locale === 'fr' ? 'fr-CA' : 'en-CA', {
@@ -49,6 +92,10 @@ const CapacityGantt = ({ rates }) => {
     });
   };
 
+  /**
+   * Map projet_id → couleur hex (cyclique sur PROJECT_COLORS).
+   * Recalculé seulement quand la liste des assignments change.
+   */
   const projectColorMap = useMemo(() => {
     const map = {};
     const projectIds = [...new Set(assignments.map((a) => a.project_id))];
@@ -58,6 +105,7 @@ const CapacityGantt = ({ rates }) => {
     return map;
   }, [assignments]);
 
+  /** Map projet_id → nom du projet, extrait des assignments (dénormalisé par l'API). */
   const projectNameMap = useMemo(() => {
     const map = {};
     assignments.forEach((a) => {
@@ -74,8 +122,19 @@ const CapacityGantt = ({ rates }) => {
     );
   }
 
+  // Première colonne = 200px (nom ressource), puis 1 colonne par mois (12 mois = 12 fr)
   const gridCols = `200px repeat(${months.length}, 1fr)`;
 
+  /**
+   * Calcule les propriétés CSS grid d'une barre d'assignment.
+   *
+   * Gère le clipping : un assignment qui déborde de la fenêtre visible est
+   * tronqué au premier/dernier mois affiché. Retourne null si l'assignment
+   * est entièrement hors de la fenêtre.
+   *
+   * @param {object} assignment - Assignment avec start_month et end_month
+   * @returns {{ colStart: number, colSpan: number } | null}
+   */
   const getBarProps = (assignment) => {
     const startIdx = months.indexOf(assignment.start_month < startMonth ? startMonth : assignment.start_month);
     const endIdx = months.indexOf(assignment.end_month > endMonth ? endMonth : assignment.end_month);
@@ -86,6 +145,10 @@ const CapacityGantt = ({ rates }) => {
     };
   };
 
+  /**
+   * Point coloré vert (employé interne) ou orange (consultant) affiché
+   * avant le nom de chaque ressource pour identification rapide du type.
+   */
   const renderResourceDot = (resource) => {
     const isPermanent = resource.level === 'Employé interne';
     return (
@@ -97,7 +160,7 @@ const CapacityGantt = ({ rates }) => {
     );
   };
 
-  // --- By Project view ---
+  // --- Vue "By Project" : grouping par projet, puis par ressource dans chaque projet ---
   const renderByProject = () => {
     const grouped = {};
     assignments.forEach((a) => {
@@ -113,7 +176,7 @@ const CapacityGantt = ({ rates }) => {
 
       return (
         <React.Fragment key={projectId}>
-          {/* Project header row */}
+          {/* En-tête du projet (collapsible) */}
           <div
             className="col-span-full flex items-center gap-2 py-1.5 px-2 cursor-pointer rounded font-medium text-sm text-white"
             style={{ backgroundColor: color }}
@@ -129,11 +192,15 @@ const CapacityGantt = ({ rates }) => {
               if (!resource) return null;
               const resAssignments = projAssignments.filter((a) => a.resource_id === rid);
 
-              // Deduplicate bars (one per assignment)
+              // Déduplique les barres par id d'assignment (l'API peut retourner des doublons
+              // si un assignment chevauche plusieurs phases du même projet)
               const uniqueBars = resAssignments.filter((a, i, arr) =>
                 arr.findIndex((b) => b.id === a.id) === i
               );
               return (
+                // Nested grid : même définition de colonnes que la grille parente.
+                // Pourquoi nested et non flat : une grille plate nécessiterait des divs vides
+                // pour les colonnes sans barre, créant des lignes parasites dans le layout.
                 <div key={`${projectId}-${rid}`} style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
                   <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-background z-10">
                     {renderResourceDot(resource)}
@@ -152,6 +219,7 @@ const CapacityGantt = ({ rates }) => {
                         colSpan={props.colSpan}
                         isConsultant={resource.level !== 'Employé interne'}
                         onClick={() => {
+                          // Seuls les consultants ont l'action QuickTransition
                           if (resource.level !== 'Employé interne') {
                             setQuickTransition({ consultant: resource, assignment: bar });
                           }
@@ -167,11 +235,15 @@ const CapacityGantt = ({ rates }) => {
     });
   };
 
-  // --- By Type view ---
+  // --- Vue "By Type" : grouping Employés internes / Consultants ---
   const renderByType = () => {
     const permanents = resources.filter((r) => r.level === 'Employé interne');
     const consultants = resources.filter((r) => r.level !== 'Employé interne');
 
+    /**
+     * Rend une section collapsible (Permanents ou Consultants) avec toutes
+     * les ressources du groupe et leurs barres d'assignments multi-projets.
+     */
     const renderSection = (label, sectionResources, headerColor, key) => {
       const isCollapsed = collapsed[key];
       return (
@@ -193,6 +265,7 @@ const CapacityGantt = ({ rates }) => {
                 arr.findIndex((b) => b.id === a.id) === i
               );
               return (
+                // Nested grid (voir explication renderByProject ci-dessus)
                 <div key={resource.id} style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
                   <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-background z-10">
                     {renderResourceDot(resource)}
@@ -201,6 +274,7 @@ const CapacityGantt = ({ rates }) => {
                   {uniqueBars.map((bar) => {
                     const props = getBarProps(bar);
                     if (!props) return null;
+                    // En vue "By Type", la couleur de la barre = couleur du projet (pas du type)
                     const color = projectColorMap[bar.project_id] || PROJECT_COLORS[0];
                     return (
                       <GanttBar
@@ -236,7 +310,8 @@ const CapacityGantt = ({ rates }) => {
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
+
+      {/* --- Contrôles : toggle vue + navigation mois --- */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex gap-1">
           <Button
@@ -267,7 +342,7 @@ const CapacityGantt = ({ rates }) => {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* --- Grille principale Gantt --- */}
       <div className="overflow-x-auto border rounded-lg">
         <div
           className="min-w-[900px]"
@@ -278,7 +353,7 @@ const CapacityGantt = ({ rates }) => {
             padding: '8px',
           }}
         >
-          {/* Month headers */}
+          {/* En-têtes des colonnes mois */}
           <div className="font-medium text-sm text-muted-foreground sticky left-0 bg-background z-10" />
           {months.map((m) => (
             <div key={m} className="text-center text-xs font-medium text-muted-foreground py-1">
@@ -286,14 +361,15 @@ const CapacityGantt = ({ rates }) => {
             </div>
           ))}
 
-          {/* Resource rows */}
+          {/* Lignes ressources (rendu conditionnel selon viewMode) */}
           {viewMode === 'project' ? renderByProject() : renderByType()}
 
-          {/* Utilization summary */}
+          {/* Résumé d'utilisation agrégé en bas du Gantt */}
           <UtilizationSummary resources={resources} assignments={assignments} months={months} gridCols={gridCols} />
         </div>
       </div>
 
+      {/* --- Panneau QuickTransition (affiché au click sur une barre consultant) --- */}
       {quickTransition && (
         <QuickTransition
           consultant={quickTransition.consultant}
@@ -302,6 +378,7 @@ const CapacityGantt = ({ rates }) => {
           rates={rates}
           onClose={() => setQuickTransition(null)}
           onApply={() => {
+            // Re-fetch du Gantt après application d'une transition rapide
             capacityApi.getGanttData(startMonth, endMonth).then(setData).catch(() => {});
           }}
         />
