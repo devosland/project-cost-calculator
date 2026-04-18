@@ -72,6 +72,17 @@ jobs:
         # network with the same name so compose can start.
         run: docker network create proxy-network || true
 
+      - name: Create .env for CI
+        # docker-compose.yml interpolates APP_SLUG (container_name) and
+        # APP_DOMAIN (Traefik labels). These live in the VPS .env but not
+        # in git. Provide stubs so compose can parse successfully.
+        run: |
+          cat > .env <<EOF
+          APP_SLUG=ci-smoke
+          APP_DOMAIN=smoke.local
+          JWT_SECRET=ci-smoke-test-secret
+          EOF
+
       - name: Build and start container
         run: docker compose up -d --build --force-recreate
 
