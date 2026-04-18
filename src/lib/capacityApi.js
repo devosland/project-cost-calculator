@@ -112,6 +112,14 @@ export const capacityApi = {
   deleteTransition: (id) => api.request(`/capacity/transitions/${id}`, { method: 'DELETE' }),
 
   /**
+   * Fetch a single transition plan by ID.
+   * Used by CapacityGantt preview mode to load plan details without re-fetching the full list.
+   * @param {string|number} id - Plan ID.
+   * @returns {Promise<object>} Transition plan object.
+   */
+  getTransitionPlan: (id) => api.request(`/capacity/transitions/${id}`),
+
+  /**
    * Apply a transition plan — converts it from planned to applied state and
    * updates the resource pool accordingly on the server.
    * @param {string} id - Plan ID.

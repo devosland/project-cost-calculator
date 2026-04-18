@@ -7,7 +7,7 @@
  * the plan from local state.
  */
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Eye } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
@@ -40,8 +40,11 @@ const statusColors = {
  *   plan (data already parsed to an object) to open it in TransitionPlanner.
  * @param {function(): void} props.onNewPlan - Open TransitionPlanner for a new
  *   (blank) plan.
+ * @param {function(number): void} [props.onPreviewPlan] - Navigate to Gantt with
+ *   the given plan ID pre-selected for what-if preview. Optional; falls back to
+ *   URL hash navigation when not provided.
  */
-const TransitionList = ({ onSelectPlan, onNewPlan }) => {
+const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
   const { t } = useLocale();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -116,6 +119,26 @@ const TransitionList = ({ onSelectPlan, onNewPlan }) => {
                     </span>
                   </div>
                 </button>
+                {/* Preview button — only on draft plans */}
+                {status === 'draft' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-primary shrink-0"
+                    title={t('transitions.preview')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onPreviewPlan) {
+                        onPreviewPlan(plan.id);
+                      } else {
+                        // Fallback: navigate to Gantt tab via hash + query param.
+                        window.location.hash = `#/capacity/gantt?preview=${plan.id}`;
+                      }
+                    }}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

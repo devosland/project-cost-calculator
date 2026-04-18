@@ -109,6 +109,129 @@ export function calculateUtilization(assignments, resourceId, month) {
  * @returns {{ consultantCost: number, replacementCost: number, overlapCost: number,
  *             savings: number, annualSavings: number }}
  */
+/**
+ * Adds a number of weeks to a YYYY-MM string, returning the resulting YYYY-MM.
+ * Mirrors the addWeeksToMonth helper in server/capacity.js (applyFn).
+ *
+ * @param {string} ym    - Base month in YYYY-MM format.
+ * @param {number} weeks - Number of weeks to add (0 = no change).
+ * @returns {string} Resulting month in YYYY-MM format.
+ */
+export function addWeeksToMonth(ym, weeks) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1, 1 + weeks * 7);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Computes the projected list of resource assignments if the given transition
+ * plan were applied. Pure function — no DB or side effects. Mirrors the
+ * server-side apply logic in server/capacity.js (applyFn), used for client-side
+ * what-if preview on the Gantt.
+ *
+ * Algorithm (mirrors applyFn 3-pass logic):
+ *   Pass 1 — collect original end dates before any mutation.
+ *   Pass 2 — for each transition, shorten the matching consultant assignment
+ *             and create a new "temp" replacement assignment.
+ *   Changes are tracked so the Gantt can color-code the diff.
+ *
+ * @param {Array}  currentAssignments - Existing assignments from /api/capacity/assignments.
+ * @param {object} draftPlan          - Draft transition plan from transition_plans table.
+ * @returns {{ assignments: Array, changes: { shortened: Array, added: Array } }}
+ *   assignments — projected list with modifications applied (immutable copies).
+ *   changes.shortened — [{ id, originalEndMonth, newEndMonth }] for red diff.
+ *   changes.added     — [{ tempId, resource_id, project_id, phase_id, … }] for green diff.
+ *   The overlap window (yellow) is derivable from shortened + added entries and is
+ *   included as `overlapStart`/`overlapEnd` on each shortened entry.
+ */
+export function projectAssignmentsWithPlan(currentAssignments, draftPlan) {
+  // Parse plan.data if it arrives as a JSON string (as stored in SQLite).
+  let planData = draftPlan.data;
+  if (typeof planData === 'string') {
+    try { planData = JSON.parse(planData); } catch { planData = {}; }
+  }
+  const transitions = (planData && planData.transitions) ? planData.transitions : [];
+
+  if (transitions.length === 0) {
+    return { assignments: currentAssignments.slice(), changes: { shortened: [], added: [] } };
+  }
+
+  // Work on a shallow-copy array; individual assignment objects are replaced
+  // (not mutated) when modified.
+  let projected = currentAssignments.slice();
+  const shortened = [];
+  const added = [];
+  let tempIdCounter = -1; // Negative IDs flag temp/projected assignments.
+
+  // Pass 1: collect original end dates for all consultant assignments that will
+  // be touched — critical because pass 2 may modify them in-place.
+  const originalEndDates = {}; // key = `${resource_id}-${project_id}-${phase_id}`
+  for (const t of transitions) {
+    if (!t.consultant_resource_id) continue;
+    const transitionDate = t.transition_date;
+    if (!transitionDate) continue;
+    for (const a of currentAssignments) {
+      if (a.resource_id === t.consultant_resource_id && a.end_month >= transitionDate) {
+        const key = `${a.resource_id}-${a.project_id}-${a.phase_id}`;
+        if (!originalEndDates[key]) originalEndDates[key] = a.end_month;
+      }
+    }
+  }
+
+  // Pass 2: apply each transition.
+  for (const t of transitions) {
+    if (!t.consultant_resource_id || !t.transition_date) continue;
+    const transitionDate = t.transition_date;
+    const overlapWeeks = t.overlap_weeks || 0;
+
+    // Find all consultant assignments that extend into/past the transition date.
+    const consultantAssignments = currentAssignments.filter(
+      (a) => a.resource_id === t.consultant_resource_id && a.end_month >= transitionDate
+    );
+
+    for (const a of consultantAssignments) {
+      const key = `${a.resource_id}-${a.project_id}-${a.phase_id}`;
+      const originalEnd = originalEndDates[key] || a.end_month;
+
+      // Consultant stays until transition_date + overlap_weeks, capped at their original end.
+      const consultantNewEnd = overlapWeeks > 0
+        ? addWeeksToMonth(transitionDate, overlapWeeks)
+        : transitionDate;
+      const cappedEnd = consultantNewEnd > originalEnd ? originalEnd : consultantNewEnd;
+
+      // Replace the consultant's assignment with a shortened copy.
+      projected = projected.map((pa) =>
+        pa.id === a.id ? { ...pa, end_month: cappedEnd } : pa
+      );
+
+      // Track shortened entry with overlap window for Gantt diff coloring.
+      shortened.push({
+        id: a.id,
+        originalEndMonth: originalEnd,
+        newEndMonth: cappedEnd,
+        overlapStart: transitionDate,
+        overlapEnd: cappedEnd,
+      });
+
+      // Create replacement assignment (temp, positive duration only).
+      if (t.replacement_resource_id && transitionDate <= originalEnd) {
+        const tempAssignment = {
+          ...a,
+          id: tempIdCounter--,
+          resource_id: t.replacement_resource_id,
+          start_month: transitionDate,
+          end_month: originalEnd,
+          _isPreview: true,
+        };
+        projected.push(tempAssignment);
+        added.push({ ...tempAssignment });
+      }
+    }
+  }
+
+  return { assignments: projected, changes: { shortened, added } };
+}
+
 export function calculateTransitionCostImpact({
   consultantRole,
   consultantLevel,
