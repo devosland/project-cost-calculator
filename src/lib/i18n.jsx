@@ -462,6 +462,11 @@ const translations = {
     'apiTester.colEnd': 'endDate',
     'apiTester.colDeps': 'dependsOn',
     'apiTester.actions': 'Supprimer',
+    'apiTester.showApiKey': 'Afficher',
+    'apiTester.hideApiKey': 'Masquer',
+    'apiTester.apiKeyHelper': 'Non persistée — à coller à chaque session.',
+    'apiTester.copyFailed': 'Échec de la copie',
+    'apiTester.noPhases': 'Aucune phase. Cliquez sur « {addPhase} ».',
   },
 
   en: {
@@ -925,6 +930,11 @@ const translations = {
     'apiTester.colEnd': 'endDate',
     'apiTester.colDeps': 'dependsOn',
     'apiTester.actions': 'Delete',
+    'apiTester.showApiKey': 'Show',
+    'apiTester.hideApiKey': 'Hide',
+    'apiTester.apiKeyHelper': 'Not persisted — paste each session.',
+    'apiTester.copyFailed': 'Copy failed',
+    'apiTester.noPhases': 'No phases. Click "{addPhase}" to add one.',
   },
 };
 

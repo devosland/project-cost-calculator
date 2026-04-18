@@ -1,8 +1,22 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Play, Copy, Check, Plus, Trash2, Code, FileText } from 'lucide-react';
 import { useLocale } from '../lib/i18n';
+
+// ── Internal field helpers ─────────────────────────────────────────────────
+function newRowKey() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Date.now() + '-' + Math.random();
+}
+
+function stripInternalFields(payload) {
+  return {
+    ...payload,
+    phases: (payload.phases || []).map(({ _rowKey, ...rest }) => rest),
+  };
+}
 
 // ── Default template payload ───────────────────────────────────────────────
 function makeDefaultPayload() {
@@ -14,22 +28,27 @@ function makeDefaultPayload() {
       description: '',
     },
     phases: [
-      { id: 'decouverte', name: 'Découverte', order: 1, durationMonths: 2, startDate: '', endDate: '', dependsOn: [], description: '' },
-      { id: 'conception', name: 'Conception', order: 2, durationMonths: 3, startDate: '', endDate: '', dependsOn: ['decouverte'], description: '' },
-      { id: 'realisation', name: 'Réalisation', order: 3, durationMonths: 6, startDate: '', endDate: '', dependsOn: ['conception'], description: '' },
+      { _rowKey: newRowKey(), id: 'decouverte', name: 'Découverte', order: 1, durationMonths: 2, startDate: '', endDate: '', dependsOn: [], description: '' },
+      { _rowKey: newRowKey(), id: 'conception', name: 'Conception', order: 2, durationMonths: 3, startDate: '', endDate: '', dependsOn: ['decouverte'], description: '' },
+      { _rowKey: newRowKey(), id: 'realisation', name: 'Réalisation', order: 3, durationMonths: 6, startDate: '', endDate: '', dependsOn: ['conception'], description: '' },
     ],
   };
 }
 
 // ── Curl generator ─────────────────────────────────────────────────────────
+function shellEscapeSingleQuotes(str) {
+  return str.replace(/'/g, "'\\''");
+}
+
 function curlFromRequest(method, url, apiKey, body) {
   const lines = [
     `curl -X ${method} "${window.location.origin}${url}"`,
     `  -H "X-API-Key: ${apiKey}"`,
   ];
   if (body) {
+    const json = JSON.stringify(body);
     lines.push(`  -H "Content-Type: application/json"`);
-    lines.push(`  -d '${JSON.stringify(body)}'`);
+    lines.push(`  -d '${shellEscapeSingleQuotes(json)}'`);
   }
   return lines.join(' \\\n');
 }
@@ -46,11 +65,17 @@ function StatusBadge({ status }) {
 // ── Response panel ─────────────────────────────────────────────────────────
 function ResponsePanel({ result, curlCmd, t }) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
-  function copyCmd() {
-    navigator.clipboard.writeText(curlCmd);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  async function copyCmd() {
+    try {
+      await navigator.clipboard.writeText(curlCmd);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 3000);
+    }
   }
 
   if (!result) {
@@ -71,6 +96,9 @@ function ResponsePanel({ result, curlCmd, t }) {
             {copied ? t('apiTester.copied') : t('apiTester.copyCurl')}
           </Button>
         )}
+        {copyError && (
+          <span className="text-xs text-red-600 dark:text-red-400">{t('apiTester.copyFailed')}</span>
+        )}
       </div>
       <pre className="text-xs font-mono bg-gray-50 dark:bg-gray-900 border border-border rounded p-3 overflow-x-auto whitespace-pre-wrap break-all max-h-64 overflow-y-auto">
         {JSON.stringify(result.body, null, 2)}
@@ -80,11 +108,11 @@ function ResponsePanel({ result, curlCmd, t }) {
 }
 
 // ── Phase row in the form table ────────────────────────────────────────────
-function PhaseRow({ phase, index, phases, onChange, onDelete, t }) {
-  const otherPhaseIds = phases.filter((_, i) => i !== index).map(p => p.id);
+function PhaseRow({ phase, phases, onChange, onDelete, t }) {
+  const otherPhaseIds = phases.filter(p => p._rowKey !== phase._rowKey).map(p => p.id);
 
   function update(field, value) {
-    onChange(index, { ...phase, [field]: value });
+    onChange(phase._rowKey, field, value);
   }
 
   function toggleDep(id) {
@@ -164,7 +192,7 @@ function PhaseRow({ phase, index, phases, onChange, onDelete, t }) {
       </td>
       <td className="p-1.5 text-center">
         <button
-          onClick={() => onDelete(index)}
+          onClick={() => onDelete(phase._rowKey)}
           className="text-muted-foreground hover:text-red-500 transition-colors"
           title={t('apiTester.actions')}
         >
@@ -188,7 +216,7 @@ function TabImport({ apiKey, t }) {
 
   // Sync form → json when switching to raw mode
   function switchToJson() {
-    setRawJson(JSON.stringify(cleanPayload(payload), null, 2));
+    setRawJson(JSON.stringify(cleanPayload(stripInternalFields(payload)), null, 2));
     setJsonError('');
     setMode('json');
   }
@@ -197,19 +225,24 @@ function TabImport({ apiKey, t }) {
   function switchToForm() {
     try {
       const parsed = JSON.parse(rawJson);
-      // Ensure phases have all optional fields for the form
-      if (parsed.phases) {
-        parsed.phases = parsed.phases.map(p => ({
-          startDate: '',
-          endDate: '',
-          dependsOn: [],
-          description: '',
-          ...p,
-        }));
-      }
-      if (!parsed.project) parsed.project = {};
-      if (parsed.project.description === undefined) parsed.project.description = '';
-      setPayload(parsed);
+      const normalizedPayload = {
+        ...parsed,
+        project: {
+          ...((parsed && parsed.project && typeof parsed.project === 'object') ? parsed.project : {}),
+        },
+        phases: Array.isArray(parsed?.phases)
+          ? parsed.phases.map(p => ({
+              startDate: '',
+              endDate: '',
+              dependsOn: [],
+              description: '',
+              ...p,
+              _rowKey: newRowKey(),
+            }))
+          : [],
+      };
+      if (normalizedPayload.project.description === undefined) normalizedPayload.project.description = '';
+      setPayload(normalizedPayload);
       setJsonError('');
       setMode('form');
     } catch {
@@ -247,7 +280,7 @@ function TabImport({ apiKey, t }) {
       if (mode === 'json') {
         body = JSON.parse(rawJson);
       } else {
-        body = cleanPayload(payload);
+        body = cleanPayload(stripInternalFields(payload));
       }
       const url = '/api/v1/roadmap/import' + (upsert ? '?upsert=true' : '');
       const t0 = performance.now();
@@ -267,19 +300,40 @@ function TabImport({ apiKey, t }) {
     setSending(false);
   }
 
-  function updatePhase(index, updated) {
+  function updatePhase(rowKey, field, newValue) {
     setPayload(prev => {
       const phases = [...prev.phases];
-      phases[index] = updated;
+      const idx = phases.findIndex(p => p._rowKey === rowKey);
+      if (idx < 0) return prev;
+      const oldValue = phases[idx][field];
+      phases[idx] = { ...phases[idx], [field]: newValue };
+
+      if (field === 'id' && oldValue && oldValue !== newValue) {
+        for (let i = 0; i < phases.length; i++) {
+          if (i !== idx && Array.isArray(phases[i].dependsOn) && phases[i].dependsOn.includes(oldValue)) {
+            phases[i] = {
+              ...phases[i],
+              dependsOn: phases[i].dependsOn.map(d => d === oldValue ? newValue : d),
+            };
+          }
+        }
+      }
       return { ...prev, phases };
     });
   }
 
-  function deletePhase(index) {
-    setPayload(prev => ({
-      ...prev,
-      phases: prev.phases.filter((_, i) => i !== index),
-    }));
+  function deletePhase(rowKey) {
+    setPayload(prev => {
+      const removed = prev.phases.find(p => p._rowKey === rowKey);
+      const removedId = removed?.id;
+      const phases = prev.phases
+        .filter(p => p._rowKey !== rowKey)
+        .map(p => removedId && Array.isArray(p.dependsOn)
+          ? { ...p, dependsOn: p.dependsOn.filter(d => d !== removedId) }
+          : p
+        );
+      return { ...prev, phases };
+    });
   }
 
   function addPhase() {
@@ -288,6 +342,7 @@ function TabImport({ apiKey, t }) {
       phases: [
         ...prev.phases,
         {
+          _rowKey: newRowKey(),
           id: 'phase-' + (prev.phases.length + 1),
           name: '',
           order: prev.phases.length + 1,
@@ -384,7 +439,7 @@ function TabImport({ apiKey, t }) {
 
             {payload.phases.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center border border-dashed border-border rounded">
-                Aucune phase. Cliquez sur « {t('apiTester.addPhase')} ».
+                {t('apiTester.noPhases', { addPhase: t('apiTester.addPhase') })}
               </p>
             ) : (
               <div className="overflow-x-auto rounded border border-border">
@@ -402,11 +457,10 @@ function TabImport({ apiKey, t }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {payload.phases.map((phase, i) => (
+                    {payload.phases.map((phase) => (
                       <PhaseRow
-                        key={i}
+                        key={phase._rowKey}
                         phase={phase}
-                        index={i}
                         phases={payload.phases}
                         onChange={updatePhase}
                         onDelete={deletePhase}
@@ -550,11 +604,11 @@ export default function ApiTester() {
               onClick={() => setShowKey(s => !s)}
               className="shrink-0"
             >
-              {showKey ? 'Masquer' : 'Afficher'}
+              {showKey ? t('apiTester.hideApiKey') : t('apiTester.showApiKey')}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-1.5">
-            Non persistée — à coller à chaque session.
+            {t('apiTester.apiKeyHelper')}
           </p>
         </CardContent>
       </Card>
