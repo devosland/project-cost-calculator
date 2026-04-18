@@ -1,3 +1,11 @@
+/**
+ * Express router for project CRUD, sharing, snapshots, and webhook testing (/api/projects/*).
+ * All routes require JWT authentication. Access control is role-based:
+ *   - "owner"  — full access including delete, share management, and webhook test
+ *   - "editor" — read + write project data and snapshots
+ *   - "viewer" — read project data and snapshots only
+ * The checkAccess() helper centralises these checks and is called at the top of every route.
+ */
 import { Router } from 'express';
 import { authMiddleware } from './middleware.js';
 import {
@@ -21,8 +29,14 @@ const router = Router();
 
 router.use(authMiddleware);
 
-// Access check helper
-// Returns role string ('owner' | 'editor' | 'viewer') or null if no access
+/**
+ * Checks whether a user has at least the specified role on a project.
+ * Owners always pass. Shared users are checked against project_shares.
+ * @param {string} projectId
+ * @param {number} userId
+ * @param {'viewer'|'editor'} requiredRole
+ * @returns {'owner'|'editor'|'viewer'|null} The user's actual role, or null if no access.
+ */
 function checkAccess(projectId, userId, requiredRole) {
   const project = getProjectById(projectId);
   if (!project) return null;
@@ -43,7 +57,11 @@ function checkAccess(projectId, userId, requiredRole) {
   return share.role;
 }
 
-// GET / — list all projects accessible to user
+/**
+ * GET /api/projects
+ * Lists all projects visible to the authenticated user (owned + shared).
+ * Returns: 200 [{ ...projectData, id, name, role, owner_id, owner_name }]
+ */
 router.get('/', (req, res) => {
   try {
     const rows = getProjectsByUser(req.user.id);
@@ -59,7 +77,14 @@ router.get('/', (req, res) => {
   }
 });
 
-// POST / — create a new project
+/**
+ * POST /api/projects
+ * Creates a new project owned by the authenticated user and takes an initial snapshot
+ * labelled "creation" so the history starts at the point of creation.
+ * Body: { id: string, name: string, data?: object }
+ * Returns: 201 { id, name, data }
+ * Errors: 400 missing id or name
+ */
 router.post('/', (req, res) => {
   try {
     const { id, name, data } = req.body;
@@ -76,7 +101,15 @@ router.post('/', (req, res) => {
   }
 });
 
-// PUT /:id — update a project
+/**
+ * PUT /api/projects/:id
+ * Updates a project's name and/or data. Editor or owner access required.
+ * After saving, reconciles resource_assignments with the current teamMembers in each
+ * phase (non-fatal — assignment sync errors are logged but don't fail the response).
+ * Body: { name?: string, data?: object }
+ * Returns: 200 { id, name, data }
+ * Errors: 403 no access
+ */
 router.put('/:id', (req, res) => {
   try {
     const role = checkAccess(req.params.id, req.user.id, 'editor');
@@ -89,12 +122,13 @@ router.put('/:id', (req, res) => {
     const updatedData = data !== undefined ? JSON.stringify(data) : project.data;
     updateProjectRecord(req.params.id, updatedName, updatedData);
 
-    // Sync resource assignments with project teamMembers
+    // Sync resource assignments with project teamMembers.
+    // Non-critical path — a failed assignment sync must not roll back the project update.
     try {
       const projectData = JSON.parse(updatedData);
       const phaseIds = (projectData.phases || []).map(p => p.id);
 
-      // Delete assignments for removed phases
+      // Delete assignments for phases that were removed from the project.
       if (phaseIds.length > 0) {
         db.prepare(
           'DELETE FROM resource_assignments WHERE project_id = ? AND phase_id NOT IN (' + phaseIds.map(() => '?').join(',') + ')'
@@ -149,7 +183,13 @@ router.put('/:id', (req, res) => {
   }
 });
 
-// DELETE /:id — delete a project (owner only)
+/**
+ * DELETE /api/projects/:id
+ * Permanently deletes a project. Owner access only — editors and viewers cannot delete.
+ * Cascades to project_shares and project_snapshots via FK ON DELETE CASCADE.
+ * Returns: 200 { success: true }
+ * Errors: 403 not owner
+ */
 router.delete('/:id', (req, res) => {
   try {
     const project = getProjectById(req.params.id);
@@ -164,7 +204,14 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-// POST /:id/share — share a project
+/**
+ * POST /api/projects/:id/share
+ * Shares a project with another user by email. Owner access only.
+ * Uses INSERT OR REPLACE so calling share again with a different role updates the role.
+ * Body: { email: string, role?: 'viewer'|'editor' }
+ * Returns: 200 { success, user_id, email, role }
+ * Errors: 403 not owner | 400 missing email | 404 target user not found
+ */
 router.post('/:id/share', (req, res) => {
   try {
     const project = getProjectById(req.params.id);
@@ -187,7 +234,12 @@ router.post('/:id/share', (req, res) => {
   }
 });
 
-// DELETE /:id/share/:userId — unshare a project
+/**
+ * DELETE /api/projects/:id/share/:userId
+ * Revokes a specific user's access to the project. Owner access only.
+ * Returns: 200 { success: true }
+ * Errors: 403 not owner
+ */
 router.delete('/:id/share/:userId', (req, res) => {
   try {
     const project = getProjectById(req.params.id);
@@ -202,7 +254,12 @@ router.delete('/:id/share/:userId', (req, res) => {
   }
 });
 
-// GET /:id/shares — list shares for a project
+/**
+ * GET /api/projects/:id/shares
+ * Lists all users with access to the project. Owner access only.
+ * Returns: 200 [{ id, user_id, role, created_at, email, name }]
+ * Errors: 403 not owner
+ */
 router.get('/:id/shares', (req, res) => {
   try {
     const project = getProjectById(req.params.id);
@@ -217,7 +274,13 @@ router.get('/:id/shares', (req, res) => {
   }
 });
 
-// GET /:id/snapshots — list snapshots
+/**
+ * GET /api/projects/:id/snapshots
+ * Lists up to 50 snapshots for the project ordered newest first.
+ * Viewer or higher access required.
+ * Returns: 200 [{ id, project_id, user_id, label, created_at }]
+ * Errors: 403 no access
+ */
 router.get('/:id/snapshots', (req, res) => {
   try {
     const role = checkAccess(req.params.id, req.user.id, 'viewer');
@@ -232,7 +295,14 @@ router.get('/:id/snapshots', (req, res) => {
   }
 });
 
-// POST /:id/snapshots — create a snapshot
+/**
+ * POST /api/projects/:id/snapshots
+ * Takes a manual snapshot of the project's current state. Viewer or higher access required
+ * (viewers can save snapshots since it's a non-destructive read operation).
+ * Body: { label?: string }
+ * Returns: 201 { id, project_id, user_id, data, label }
+ * Errors: 403 no access
+ */
 router.post('/:id/snapshots', (req, res) => {
   try {
     const role = checkAccess(req.params.id, req.user.id, 'viewer');
@@ -249,7 +319,15 @@ router.post('/:id/snapshots', (req, res) => {
   }
 });
 
-// POST /snapshots/:snapshotId/restore — restore a snapshot
+/**
+ * POST /api/projects/snapshots/:snapshotId/restore
+ * Restores a project to the state captured in a snapshot. Editor or owner access required.
+ * Note: this route must be declared before /:id routes to avoid Express matching
+ * "snapshots" as a project ID — the specific literal path takes precedence here
+ * only because it is registered first in the file.
+ * Returns: 200 { id, name, data }
+ * Errors: 404 snapshot not found | 403 no editor access
+ */
 router.post('/snapshots/:snapshotId/restore', (req, res) => {
   try {
     const snapshot = getSnapshotById(parseInt(req.params.snapshotId, 10));
@@ -272,7 +350,12 @@ router.post('/snapshots/:snapshotId/restore', (req, res) => {
   }
 });
 
-// Validate webhook URL to prevent SSRF
+/**
+ * Validates that a webhook URL is safe to call (HTTPS/HTTP, non-private IP).
+ * Blocks localhost, RFC-1918 ranges, link-local, and .internal TLDs to prevent SSRF.
+ * @param {string} urlString
+ * @returns {boolean}
+ */
 function isAllowedWebhookUrl(urlString) {
   let parsed;
   try { parsed = new URL(urlString); } catch { return false; }
@@ -288,7 +371,14 @@ function isAllowedWebhookUrl(urlString) {
   return true;
 }
 
-// POST /:id/test-webhook — send a test webhook notification
+/**
+ * POST /api/projects/:id/test-webhook
+ * Sends a test "budget_alert_test" event to the project's configured webhook URL.
+ * Editor or owner access required. Enforces a 10-second timeout and SSRF blocklist.
+ * Returns: 200 { success: true }
+ * Errors: 403 no access | 400 webhook_not_configured | 400 webhook_url_invalid |
+ *         502 webhook_response_error | 504 webhook_timeout | 502 webhook_unreachable
+ */
 router.post('/:id/test-webhook', async (req, res) => {
   try {
     const role = checkAccess(req.params.id, req.user.id, 'editor');
