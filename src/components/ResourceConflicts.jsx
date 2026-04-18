@@ -15,10 +15,8 @@ import { useLocale } from '../lib/i18n';
 /**
  * @param {Object} props
  * @param {Object} props.project - Full project object with phases and team members.
- * @param {Object} props.rates   - Rate table (passed for signature compatibility;
- *   not used in conflict detection itself).
  */
-const ResourceConflicts = ({ project, rates }) => {
+const ResourceConflicts = ({ project }) => {
   const { t } = useLocale();
   const { phaseSchedule } = calculateProjectDurationWithDependencies(project);
   const phases = project.phases || [];

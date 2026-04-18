@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, BarChart3, Users, ArrowLeftRight, Settings } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
+import { useHashRouter } from '../lib/useHashRouter';
 import ResourcePool from './ResourcePool';
 import CapacityGantt from './CapacityGantt';
 import TransitionList from './TransitionList';
@@ -30,6 +31,7 @@ import { capacityApi } from '../lib/capacityApi';
  */
 const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab }) => {
   const { t } = useLocale();
+  const { navigate } = useHashRouter();
   const [activeTab, setActiveTab] = useState(initialTab || 'resources');
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [showPlanner, setShowPlanner] = useState(false);
@@ -73,7 +75,7 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               }`}
               // Mirror tab to URL hash so the browser back button and direct links work.
-          onClick={() => { setActiveTab(tab.id); window.location.hash = '#/capacity/' + tab.id; }}
+              onClick={() => { setActiveTab(tab.id); navigate('capacity/' + tab.id); }}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
