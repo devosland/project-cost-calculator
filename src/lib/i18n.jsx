@@ -412,6 +412,15 @@ const translations = {
     'transitions.overlapCost': 'Coût chevauchement',
     'transitions.newPermanent': '+ Nouveau permanent',
     'transitions.annualSavings': 'Économie annuelle',
+    'transitions.preview': 'Aperçu',
+
+    // Capacity preview mode (what-if Gantt)
+    'capacity.previewMode.banner': 'Mode aperçu : {name} — aucun changement appliqué.',
+    'capacity.previewMode.exit': 'Sortir',
+    'capacity.previewMode.selectPlan': 'Aperçu du plan draft',
+    'capacity.previewMode.none': 'Aucun aperçu',
+    'capacity.previewMode.showCurrent': 'Afficher état actuel',
+    'capacity.previewMode.legend': 'Légende : rouge = raccourci, vert = ajouté, jaune = overlap',
 
     // Project store
     'store.newProject': 'Nouveau projet',
@@ -887,6 +896,15 @@ const translations = {
     'transitions.overlapCost': 'Overlap cost',
     'transitions.newPermanent': '+ New permanent',
     'transitions.annualSavings': 'Annual savings',
+    'transitions.preview': 'Preview',
+
+    // Capacity preview mode (what-if Gantt)
+    'capacity.previewMode.banner': 'Preview mode: {name} — no changes applied.',
+    'capacity.previewMode.exit': 'Exit',
+    'capacity.previewMode.selectPlan': 'Preview draft plan',
+    'capacity.previewMode.none': 'No preview',
+    'capacity.previewMode.showCurrent': 'Show current state',
+    'capacity.previewMode.legend': 'Legend: red = shortened, green = added, yellow = overlap',
 
     // Project store
     'store.newProject': 'New project',

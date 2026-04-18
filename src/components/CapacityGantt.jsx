@@ -10,13 +10,19 @@
  * refreshKey pattern : le composant refetch les données via capacityApi à chaque
  * changement de [startMonth, endMonth]. Le parent incrémente une prop refreshKey
  * (ou change la plage) pour forcer un re-fetch après un save ou une transition.
+ *
+ * Preview mode : when previewPlanId is set, the Gantt fetches the draft plan,
+ * runs projectAssignmentsWithPlan() client-side, and renders both current (solid)
+ * and projected (hatched) bars side-by-side. A dismissable banner identifies the
+ * preview state. A "Show current state" toggle hides the solid bars for a cleaner
+ * projected-only view.
  */
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
-import { getMonthRange, calculateUtilization } from '../lib/capacityCalculations';
+import { getMonthRange, calculateUtilization, projectAssignmentsWithPlan } from '../lib/capacityCalculations';
 import GanttBar from './GanttBar';
 import UtilizationSummary from './UtilizationSummary';
 import QuickTransition from './QuickTransition';
@@ -49,13 +55,14 @@ function addMonths(ym, count) {
  * (Employés internes / Consultants). Chaque barre consultant est cliquable
  * pour ouvrir QuickTransition.
  *
- * @param {object} props
- * @param {object} props.rates - Rates enterprise (INTERNAL_RATE, CONSULTANT_RATES) — transmis à QuickTransition
- * @param {number} [props.refreshKey] - Incrémenter cette prop force un re-fetch des données Gantt.
- *   Le Gantt ne sait pas quand une transition ou un save se produit ailleurs dans l'app ;
- *   le parent signale le besoin de rafraîchir via ce pattern plutôt qu'un event bus.
+ * @param {object}        props
+ * @param {object}        props.rates          - Rates enterprise (INTERNAL_RATE, CONSULTANT_RATES).
+ * @param {number}       [props.refreshKey]    - Increment to force re-fetch after external save/transition.
+ * @param {number|string}[props.previewPlanId] - ID of a draft plan to visualise in preview mode.
+ *   When set, the Gantt overlays projected bars (hatched) on top of current bars (solid).
+ * @param {function}     [props.onExitPreview] - Callback to clear the preview selection.
  */
-const CapacityGantt = ({ rates }) => {
+const CapacityGantt = ({ rates, previewPlanId, onExitPreview }) => {
   const { t, locale } = useLocale();
   const [viewMode, setViewMode] = useState('project');
   const now = new Date();
@@ -66,6 +73,11 @@ const CapacityGantt = ({ rates }) => {
   const [collapsed, setCollapsed] = useState({});
   const [quickTransition, setQuickTransition] = useState(null);
 
+  // Preview mode state
+  const [previewPlan, setPreviewPlan] = useState(null);   // full plan object once fetched
+  const [previewError, setPreviewError] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(true);   // toggle: render solid current bars
+
   // endMonth = toujours 11 mois après startMonth → fenêtre fixe de 12 mois
   const endMonth = useMemo(() => addMonths(startMonth, 11), [startMonth]);
   const months = useMemo(() => getMonthRange(startMonth, endMonth), [startMonth, endMonth]);
@@ -75,6 +87,25 @@ const CapacityGantt = ({ rates }) => {
   useEffect(() => {
     capacityApi.getGanttData(startMonth, endMonth).then(setData).catch(() => {});
   }, [startMonth, endMonth]);
+
+  // Fetch the draft plan whenever previewPlanId changes.
+  useEffect(() => {
+    if (!previewPlanId) {
+      setPreviewPlan(null);
+      setPreviewError(false);
+      return;
+    }
+    setPreviewError(false);
+    capacityApi.getTransitionPlan(previewPlanId)
+      .then((plan) => setPreviewPlan(plan))
+      .catch(() => { setPreviewError(true); setPreviewPlan(null); });
+  }, [previewPlanId]);
+
+  // Compute projected assignments + diff changes when preview plan is loaded.
+  const previewResult = useMemo(() => {
+    if (!previewPlan || !data.assignments.length) return null;
+    return projectAssignmentsWithPlan(data.assignments, previewPlan);
+  }, [previewPlan, data.assignments]);
 
   const { resources, assignments } = data;
 
@@ -146,6 +177,123 @@ const CapacityGantt = ({ rates }) => {
   };
 
   /**
+   * Inline style for hatched preview bars.
+   * - red   (#ef4444) : consultant assignment that was shortened
+   * - green (#10b981) : new replacement assignment
+   * - yellow (#f59e0b): overlap window (consultant + replacement coexist)
+   */
+  const hatchStyle = (color) => ({
+    background: `repeating-linear-gradient(
+      45deg,
+      ${color}55,
+      ${color}55 4px,
+      ${color}22 4px,
+      ${color}22 8px
+    )`,
+    border: `1.5px dashed ${color}`,
+    borderRadius: '4px',
+  });
+
+  /**
+   * Renders hatched overlay bars for a single resource assignment in preview mode.
+   * Checks the `changes` object to determine which color to apply:
+   *   - shortened (red) for the removed portion of a consultant's assignment
+   *   - added (green) for a new replacement bar
+   *   - overlap (yellow) for the window where both coexist
+   *
+   * @param {object} bar      - Assignment (may be a temp/projected one from previewResult)
+   * @param {object} changes  - { shortened, added } from projectAssignmentsWithPlan
+   * @param {string} label    - Tooltip label text
+   */
+  const renderPreviewBar = (bar, changes, label) => {
+    const shortenedEntry = changes.shortened.find((s) => s.id === bar.id);
+    const addedEntry = changes.added.find((a) => a.id === bar.id);
+
+    const bars = [];
+
+    if (shortenedEntry) {
+      // Render the "removed" portion (originalEnd → newEnd) in red hatching
+      const removedBar = {
+        ...bar,
+        start_month: shortenedEntry.newEndMonth,
+        end_month: shortenedEntry.originalEndMonth,
+      };
+      const props = getBarProps(removedBar);
+      if (props) {
+        bars.push(
+          <div
+            key={`shortened-${bar.id}`}
+            style={{
+              gridColumnStart: props.colStart,
+              gridColumnEnd: `span ${props.colSpan}`,
+              ...hatchStyle('#ef4444'),
+              height: '22px',
+              margin: '1px 0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              color: '#ef4444',
+              overflow: 'hidden',
+            }}
+            title={`${label} — raccourci`}
+          />
+        );
+      }
+
+      // Render the overlap window in yellow hatching
+      if (shortenedEntry.overlapStart && shortenedEntry.overlapEnd && shortenedEntry.overlapStart < shortenedEntry.overlapEnd) {
+        const overlapBar = { ...bar, start_month: shortenedEntry.overlapStart, end_month: shortenedEntry.overlapEnd };
+        const op = getBarProps(overlapBar);
+        if (op) {
+          bars.push(
+            <div
+              key={`overlap-${bar.id}`}
+              style={{
+                gridColumnStart: op.colStart,
+                gridColumnEnd: `span ${op.colSpan}`,
+                ...hatchStyle('#f59e0b'),
+                height: '22px',
+                margin: '1px 0',
+                opacity: 0.7,
+              }}
+              title={`Overlap — transition en cours`}
+            />
+          );
+        }
+      }
+    }
+
+    if (addedEntry) {
+      // Render the new replacement bar in green hatching
+      const props = getBarProps(bar);
+      if (props) {
+        bars.push(
+          <div
+            key={`added-${bar.id}`}
+            style={{
+              gridColumnStart: props.colStart,
+              gridColumnEnd: `span ${props.colSpan}`,
+              ...hatchStyle('#10b981'),
+              height: '22px',
+              margin: '1px 0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              color: '#10b981',
+              overflow: 'hidden',
+            }}
+            title={`${label} — remplaçant`}
+          />
+        );
+      }
+    }
+
+    return bars;
+  };
+
+  /**
    * Point coloré vert (employé interne) ou orange (consultant) affiché
    * avant le nom de chaque ressource pour identification rapide du type.
    */
@@ -197,6 +345,13 @@ const CapacityGantt = ({ rates }) => {
               const uniqueBars = resAssignments.filter((a, i, arr) =>
                 arr.findIndex((b) => b.id === a.id) === i
               );
+              // In preview mode, use projected assignments for this resource instead.
+              const displayBars = previewResult
+                ? previewResult.assignments.filter(
+                    (a) => a.resource_id === rid && a.project_id === Number(projectId)
+                  ).filter((a, i, arr) => arr.findIndex((b) => b.id === a.id) === i)
+                : uniqueBars;
+
               return (
                 // Nested grid : même définition de colonnes que la grille parente.
                 // Pourquoi nested et non flat : une grille plate nécessiterait des divs vides
@@ -206,7 +361,8 @@ const CapacityGantt = ({ rates }) => {
                     {renderResourceDot(resource)}
                     {resource.name}
                   </div>
-                  {uniqueBars.map((bar) => {
+                  {/* Current (solid) bars — shown when not in preview OR when showCurrent is on */}
+                  {(!previewResult || showCurrent) && uniqueBars.map((bar) => {
                     const props = getBarProps(bar);
                     if (!props) return null;
                     return (
@@ -227,6 +383,10 @@ const CapacityGantt = ({ rates }) => {
                       />
                     );
                   })}
+                  {/* Projected (hatched) overlay bars — only in preview mode */}
+                  {previewResult && displayBars.map((bar) =>
+                    renderPreviewBar(bar, previewResult.changes, resource.name)
+                  )}
                 </div>
               );
             })}
@@ -264,6 +424,12 @@ const CapacityGantt = ({ rates }) => {
               const uniqueBars = resAssignments.filter((a, i, arr) =>
                 arr.findIndex((b) => b.id === a.id) === i
               );
+              const displayBarsType = previewResult
+                ? previewResult.assignments.filter(
+                    (a) => a.resource_id === resource.id
+                  ).filter((a, i, arr) => arr.findIndex((b) => b.id === a.id) === i)
+                : uniqueBars;
+
               return (
                 // Nested grid (voir explication renderByProject ci-dessus)
                 <div key={resource.id} style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
@@ -271,7 +437,8 @@ const CapacityGantt = ({ rates }) => {
                     {renderResourceDot(resource)}
                     {resource.name}
                   </div>
-                  {uniqueBars.map((bar) => {
+                  {/* Current (solid) bars */}
+                  {(!previewResult || showCurrent) && uniqueBars.map((bar) => {
                     const props = getBarProps(bar);
                     if (!props) return null;
                     // En vue "By Type", la couleur de la barre = couleur du projet (pas du type)
@@ -293,6 +460,10 @@ const CapacityGantt = ({ rates }) => {
                       />
                     );
                   })}
+                  {/* Projected (hatched) overlay bars */}
+                  {previewResult && displayBarsType.map((bar) =>
+                    renderPreviewBar(bar, previewResult.changes, resource.name)
+                  )}
                 </div>
               );
             })}
@@ -310,6 +481,45 @@ const CapacityGantt = ({ rates }) => {
 
   return (
     <div className="space-y-4">
+
+      {/* --- Preview mode banner --- */}
+      {previewPlanId && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-4 py-2 text-sm">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="font-medium text-amber-800 dark:text-amber-300">
+              {previewError
+                ? 'Erreur : plan introuvable.'
+                : previewPlan
+                  ? t('capacity.previewMode.banner', { name: previewPlan.name })
+                  : '…'}
+            </span>
+            {previewResult && (
+              <label className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showCurrent}
+                  onChange={(e) => setShowCurrent(e.target.checked)}
+                  className="rounded"
+                />
+                {t('capacity.previewMode.showCurrent')}
+              </label>
+            )}
+            {previewResult && (
+              <span className="text-xs text-amber-600 dark:text-amber-500 hidden sm:inline">
+                {t('capacity.previewMode.legend')}
+              </span>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-amber-700 hover:text-amber-900 dark:text-amber-400 shrink-0"
+            onClick={onExitPreview}
+          >
+            {t('capacity.previewMode.exit')}
+          </Button>
+        </div>
+      )}
 
       {/* --- Contrôles : toggle vue + navigation mois --- */}
       <div className="flex items-center justify-between flex-wrap gap-2">

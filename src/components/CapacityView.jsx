@@ -37,11 +37,36 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
   const [showPlanner, setShowPlanner] = useState(false);
   const [resources, setResources] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [previewPlanId, setPreviewPlanId] = useState(null);
+  const [draftPlans, setDraftPlans] = useState([]);
 
   useEffect(() => {
     capacityApi.getResources().then((data) => {
       setResources(Array.isArray(data) ? data : []);
     }).catch(() => {});
+  }, []);
+
+  // Fetch draft plans for the preview dropdown whenever the Gantt tab is active.
+  useEffect(() => {
+    if (activeTab !== 'gantt') return;
+    capacityApi.getTransitions().then((data) => {
+      const all = Array.isArray(data) ? data : [];
+      setDraftPlans(all.filter((p) => p.status === 'draft'));
+    }).catch(() => {});
+  }, [activeTab]);
+
+  // Read ?preview=<id> from the hash query string on mount so TransitionList
+  // "Preview" button can navigate here with the plan pre-selected.
+  useEffect(() => {
+    const hash = window.location.hash; // e.g. #/capacity/gantt?preview=5
+    const qIndex = hash.indexOf('?');
+    if (qIndex === -1) return;
+    const params = new URLSearchParams(hash.slice(qIndex + 1));
+    const pid = params.get('preview');
+    if (pid) {
+      setActiveTab('gantt');
+      setPreviewPlanId(Number(pid));
+    }
   }, []);
 
   const TABS = [
@@ -86,7 +111,30 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
 
       {/* Tab content */}
       {activeTab === 'gantt' && (
-        <CapacityGantt rates={rates} key={refreshKey} />
+        <div className="space-y-3">
+          {/* Draft plan preview selector */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+              {t('capacity.previewMode.selectPlan')}
+            </label>
+            <select
+              className="text-sm border rounded px-2 py-1 bg-background"
+              value={previewPlanId ?? ''}
+              onChange={(e) => setPreviewPlanId(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">{t('capacity.previewMode.none')}</option>
+              {draftPlans.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <CapacityGantt
+            rates={rates}
+            key={refreshKey}
+            previewPlanId={previewPlanId}
+            onExitPreview={() => setPreviewPlanId(null)}
+          />
+        </div>
       )}
       {activeTab === 'resources' && (
         <ResourcePool rates={rates} />
@@ -104,6 +152,11 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
           <TransitionList
             onSelectPlan={(p) => { setSelectedPlan(p); setShowPlanner(true); }}
             onNewPlan={() => { setSelectedPlan(null); setShowPlanner(true); }}
+            onPreviewPlan={(planId) => {
+              setPreviewPlanId(planId);
+              setActiveTab('gantt');
+              navigate('capacity/gantt');
+            }}
           />
         )
       )}
