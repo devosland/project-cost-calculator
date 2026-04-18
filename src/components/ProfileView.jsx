@@ -2,6 +2,7 @@ import React from 'react';
 import { User } from 'lucide-react';
 import { useLocale } from '../lib/i18n';
 import ApiKeysView from './ApiKeysView';
+import ApiTester from './ApiTester';
 
 export default function ProfileView({ user }) {
   const { t } = useLocale();
@@ -26,6 +27,12 @@ export default function ProfileView({ user }) {
 
       {/* API Keys section */}
       <ApiKeysView />
+
+      {/* Divider */}
+      <hr className="border-border" />
+
+      {/* API Tester section */}
+      <ApiTester />
     </div>
   );
 }
