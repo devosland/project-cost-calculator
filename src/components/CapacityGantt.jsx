@@ -108,10 +108,24 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
       setPreviewError(false);
       return;
     }
+    // Clear stale data immediately so the banner never shows a wrong plan name.
+    setPreviewPlan(null);
     setPreviewError(false);
+    let cancelled = false;
+    const requestedId = previewPlanId;
     capacityApi.getTransitionPlan(previewPlanId)
-      .then((plan) => setPreviewPlan(plan))
-      .catch(() => { setPreviewError(true); setPreviewPlan(null); });
+      .then((plan) => {
+        // Guard against out-of-order responses: discard if the user has already
+        // switched to a different plan or if the effect was cleaned up.
+        if (cancelled || requestedId !== previewPlanId) return;
+        setPreviewPlan(plan);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPreviewError(true);
+        setPreviewPlan(null);
+      });
+    return () => { cancelled = true; };
   }, [previewPlanId]);
 
   // Compute projected assignments + diff changes when preview plan is loaded.
@@ -366,7 +380,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
               // In preview mode, use projected assignments for this resource instead.
               const displayBars = previewResult
                 ? previewResult.assignments.filter(
-                    (a) => a.resource_id === rid && a.project_id === Number(projectId)
+                    (a) => a.resource_id === rid && a.project_id === projectId
                   ).filter((a, i, arr) => arr.findIndex((b) => b.id === a.id) === i)
                 : uniqueBars;
 

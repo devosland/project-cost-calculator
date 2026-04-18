@@ -126,6 +126,7 @@ const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
                     size="sm"
                     className="text-muted-foreground hover:text-primary shrink-0"
                     title={t('transitions.preview')}
+                    aria-label={t('transitions.preview')}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onPreviewPlan) {
