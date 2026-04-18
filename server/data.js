@@ -1,3 +1,12 @@
+/**
+ * Express router for bulk data synchronisation (/api/data).
+ * GET returns the full user dataset (projects + rates) in one call.
+ * PUT replaces all owned projects and rates atomically, then reconciles
+ * resource_assignments with the updated teamMembers in each phase.
+ *
+ * This is a legacy "save everything" endpoint used by the frontend's
+ * projectStore. New code should prefer the granular /api/projects/* routes.
+ */
 import { Router } from 'express';
 import { getUserData, saveUserData, getProjectsByUser, upsertProjectRecord, deleteProjectRecord, db } from './db.js';
 import { authMiddleware } from './middleware.js';
@@ -7,7 +16,13 @@ const router = Router();
 // All routes require authentication
 router.use(authMiddleware);
 
-// GET /api/data
+/**
+ * GET /api/data
+ * Returns all projects visible to the user (owned + shared) and their billing rates.
+ * Projects are read from the dedicated `projects` table (not the legacy user_data.projects
+ * JSON blob) so shared projects are included via the UNION query in getProjectsByUser.
+ * Returns: 200 { projects: object[], rates: object|null }
+ */
 router.get('/', (req, res) => {
   try {
     const data = getUserData(req.user.id);
@@ -18,6 +33,7 @@ router.get('/', (req, res) => {
     const projects = projectRows.map(row => {
       let parsed = {};
       try { parsed = JSON.parse(row.data); } catch {}
+      // Merge DB metadata (id, name, role, owner) onto the parsed JSON blob.
       return { ...parsed, id: row.id, name: row.name, role: row.role, owner_id: row.owner_id, owner_name: row.owner_name };
     });
 
@@ -28,7 +44,17 @@ router.get('/', (req, res) => {
   }
 });
 
-// PUT /api/data
+/**
+ * PUT /api/data
+ * Replaces the authenticated user's entire project set and billing rates.
+ * Projects are diffed: projects in the submitted array are upserted, and any
+ * owned projects absent from the array are deleted (shared projects are untouched).
+ * After the project sync, resource_assignments are reconciled with teamMembers
+ * in each phase (non-fatal — errors are logged but don't roll back the project save).
+ * Body: { projects: object[], rates: object|null }
+ * Returns: 200 { success: true }
+ * Errors: 413 payload too large (>5 MB)
+ */
 router.put('/', (req, res) => {
   try {
     if (JSON.stringify(req.body).length > 5_000_000) {
@@ -38,7 +64,9 @@ router.put('/', (req, res) => {
     const { projects, rates } = req.body;
     const ratesStr = rates != null ? JSON.stringify(rates) : null;
 
-    // Save rates to user_data (projects column kept as '[]' since projects live in their own table now)
+    // Save rates to user_data. The projects column is now kept as '[]' since
+    // all projects live in the dedicated `projects` table — this column is only
+    // retained for backwards-compat with pre-migration clients.
     saveUserData(req.user.id, '[]', ratesStr);
 
     // Sync projects to the projects table
@@ -54,7 +82,8 @@ router.put('/', (req, res) => {
         upsertProjectRecord(project.id, req.user.id, name, data);
       }
 
-      // Delete owned projects not in the submitted array
+      // Delete owned projects not in the submitted array.
+      // Only owned projects are deleted — shared projects are read-only from this endpoint.
       const ownedProjects = db.prepare('SELECT id FROM projects WHERE owner_id = ?').all(req.user.id);
       for (const owned of ownedProjects) {
         if (!submittedIds.has(owned.id)) {
@@ -65,14 +94,16 @@ router.put('/', (req, res) => {
 
     syncProjects();
 
-    // Sync resource_assignments with project teamMembers
+    // Sync resource_assignments with project teamMembers.
+    // This is best-effort: assignment sync errors must not fail the project save
+    // because the frontend may not always send perfectly consistent teamMember data.
     try {
       for (const project of projectsArray) {
         if (!project.id) continue;
         const phases = project.phases || [];
         const phaseIds = phases.map(p => p.id);
 
-        // Delete assignments for removed phases
+        // Delete assignments for phases that were removed from the project.
         if (phaseIds.length > 0) {
           db.prepare(
             'DELETE FROM resource_assignments WHERE project_id = ? AND phase_id NOT IN (' + phaseIds.map(() => '?').join(',') + ')'

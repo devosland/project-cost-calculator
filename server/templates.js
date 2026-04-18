@@ -1,3 +1,8 @@
+/**
+ * Express router for project template CRUD (/api/templates/*).
+ * Templates are owned by a single user and hold a serialised project structure
+ * that can be applied when creating a new project.
+ */
 import { Router } from 'express';
 import { authMiddleware } from './middleware.js';
 import { createTemplate, getTemplatesByUser, deleteTemplate } from './db.js';
@@ -6,7 +11,11 @@ const router = Router();
 
 router.use(authMiddleware);
 
-// GET / — list templates for user
+/**
+ * GET /api/templates
+ * Returns all templates owned by the authenticated user.
+ * Returns: 200 [{ id, name, data, created_at }]
+ */
 router.get('/', (req, res) => {
   try {
     const rows = getTemplatesByUser(req.user.id);
@@ -22,7 +31,13 @@ router.get('/', (req, res) => {
   }
 });
 
-// POST / — create a template
+/**
+ * POST /api/templates
+ * Creates a new template for the authenticated user.
+ * Body: { name: string, data?: object }
+ * Returns: 201 { id, name, data, created_at }
+ * Errors: 400 missing name
+ */
 router.post('/', (req, res) => {
   try {
     const { name, data } = req.body;
@@ -39,7 +54,12 @@ router.post('/', (req, res) => {
   }
 });
 
-// DELETE /:id — delete a template (only if owned)
+/**
+ * DELETE /api/templates/:id
+ * Deletes a template. The db helper enforces user_id ownership, so other users'
+ * templates are silently ignored (no 404 is raised — idempotent delete).
+ * Returns: 204 No Content
+ */
 router.delete('/:id', (req, res) => {
   try {
     deleteTemplate(parseInt(req.params.id, 10), req.user.id);
