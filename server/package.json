@@ -2,7 +2,7 @@
   "name": "project-cost-calculator-server",
   "type": "module",
   "dependencies": {
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.9.0",
     "cors": "^2.8.5",
     "express": "^5.2.1",
