@@ -479,11 +479,11 @@ router.post('/transitions/:id/apply', (req, res) => {
      * @param {number} weeks - Number of weeks to add.
      * @returns {string} YYYY-MM result.
      */
-    function addWeeksToMonth(ym, weeks) {
+    const addWeeksToMonth = (ym, weeks) => {
       const [y, m] = ym.split('-').map(Number);
       const d = new Date(y, m - 1, 1 + weeks * 7);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }
+    };
 
     // Apply in a transaction to ensure atomicity across all three passes.
     const applyFn = db.transaction(() => {

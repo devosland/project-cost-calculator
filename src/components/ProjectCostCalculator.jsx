@@ -144,7 +144,7 @@ const ProjectCostCalculator = ({ rates }) => {
       <CardContent>
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">Composition de l'équipe</h3>
+            <h3 className="text-lg font-medium">{"Composition de l'équipe"}</h3>
             <Button 
               variant="default"
               size="default"

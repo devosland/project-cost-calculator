@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        # Using `npm install` rather than `npm ci` because the lockfile is generated
+        # on Windows (developer environment) and misses Linux-specific optional deps
+        # like esbuild's Linux binary and @emnapi/*. `npm install` resolves these
+        # on the CI runner without failing.
+        run: npm install --no-audit --no-fund
+
+      - name: Install server dependencies
+        # Using `npm install` rather than `npm ci` because the lockfile is generated
+        # on Windows (developer environment) and misses Linux-specific optional deps
+        # like esbuild's Linux binary and @emnapi/*. `npm install` resolves these
+        # on the CI runner without failing.
+        run: npm install --no-audit --no-fund
+        working-directory: ./server
+
+      - name: Run ESLint
+        run: npm run lint --if-present
+
+      - name: Run tests
+        run: npx vitest run
+
+      - name: Build
+        run: npm run build
