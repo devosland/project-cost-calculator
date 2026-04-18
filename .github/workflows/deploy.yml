@@ -15,7 +15,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
+        # Pinned to a specific version (vs mutable @v1 tag) for supply-chain hardening.
+        # Dependabot will propose updates via .github/dependabot.yml github-actions ecosystem.
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -27,21 +29,38 @@ jobs:
             echo "=== Pulling latest changes ==="
             git fetch origin main
             git reset --hard origin/main
+
             echo "=== Applying nginx-proxy-manager port mapping ==="
             # docker-compose.yml is committed for Traefik (no ports mapping), but
             # this VPS uses nginx-proxy-manager which routes by host port, so we
-            # inject the port mapping on the fly and revert the file after the
-            # rebuild so git stays clean.
+            # inject the port mapping on the fly and revert after the rebuild.
+            # Use a trap to guarantee the revert runs even if docker compose fails,
+            # otherwise set -e would exit before the cleanup and the file would
+            # stay dirty — causing duplicate ports: on the next deploy.
+            trap 'git checkout -- docker-compose.yml' EXIT
             sed -i '/restart: unless-stopped/a\    ports:\n      - "3002:80"' docker-compose.yml
+
             echo "=== Building and starting container ==="
             docker compose up -d --build --force-recreate
-            git checkout docker-compose.yml
+
             echo "=== Health check ==="
-            sleep 3
-            HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3002)
+            # Container may need more than a few seconds to start on rebuild.
+            # Retry with bounded timeout instead of a single attempt after sleep.
+            MAX_ATTEMPTS=30
+            ATTEMPT=1
+            HTTP_CODE=""
+            until [ "$ATTEMPT" -gt "$MAX_ATTEMPTS" ]; do
+              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 2 --max-time 5 http://localhost:3002 || true)
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "304" ]; then
+                echo "OK: Health check passed ($HTTP_CODE)"
+                break
+              fi
+              echo "Health check attempt $ATTEMPT/$MAX_ATTEMPTS returned ${HTTP_CODE:-curl_failed}; retrying..."
+              sleep 2
+              ATTEMPT=$((ATTEMPT + 1))
+            done
             if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "304" ]; then
-              echo "FAIL: Health check returned $HTTP_CODE"
+              echo "FAIL: Health check returned ${HTTP_CODE:-curl_failed} after $MAX_ATTEMPTS attempts"
               docker compose logs --tail 30
               exit 1
             fi
-            echo "OK: Health check passed ($HTTP_CODE)"
