@@ -140,7 +140,7 @@ export function addWeeksToMonth(ym, weeks) {
  * @returns {{ assignments: Array, changes: { shortened: Array, added: Array } }}
  *   assignments — projected list with modifications applied (immutable copies).
  *   changes.shortened — [{ id, originalEndMonth, newEndMonth }] for red diff.
- *   changes.added     — [{ tempId, resource_id, project_id, phase_id, … }] for green diff.
+ *   changes.added     — [{ id: number (negative temp id), resource_id, project_id, phase_id, … }] for green diff.
  *   The overlap window (yellow) is derivable from shortened + added entries and is
  *   included as `overlapStart`/`overlapEnd` on each shortened entry.
  */
@@ -150,7 +150,16 @@ export function projectAssignmentsWithPlan(currentAssignments, draftPlan) {
   if (typeof planData === 'string') {
     try { planData = JSON.parse(planData); } catch { planData = {}; }
   }
-  const transitions = (planData && planData.transitions) ? planData.transitions : [];
+  const rawTransitions = (planData && planData.transitions) ? planData.transitions : [];
+
+  // Fix 4: Normalize ID fields up-front. TransitionPlanner stores <select> values as
+  // strings; strict === against numeric resource IDs in assignments would never match.
+  const transitions = rawTransitions.map((t) => ({
+    ...t,
+    consultant_resource_id: t.consultant_resource_id != null ? Number(t.consultant_resource_id) : null,
+    replacement_resource_id: t.replacement_resource_id != null ? Number(t.replacement_resource_id) : null,
+    overlap_weeks: Number(t.overlap_weeks ?? 0),
+  }));
 
   if (transitions.length === 0) {
     return { assignments: currentAssignments.slice(), changes: { shortened: [], added: [] } };
@@ -219,17 +228,40 @@ export function projectAssignmentsWithPlan(currentAssignments, draftPlan) {
       });
 
       // Create replacement assignment (temp, positive duration only).
+      // Fix 5: Mirror server UPSERT on (resource_id, project_id, phase_id).
+      // If a projected assignment already exists for the replacement on this
+      // project/phase (e.g. multiple transitions target the same replacement,
+      // or the replacement already had an assignment), update it in-place
+      // instead of pushing a duplicate bar.
       if (t.replacement_resource_id && transitionDate <= originalEnd) {
-        const tempAssignment = {
-          ...a,
-          id: tempIdCounter--,
-          resource_id: t.replacement_resource_id,
-          start_month: transitionDate,
-          end_month: originalEnd,
-          _isPreview: true,
-        };
-        projected.push(tempAssignment);
-        added.push({ ...tempAssignment });
+        const replacementId = t.replacement_resource_id;
+        const existingIdx = projected.findIndex(
+          (p) =>
+            p.resource_id === replacementId &&
+            p.project_id === a.project_id &&
+            p.phase_id === a.phase_id
+        );
+        if (existingIdx >= 0) {
+          // UPSERT: update the existing projected assignment's dates.
+          projected[existingIdx] = {
+            ...projected[existingIdx],
+            start_month: transitionDate,
+            end_month: originalEnd,
+            _isPreview: true,
+          };
+          added.push({ ...projected[existingIdx] });
+        } else {
+          const tempAssignment = {
+            ...a,
+            id: tempIdCounter--,
+            resource_id: replacementId,
+            start_month: transitionDate,
+            end_month: originalEnd,
+            _isPreview: true,
+          };
+          projected.push(tempAssignment);
+          added.push({ ...tempAssignment });
+        }
       }
     }
   }

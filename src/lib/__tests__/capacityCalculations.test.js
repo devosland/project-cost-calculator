@@ -296,3 +296,83 @@ describe('projectAssignmentsWithPlan — plan.data as JSON string', () => {
     expect(changes.added).toHaveLength(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Fix 4: ID normalization — string IDs from TransitionPlanner <select> inputs
+// ---------------------------------------------------------------------------
+describe('projectAssignmentsWithPlan — string IDs (Fix 4)', () => {
+  it('matches consultant_resource_id stored as string against numeric resource_id', () => {
+    const assignments = [makeAssignment({ id: 1, resource_id: 10, end_month: '2026-09' })];
+    const plan = makePlan([{
+      consultant_resource_id: '10',   // string from <select>
+      replacement_resource_id: '20',  // string from <select>
+      transition_date: '2026-06',
+      overlap_weeks: '0',             // also stringified
+    }]);
+    const { assignments: result, changes } = projectAssignmentsWithPlan(assignments, plan);
+    // Consultant should be shortened — the string '10' must match numeric 10.
+    expect(result.find((a) => a.resource_id === 10).end_month).toBe('2026-06');
+    expect(changes.shortened).toHaveLength(1);
+  });
+
+  it('creates replacement assignment when replacement_resource_id is a string', () => {
+    const assignments = [makeAssignment({ id: 1, resource_id: 10, end_month: '2026-09' })];
+    const plan = makePlan([{
+      consultant_resource_id: '10',
+      replacement_resource_id: '20',
+      transition_date: '2026-06',
+      overlap_weeks: '0',
+    }]);
+    const { assignments: result, changes } = projectAssignmentsWithPlan(assignments, plan);
+    // Replacement resource_id must be the normalized number, not the string '20'.
+    const replacement = result.find((a) => a.resource_id === 20);
+    expect(replacement).toBeDefined();
+    expect(replacement._isPreview).toBe(true);
+    expect(changes.added).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fix 5: UPSERT behavior — replacement already has an assignment on same project/phase
+// ---------------------------------------------------------------------------
+describe('projectAssignmentsWithPlan — replacement UPSERT (Fix 5)', () => {
+  it('updates existing replacement assignment instead of pushing a duplicate', () => {
+    // Resource 20 already has an assignment on project 100 (same project/phase as consultant).
+    const assignments = [
+      makeAssignment({ id: 1, resource_id: 10, project_id: 100, phase_id: null, end_month: '2026-12' }),
+      makeAssignment({ id: 2, resource_id: 20, project_id: 100, phase_id: null, start_month: '2026-01', end_month: '2026-05' }),
+    ];
+    const plan = makePlan([{
+      consultant_resource_id: 10,
+      replacement_resource_id: 20,
+      transition_date: '2026-06',
+      overlap_weeks: 0,
+    }]);
+    const { assignments: result, changes } = projectAssignmentsWithPlan(assignments, plan);
+    // Only one assignment for resource 20 on project 100 — no duplicate bar.
+    const r20 = result.filter((a) => a.resource_id === 20 && a.project_id === 100);
+    expect(r20).toHaveLength(1);
+    // Dates should reflect the upserted values.
+    expect(r20[0].start_month).toBe('2026-06');
+    expect(r20[0].end_month).toBe('2026-12');
+    expect(r20[0]._isPreview).toBe(true);
+    expect(changes.added).toHaveLength(1);
+  });
+
+  it('pushes a new assignment when replacement has no existing assignment on that project/phase', () => {
+    const assignments = [
+      makeAssignment({ id: 1, resource_id: 10, project_id: 100, phase_id: null, end_month: '2026-12' }),
+    ];
+    const plan = makePlan([{
+      consultant_resource_id: 10,
+      replacement_resource_id: 20,
+      transition_date: '2026-06',
+      overlap_weeks: 0,
+    }]);
+    const { assignments: result, changes } = projectAssignmentsWithPlan(assignments, plan);
+    const r20 = result.filter((a) => a.resource_id === 20);
+    expect(r20).toHaveLength(1);
+    expect(r20[0].id).toBeLessThan(0); // temp negative id
+    expect(changes.added).toHaveLength(1);
+  });
+});
