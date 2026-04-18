@@ -1,3 +1,12 @@
+/**
+ * Éditeur d'une phase de projet : nom, durée en semaines, équipe (avec autocomplete
+ * depuis le pool de ressources), milestones avec offset hebdomadaire, dépendances
+ * vers d'autres phases, et affichage du coût hebdomadaire / coût total.
+ *
+ * La règle fondamentale : quand un member est lié au pool (resourceId set),
+ * le pool est la source of truth pour role et level — les champs sont désactivés
+ * dans l'UI et resolveMember() lit toujours la valeur courante du pool.
+ */
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -11,6 +20,21 @@ import {
 } from '../lib/costCalculations';
 import { useLocale, LEVEL_KEYS, getLevelLabel } from '../lib/i18n';
 
+/**
+ * Éditeur de phase : nom, durée en semaines, team members (autocomplete pool),
+ * milestones avec offsets hebdo, dépendances inter-phases.
+ *
+ * @param {object} props
+ * @param {object} props.phase - Phase à éditer (id, name, durationWeeks, teamMembers, milestones, dependencies)
+ * @param {object} props.rates - Rates enterprise (INTERNAL_RATE, CONSULTANT_RATES)
+ * @param {boolean} [props.isAuthorized] - Si true, affiche les détails de coût par member (taux horaire, h/sem)
+ * @param {string} [props.currency] - Code devise pour le formatage (défaut: 'CAD')
+ * @param {function} props.onChange - Callback(updatedPhase) appelé à chaque modification
+ * @param {object[]} [props.allPhases] - Toutes les phases du projet (pour le select de dépendances)
+ * @param {object[]} [props.resourcePool] - Ressources disponibles dans le pool capacité (pour l'autocomplete)
+ * @param {function} [props.onResourceAssign] - Callback({ name, role, level }) pour créer une ressource dans le pool
+ * @param {function} [props.onResourceLink] - Callback(resourceId, phaseId, allocation) pour créer l'assignment capacité
+ */
 const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, allPhases = [], resourcePool, onResourceAssign, onResourceLink }) => {
   const { t } = useLocale();
   const fmt = (v) => formatCurrency(v, currency);
@@ -23,7 +47,17 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
   const roles = Object.keys(rates.CONSULTANT_RATES);
   const levels = LEVEL_KEYS;
 
-  // Resolve member role/level from resource pool if linked
+  /**
+   * Résout le rôle et le niveau d'un member depuis le pool de ressources.
+   *
+   * Pourquoi : le JSON de projet stocke role/level comme cache pour la performance,
+   * mais si le profil de la ressource est mis à jour dans le pool, la valeur en projet
+   * peut être stale. Cette fonction garantit que l'affichage et les calculs utilisent
+   * toujours la valeur courante du pool quand un resourceId est présent.
+   *
+   * @param {object} member - Team member (peut avoir resourceId, role, level)
+   * @returns {object} Member avec role/level résolu depuis le pool si lié, sinon inchangé
+   */
   const resolveMember = (member) => {
     if (member.resourceId && resourcePool) {
       const res = resourcePool.find(r => r.id === member.resourceId || String(r.id) === String(member.resourceId));
@@ -78,13 +112,20 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
     update({ milestones: phase.milestones.filter((m) => m.id !== id) });
   };
 
-  // Resolve all members for cost calculation and display
+  // Résoudre tous les members pour les calculs de coût — utilise le pool comme source of truth
   const resolvedPhase = resourcePool
     ? { ...phase, teamMembers: phase.teamMembers.map(resolveMember) }
     : phase;
 
   const totalCost = calculatePhaseTotalCost(resolvedPhase, rates);
 
+  /**
+   * Calcule les détails de coût affichés par member (taux, heures/sem, coût/sem).
+   * Utilise resolveMember() pour garantir que le calcul reflète le profil pool actuel.
+   *
+   * @param {object} member - Team member brut (avant résolution pool)
+   * @returns {{ hourlyRate: number, weeklyHours: string, weeklyCost: number }}
+   */
   const getMemberDetails = (member) => {
     const resolved = resolveMember(member);
     const hourlyRate = getHourlyRate(rates, resolved.role, resolved.level);
@@ -96,6 +137,8 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
   return (
     <Card>
       <CardHeader>
+
+        {/* --- Header : nom de la phase (édition inline) + durée en semaines --- */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           {editingName ? (
             <div className="flex items-center gap-2">
@@ -141,6 +184,8 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+
+          {/* --- Section Team members --- */}
           <div className="flex justify-between items-center">
             <h4 className="font-semibold">{t('phase.team')}</h4>
             <Button size="sm" onClick={addTeamMember} className="flex items-center gap-2">
@@ -159,9 +204,12 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             const details = getMemberDetails(member);
             return (
               <div key={index} className="space-y-2 p-4 border rounded-xl bg-secondary/20 hover:bg-secondary/40 transition-colors">
+
+                {/* Autocomplete pool : champ texte avec datalist ou badge "lié" si resourceId set */}
                 {resourcePool && (
                   <div className="flex items-center gap-2">
                     {member.resourceId ? (
+                      // Ressource liée : affichée en lecture seule, bouton X pour dissocier
                       <div className="flex items-center gap-2 flex-1">
                         <span className="input-field flex-1 text-sm bg-primary/5 font-medium">{member.resourceName}</span>
                         <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => {
@@ -174,6 +222,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                       </div>
                     ) : (
                       <>
+                        {/* Autocomplete via <datalist> : sélection exacte du nom crée le lien au pool */}
                         <input
                           type="text"
                           className="input-field flex-1 text-sm"
@@ -182,6 +231,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                           onChange={(e) => {
                             const val = e.target.value;
                             updateTeamMember(index, 'resourceName', val);
+                            // Si le nom correspond exactement à une ressource du pool, lier automatiquement
                             const match = (resourcePool || []).find(r => r.name === val);
                             if (match) {
                               const updated = [...phase.teamMembers];
@@ -197,6 +247,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                             .filter(r => r.name.toLowerCase().includes((member.resourceName || '').toLowerCase()))
                             .map(r => <option key={r.id} value={r.name} />)}
                         </datalist>
+                        {/* Bouton "Ajouter au pool" si le nom tapé n'existe pas encore dans le pool */}
                         {member.resourceName && !(resourcePool || []).find(r => r.name === member.resourceName) && onResourceAssign && (
                           <Button
                             variant="outline"
@@ -212,11 +263,18 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     )}
                   </div>
                 )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center">
                   {(() => {
                     const resolved = resolveMember(member);
                     return (
                       <>
+                        {/*
+                          Sélecteurs role/level : désactivés si member.resourceId est set.
+                          Pourquoi : quand une ressource est liée au pool, c'est le pool
+                          qui gouverne — éditer localement créerait une divergence de données.
+                          resolveMember() garantit que la valeur affichée est toujours celle du pool.
+                        */}
                         <select
                           className="select-field"
                           value={resolved.role}
@@ -226,7 +284,12 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                           {roles.map((role) => (
                             <option key={role} value={role}>{role}</option>
                           ))}
-                          {/* Include current role if not in rates list (custom role) */}
+                          {/*
+                            Fallback pour les rôles custom non présents dans les rates
+                            (ex: "Chargé de livraison"). Sans cet <option>, le select
+                            afficherait le premier rôle de la liste au lieu du rôle réel,
+                            et les calculs de coût seraient incorrects.
+                          */}
                           {resolved.role && !roles.includes(resolved.role) && (
                             <option value={resolved.role}>{resolved.role}</option>
                           )}
@@ -241,7 +304,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                           {levels.map((level) => (
                             <option key={level} value={level}>{getLevelLabel(t, level)}</option>
                           ))}
-                  </select>
+                        </select>
                       </>
                     );
                   })()}
@@ -277,6 +340,12 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     {t('phase.remove')}
                   </Button>
                 </div>
+
+                {/*
+                  Période capacity : affichée seulement si startMonth ou endMonth est défini.
+                  UX : éviter de polluer l'interface par défaut — le lien "+" permet d'ajouter
+                  la période uniquement si nécessaire (cas: même ressource sur périodes discontinues).
+                */}
                 {member.resourceId && (member.startMonth || member.endMonth ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                     <span>{t('phase.period')} :</span>
@@ -317,6 +386,8 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     + {t('phase.period')}
                   </button>
                 ))}
+
+                {/* Détails de coût (taux, h/sem, coût/sem) — visibles seulement en mode authorized */}
                 {isAuthorized && (
                   <div className="text-xs text-muted-foreground grid grid-cols-3 gap-2 pt-1">
                     <div>{t('phase.rate')} : {fmt(details.hourlyRate)}/h</div>
@@ -328,10 +399,16 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             );
           })}
 
+          {/* Résumé coût phase : coût hebdo moyen + coût total */}
           {phase.teamMembers.length > 0 && (
             <div className="grid grid-cols-2 gap-4 pt-2">
               <div className="p-4 bg-secondary/50 rounded-xl">
                 <div className="text-xs text-muted-foreground">{t('phase.weeklyCost')}</div>
+                {/*
+                  Coût hebdo = totalCost / durationWeeks (coût moyen sur la durée de la phase).
+                  Ce n'est pas un "what-if full phase à pleine allocation" — c'est la moyenne
+                  réelle incluant les allocations partielles et les quantités multiples.
+                */}
                 <div className="text-lg font-bold">{fmt(totalCost / phase.durationWeeks)}</div>
               </div>
               <div className="p-4 bg-primary/5 rounded-xl">
@@ -343,6 +420,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             </div>
           )}
 
+          {/* --- Section Milestones --- */}
           <div className="border-t pt-4 mt-4">
             <div className="flex justify-between items-center mb-2">
               <h4 className="font-semibold flex items-center gap-2">
@@ -389,6 +467,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
               <p className="text-xs text-muted-foreground">{t('phase.noMilestones')}</p>
             )}
 
+            {/* Milestones triés par weekOffset croissant */}
             {phase.milestones
               .sort((a, b) => a.weekOffset - b.weekOffset)
               .map((milestone) => (
@@ -407,6 +486,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
               ))}
           </div>
 
+          {/* --- Section Dépendances inter-phases (masquée si phase unique) --- */}
           {allPhases.length > 1 && (
             <div className="border-t pt-4 mt-4">
               <h4 className="font-semibold flex items-center gap-2 mb-2">
