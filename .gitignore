@@ -11,8 +11,19 @@ node_modules
 dist
 dist-ssr
 *.local
+
 # Sensitive configuration
 src/config/rates/rates.prod.js
+.env
+.env.*
+!.env.example
+
+# Local developer environment — never commit
+data/
+.claude/
+.superpowers/
+.playwright-mcp/
+start
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
