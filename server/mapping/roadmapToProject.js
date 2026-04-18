@@ -27,13 +27,25 @@ export function mapRoadmapToProject(payload) {
     dependsOn: p.dependsOn ?? [],
     description: p.description ?? null,
     teamMembers: [],
+    milestones: [],
   }));
+
+  const now = new Date().toISOString();
 
   return {
     externalId: project.externalId,
     description: project.description ?? null,
-    settings: { startDate: project.startDate },
-    phases: mapped,
+    createdAt: now,
+    updatedAt: now,
+    settings: {
+      includeContingency: false,
+      contingencyPercentage: 10,
+      includeTaxes: false,
+      currency: 'CAD',
+      startDate: project.startDate,
+    },
     budget: null,
+    nonLabourCosts: [],
+    phases: mapped,
   };
 }

@@ -61,4 +61,27 @@ describe('mapRoadmapToProject', () => {
     });
     expect(r.phases[0].teamMembers).toEqual([]);
   });
+
+  it('initializes project-level defaults for calculator compatibility', () => {
+    const r = mapRoadmapToProject({
+      project: { name: 'P', externalId: 'RM-1', startDate: '2026-06-01' },
+      phases: [{ id: 'a', name: 'A', order: 1, durationMonths: 1 }],
+    });
+    expect(r.nonLabourCosts).toEqual([]);
+    expect(r.budget).toBeNull();
+    expect(r.settings.includeContingency).toBe(false);
+    expect(r.settings.contingencyPercentage).toBe(10);
+    expect(r.settings.includeTaxes).toBe(false);
+    expect(r.settings.currency).toBe('CAD');
+    expect(r.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(r.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+  });
+
+  it('initializes empty milestones array per phase', () => {
+    const r = mapRoadmapToProject({
+      project: { name: 'P', externalId: 'RM-1', startDate: '2026-06-01' },
+      phases: [{ id: 'a', name: 'A', order: 1, durationMonths: 1 }],
+    });
+    expect(r.phases[0].milestones).toEqual([]);
+  });
 });
