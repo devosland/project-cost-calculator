@@ -1,5 +1,11 @@
 # Planificateur - Project Cost Calculator
 
+[![CI](https://github.com/devosland/project-cost-calculator/actions/workflows/ci.yml/badge.svg)](https://github.com/devosland/project-cost-calculator/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB.svg?logo=react)](https://react.dev/)
+[![Tests](https://img.shields.io/badge/tests-82%20passing-brightgreen.svg)]()
+
 A full-featured project planning, budgeting, and capacity management tool built with React and Express. Plan projects with named resources, track capacity across teams, and manage consultant-to-permanent transitions.
 
 **Live:** [calculateur.danielvaliquette.com](https://calculateur.danielvaliquette.com)
@@ -313,4 +319,8 @@ The app uses hash-based routing for refresh-safe navigation:
 
 ## License
 
-Private repository.
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
