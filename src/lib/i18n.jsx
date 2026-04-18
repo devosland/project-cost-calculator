@@ -421,6 +421,11 @@ const translations = {
     'capacity.previewMode.none': 'Aucun aperçu',
     'capacity.previewMode.showCurrent': 'Afficher état actuel',
     'capacity.previewMode.legend': 'Légende : rouge = raccourci, vert = ajouté, jaune = overlap',
+    'capacity.previewMode.planNotFound': 'Erreur : plan introuvable.',
+    'capacity.previewMode.loading': 'Chargement…',
+    'capacity.previewMode.tooltipOverlap': 'Overlap — transition en cours',
+    'capacity.previewMode.tooltipShortened': 'raccourci',
+    'capacity.previewMode.tooltipReplacement': 'remplaçant',
 
     // Project store
     'store.newProject': 'Nouveau projet',
@@ -905,6 +910,11 @@ const translations = {
     'capacity.previewMode.none': 'No preview',
     'capacity.previewMode.showCurrent': 'Show current state',
     'capacity.previewMode.legend': 'Legend: red = shortened, green = added, yellow = overlap',
+    'capacity.previewMode.planNotFound': 'Error: plan not found.',
+    'capacity.previewMode.loading': 'Loading…',
+    'capacity.previewMode.tooltipOverlap': 'Overlap — transition in progress',
+    'capacity.previewMode.tooltipShortened': 'shortened',
+    'capacity.previewMode.tooltipReplacement': 'replacement',
 
     // Project store
     'store.newProject': 'New project',
