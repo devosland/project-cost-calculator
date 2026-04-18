@@ -66,6 +66,12 @@ jobs:
         run: |
           sed -i '/restart: unless-stopped/a\    ports:\n      - "3002:80"' docker-compose.yml
 
+      - name: Create external network stub
+        # docker-compose.yml references the external 'proxy-network' created
+        # by nginx-proxy-manager on the VPS. In CI we just create an empty
+        # network with the same name so compose can start.
+        run: docker network create proxy-network || true
+
       - name: Build and start container
         run: docker compose up -d --build --force-recreate
 
