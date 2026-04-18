@@ -344,6 +344,26 @@ router.get('/transitions', (req, res) => {
 });
 
 /**
+ * GET /api/capacity/transitions/:id
+ * Fetches a single transition plan by id for the authenticated user.
+ * Used by the Gantt what-if preview mode to load the selected draft plan.
+ * Returns: 200 { id, user_id, name, status, data, created_at, updated_at }
+ * Errors: 404 plan not found or not owned by user
+ */
+router.get('/transitions/:id', (req, res) => {
+  try {
+    const plan = getTransitionPlanById(parseInt(req.params.id, 10));
+    if (!plan || plan.user_id !== req.user.id) {
+      return res.status(404).json({ error: 'Transition plan not found' });
+    }
+    res.json(plan);
+  } catch (err) {
+    console.error('Get transition error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * POST /api/capacity/transitions
  * Creates a new transition plan in "draft" status.
  * Body: { name: string, data?: object|string }
