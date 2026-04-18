@@ -495,7 +495,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
             </div>
           </div>
 
-          <ResourceConflicts project={project} rates={rates} />
+          <ResourceConflicts project={project} />
         </div>
       )}
 

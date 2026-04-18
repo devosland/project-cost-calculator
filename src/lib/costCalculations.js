@@ -109,12 +109,36 @@ export function getMemberWeeks(member, phase, projectStartMonth) {
  * @param {string} endMonth   - YYYY-MM
  * @returns {number} Approximate number of weeks (non-negative integer).
  */
-function monthDiffInWeeks(startMonth, endMonth) {
+export function monthDiffInWeeks(startMonth, endMonth) {
   const [sy, sm] = startMonth.split('-').map(Number);
   const [ey, em] = endMonth.split('-').map(Number);
   const months = (ey - sy) * 12 + (em - sm);
   // 4.33 = average weeks per month (365.25 / 12 / 7)
   return Math.max(0, Math.round(months * 4.33));
+}
+
+/**
+ * Calculate the prorated labour cost for a single team member within a phase.
+ *
+ * If the member has explicit startMonth/endMonth constraints, their effective
+ * weeks are capped at phase.durationWeeks (same rule as calculatePhaseTotalCost).
+ * Without date constraints the full phase duration is used.
+ *
+ * This helper exists so callers outside costCalculations.js (e.g. ProjectSummary)
+ * can reuse the canonical prorating formula without duplicating it.
+ *
+ * @param {object} member           - Team member with role, level, quantity,
+ *   allocation, and optional startMonth/endMonth.
+ * @param {object} rates            - User rate card.
+ * @param {number} phaseDurationWeeks - Duration of the containing phase in weeks.
+ * @returns {number} Total labour cost for this member in this phase.
+ */
+export function calculateMemberProratedCost(member, rates, phaseDurationWeeks) {
+  const hourlyRate = getHourlyRate(rates, member.role, member.level);
+  const weeks = (member.startMonth && member.endMonth)
+    ? Math.min(monthDiffInWeeks(member.startMonth, member.endMonth), phaseDurationWeeks)
+    : phaseDurationWeeks;
+  return hourlyRate * HOURS_PER_WEEK * member.quantity * (member.allocation / 100) * weeks;
 }
 
 // --- Phase-level cost calculations ---

@@ -19,24 +19,10 @@ import {
   calculateLabourCost,
   calculateNonLabourCost,
   calculatePhaseTotalCost,
-  getHourlyRate,
+  calculateMemberProratedCost,
   calculateBurnRate,
   formatCurrency,
 } from '../lib/costCalculations';
-
-/**
- * Converts a month range (YYYY-MM strings) to an approximate week count using
- * 4.33 weeks/month. Capped at 0 to handle reversed ranges gracefully.
- *
- * @param {string} start - Start month in YYYY-MM format.
- * @param {string} end   - End month in YYYY-MM format.
- * @returns {number} Rounded number of weeks between the two months.
- */
-function monthDiffInWeeks(start, end) {
-  const [sy, sm] = start.split('-').map(Number);
-  const [ey, em] = end.split('-').map(Number);
-  return Math.max(0, Math.round(((ey - sy) * 12 + (em - sm)) * 4.33));
-}
 
 /**
  * @param {Object} props
@@ -195,11 +181,7 @@ const ProjectSummary = ({ project, rates }) => {
                     (phase.teamMembers || [])
                       .filter(m => m.resourceName)
                       .map(m => {
-                        const hourlyRate = getHourlyRate(rates, m.role, m.level);
-                        const weeks = (m.startMonth && m.endMonth)
-                          ? Math.min(monthDiffInWeeks(m.startMonth, m.endMonth), phase.durationWeeks)
-                          : phase.durationWeeks;
-                        const cost = hourlyRate * 37.5 * m.quantity * (m.allocation / 100) * weeks;
+                        const cost = calculateMemberProratedCost(m, rates, phase.durationWeeks);
                         // 'Employé interne' is the canonical level key for permanent staff;
                         // the Permanent badge is derived at runtime, not stored separately.
                         const isPermanent = m.level === 'Employé interne';
