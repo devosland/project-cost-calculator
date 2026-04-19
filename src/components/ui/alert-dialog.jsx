@@ -79,7 +79,7 @@ const AlertDialogAction = React.forwardRef(({ className, destructive = false, ..
   <AlertDialogPrimitive.Action
     ref={ref}
     className={cn(
-      'inline-flex h-9 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors',
+      'inline-flex h-9 items-center justify-center rounded-md px-4 text-sm font-medium ring-offset-background transition-colors',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       destructive
         ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
@@ -95,7 +95,7 @@ const AlertDialogCancel = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Cancel
     ref={ref}
     className={cn(
-      'inline-flex h-9 items-center justify-center rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-muted',
+      'inline-flex h-9 items-center justify-center rounded-md border border-border px-4 text-sm font-medium ring-offset-background transition-colors hover:bg-muted',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       className
     )}

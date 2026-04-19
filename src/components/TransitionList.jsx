@@ -169,6 +169,8 @@ const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
                   variant="ghost"
                   size="sm"
                   className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                  title={t('resources.delete')}
+                  aria-label={t('resources.delete')}
                   onClick={(e) => {
                     e.stopPropagation();
                     setPendingDelete(plan);
