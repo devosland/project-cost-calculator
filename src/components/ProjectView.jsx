@@ -70,7 +70,7 @@ const WebhookSettings = ({ project, updateSettings }) => {
   };
 
   return (
-    <div className="p-5 bg-white border rounded-xl shadow-sm space-y-4">
+    <div className="p-5 bg-card border border-border rounded-lg shadow-sm space-y-4">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Bell className="w-4 h-4" />
         {t('webhook.title')}
@@ -93,10 +93,15 @@ const WebhookSettings = ({ project, updateSettings }) => {
           {testStatus === 'loading' ? t('webhook.sending') : t('webhook.test')}
         </Button>
         {testStatus === 'success' && (
-          <span className="text-xs text-emerald-600 font-medium">{t('webhook.success')}</span>
+          <span
+            className="text-xs font-medium"
+            style={{ color: 'var(--prism-success)' }}
+          >
+            {t('webhook.success')}
+          </span>
         )}
         {testStatus && testStatus !== 'success' && testStatus !== 'loading' && (
-          <span className="text-xs text-red-600 font-medium">
+          <span className="text-xs text-destructive font-medium">
             {t(`webhook.${testStatus}`) || t('webhook.error')}
           </span>
         )}
@@ -318,7 +323,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                className="input-field text-2xl font-bold w-64"
+                className="input-field font-display text-3xl font-semibold w-64"
                 value={nameValue}
                 onChange={(e) => setNameValue(e.target.value)}
                 onKeyDown={(e) => {
@@ -341,7 +346,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
               </Button>
             </div>
           ) : (
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 className="font-display text-3xl font-semibold tracking-tight flex items-center gap-2">
               {project.name}
               <Button variant="ghost" size="sm" onClick={() => { setNameValue(project.name); setEditingName(true); }} className="text-muted-foreground hover:text-foreground">
                 <Pencil className="w-3 h-3" />
@@ -354,7 +359,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
             <Download className="w-4 h-4" />
           </Button>
           <Button variant="ghost" size="sm" onClick={() => exportProjectCSV(project, rates)} className="text-muted-foreground hover:text-foreground" title={t('project.exportCSV')}>
-            CSV
+            <span className="font-mono text-xs">CSV</span>
           </Button>
           <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground hover:text-foreground" title={t('project.history')}>
             <History className="w-4 h-4" />
@@ -364,7 +369,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
           </Button>
           <div className="text-right">
             <div className="text-sm text-muted-foreground">{totalWeeks} {t('project.weeks')}</div>
-            <div className="text-2xl font-bold">{fmt(totalCost)}</div>
+            <div className="font-mono text-2xl font-semibold tabular-nums">{fmt(totalCost)}</div>
           </div>
         </div>
       </div>
@@ -393,7 +398,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
       {/* --- Onglet Phases : paramètres projet + liste des PhaseEditors --- */}
       {activeTab === 'phases' && (
         <div className="space-y-6">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-5 bg-white border rounded-xl shadow-sm">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-5 bg-card border border-border rounded-lg shadow-sm">
             <div className="flex items-center gap-3">
               <Label className="text-sm font-medium">{t('project.contingency')}</Label>
               <Switch
@@ -463,7 +468,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
               />
               {project.phases.length > 1 && (
                 <div className="absolute -right-10 top-4 hidden sm:block">
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     onClick={() => removePhase(phase.id)} title={t('project.deletePhase')}>
                     <Trash2 className="w-3 h-3" />
                   </Button>
@@ -478,19 +483,19 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
           </Button>
 
           {/* --- Récapitulatif coût/durée/phases en bas de l'onglet --- */}
-          <div className="p-6 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
+          <div className="p-6 rounded-lg bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
               <div>
                 <div className="text-sm text-muted-foreground">{t('project.totalDuration')}</div>
-                <div className="text-2xl font-bold">{totalWeeks} {t('project.weeks')}</div>
+                <div className="font-mono text-2xl font-semibold tabular-nums">{totalWeeks} {t('project.weeks')}</div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">{t('project.totalCost')}</div>
-                <div className="text-3xl font-bold text-primary">{fmt(totalCost)}</div>
+                <div className="font-mono text-3xl font-semibold tabular-nums text-primary">{fmt(totalCost)}</div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">{t('tab.phases')}</div>
-                <div className="text-2xl font-bold">{project.phases.length}</div>
+                <div className="font-mono text-2xl font-semibold tabular-nums">{project.phases.length}</div>
               </div>
             </div>
           </div>
@@ -505,7 +510,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
       {/* --- Onglet Budget : enveloppe + webhook + tracker + non-labour --- */}
       {activeTab === 'budget' && (
         <div className="space-y-6">
-          <div className="flex items-center gap-4 p-5 bg-white border rounded-xl shadow-sm">
+          <div className="flex items-center gap-4 p-5 bg-card border border-border rounded-lg shadow-sm">
             <Label className="text-sm font-medium">{t('project.budget')}</Label>
             <input
               type="number"
