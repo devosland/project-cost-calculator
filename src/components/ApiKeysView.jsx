@@ -394,6 +394,7 @@ export default function ApiKeysView() {
         title={t('apiKeys.revoke')}
         description={t('apiKeys.revokeConfirm')}
         confirmLabel={t('apiKeys.revoke')}
+        cancelLabel={t('nonLabour.cancel')}
         destructive
         onConfirm={confirmRevoke}
       />
