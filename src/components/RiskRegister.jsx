@@ -16,20 +16,32 @@ function generateId() {
 }
 
 /**
- * Returns Tailwind badge classes for a risk score.
- * Green ≤ 6 (low), Amber ≤ 15 (medium), Red > 15 (high).
+ * Maps a risk score to its semantic Prism token.
+ * Low ≤ 6, Medium ≤ 15, High > 15.
  * @param {number} score - probability × impact value (1–25).
+ * @returns {string} CSS custom property name (e.g. '--prism-success').
  */
-function getScoreColor(score) {
-  if (score <= 6) return 'bg-green-100 text-green-800';
-  if (score <= 15) return 'bg-amber-100 text-amber-800';
-  return 'bg-red-100 text-red-800';
+function getScoreToken(score) {
+  if (score <= 6) return '--prism-success';
+  if (score <= 15) return '--prism-warning';
+  return '--prism-error';
 }
 
-function getScoreBgColor(score) {
-  if (score <= 6) return 'bg-green-500';
-  if (score <= 15) return 'bg-amber-500';
-  return 'bg-red-500';
+/** Inline style for a score badge (tint + full colour text) via color-mix. */
+function getScoreBadgeStyle(score) {
+  const token = getScoreToken(score);
+  return {
+    backgroundColor: `color-mix(in srgb, var(${token}) 18%, transparent)`,
+    color: `var(${token})`,
+  };
+}
+
+/** Inline style for a matrix cell background — 100% when populated, 10% tint when empty. */
+function getMatrixCellStyle(score, hasCount) {
+  const token = getScoreToken(score);
+  return hasCount
+    ? { backgroundColor: `var(${token})`, color: '#ffffff' }
+    : { backgroundColor: `color-mix(in srgb, var(${token}) 10%, transparent)` };
 }
 
 /**
@@ -68,15 +80,8 @@ const RiskMatrix = ({ risks, t }) => {
                   return (
                     <div
                       key={impact}
-                      className={`w-10 h-10 border border-white/50 flex items-center justify-center text-xs font-bold ${
-                        count > 0
-                          ? `${getScoreBgColor(score)} text-white`
-                          : score <= 6
-                          ? 'bg-green-50'
-                          : score <= 15
-                          ? 'bg-amber-50'
-                          : 'bg-red-50'
-                      }`}
+                      className="w-10 h-10 border border-border/40 flex items-center justify-center text-xs font-bold font-mono tabular-nums"
+                      style={getMatrixCellStyle(score, count > 0)}
                       title={`P${prob} x I${impact} = ${score}`}
                     >
                       {count > 0 ? count : ''}
@@ -136,8 +141,8 @@ const RiskRegister = ({ risks = [], onChange }) => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
+          <CardTitle className="font-display text-xl tracking-tight flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" style={{ color: 'var(--prism-warning)' }} />
             {t('risks.title')}
           </CardTitle>
           <Button size="sm" onClick={addRisk} className="flex items-center gap-2">
@@ -157,7 +162,7 @@ const RiskRegister = ({ risks = [], onChange }) => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left">
+                <tr className="border-b border-border text-left">
                   <th className="p-2 text-muted-foreground font-medium">{t('risks.risk')}</th>
                   <th className="p-2 text-center text-muted-foreground font-medium">{t('risks.probability')}</th>
                   <th className="p-2 text-center text-muted-foreground font-medium">{t('risks.impact')}</th>
@@ -171,7 +176,7 @@ const RiskRegister = ({ risks = [], onChange }) => {
                 {risks.map((risk) => {
                   const score = risk.probability * risk.impact;
                   return (
-                    <tr key={risk.id} className="border-b last:border-b-0 hover:bg-secondary/30 transition-colors">
+                    <tr key={risk.id} className="border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors">
                       <td className="p-2">
                         <input
                           type="text"
@@ -204,7 +209,10 @@ const RiskRegister = ({ risks = [], onChange }) => {
                         </select>
                       </td>
                       <td className="p-2 text-center">
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${getScoreColor(score)}`}>
+                        <span
+                          className="inline-block px-2 py-1 rounded-full text-xs font-bold font-mono tabular-nums"
+                          style={getScoreBadgeStyle(score)}
+                        >
                           {score}
                         </span>
                       </td>
@@ -231,7 +239,7 @@ const RiskRegister = ({ risks = [], onChange }) => {
                           variant="ghost"
                           size="sm"
                           onClick={() => removeRisk(risk.id)}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
