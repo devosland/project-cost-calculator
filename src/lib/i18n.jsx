@@ -470,6 +470,7 @@ const translations = {
     'apiKeys.usage.title': 'Usage',
     'apiKeys.usage.calls': 'appels',
     'apiKeys.usage.window7d': '7j',
+    'apiKeys.usage.window30d': '30j',
     'apiKeys.usage.successRate': 'taux de succès',
     'apiKeys.usage.topEndpoint': 'endpoint principal',
     'apiKeys.usage.lastUsed': 'dernière utilisation',
@@ -478,6 +479,10 @@ const translations = {
     'apiKeys.usage.hideDetails': 'Masquer détails',
     'apiKeys.usage.noCalls': 'Aucun appel sur cette période.',
     'apiKeys.usage.loading': 'Chargement…',
+    'apiKeys.usage.method': 'Méthode',
+    'apiKeys.usage.endpoint': 'Endpoint',
+    'apiKeys.usage.status': 'Statut',
+    'apiKeys.usage.ago': 'Il y a',
 
     // API Tester
     'apiTester.title': 'Testeur API',
@@ -970,6 +975,7 @@ const translations = {
     'apiKeys.usage.title': 'Usage',
     'apiKeys.usage.calls': 'calls',
     'apiKeys.usage.window7d': '7d',
+    'apiKeys.usage.window30d': '30d',
     'apiKeys.usage.successRate': 'success rate',
     'apiKeys.usage.topEndpoint': 'top endpoint',
     'apiKeys.usage.lastUsed': 'last used',
@@ -978,6 +984,10 @@ const translations = {
     'apiKeys.usage.hideDetails': 'Hide details',
     'apiKeys.usage.noCalls': 'No calls in this period.',
     'apiKeys.usage.loading': 'Loading…',
+    'apiKeys.usage.method': 'Method',
+    'apiKeys.usage.endpoint': 'Endpoint',
+    'apiKeys.usage.status': 'Status',
+    'apiKeys.usage.ago': 'Ago',
 
     // API Tester
     'apiTester.title': 'API Tester',

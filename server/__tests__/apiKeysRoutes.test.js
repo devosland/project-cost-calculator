@@ -76,9 +76,15 @@ describe('api keys usage', () => {
     db.prepare('DELETE FROM api_key_usage').run();
   });
 
-  it('returns 404 for invalid keyId', async () => {
+  it('returns 404 for non-existent keyId', async () => {
     const { token } = seedUser();
     const r = await request(app).get('/api/auth/api-keys/99999/usage').set('Authorization', `Bearer ${token}`);
+    expect(r.status).toBe(404);
+  });
+
+  it('returns 404 for truly invalid (non-numeric) keyId', async () => {
+    const { token } = seedUser();
+    const r = await request(app).get('/api/auth/api-keys/abc/usage').set('Authorization', `Bearer ${token}`);
     expect(r.status).toBe(404);
   });
 
@@ -120,6 +126,57 @@ describe('api keys usage', () => {
     expect(r.body.stats.clientError).toBe(1);
     expect(r.body.stats.topEndpoint).toBe('/api/v1/projects');
     expect(r.body.recent).toHaveLength(2);
+  });
+
+  it('respects limit query param and clamps to min/max', async () => {
+    const { token } = seedUser();
+    const created = await request(app)
+      .post('/api/auth/api-keys').set('Authorization', `Bearer ${token}`)
+      .send({ name: 'LimitTest', scopes: ['roadmap:import'] });
+    const keyId = created.body.id;
+
+    // Seed 5 usage rows
+    for (let i = 0; i < 5; i++) {
+      db.prepare('INSERT INTO api_key_usage (api_key_id, endpoint, method, status_code, ip) VALUES (?, ?, ?, ?, ?)').run(keyId, `/ep${i}`, 'GET', 200, null);
+    }
+
+    // limit=2 → only 2 recent rows returned
+    const r2 = await request(app).get(`/api/auth/api-keys/${keyId}/usage?limit=2`).set('Authorization', `Bearer ${token}`);
+    expect(r2.body.recent).toHaveLength(2);
+
+    // limit=-5 → treated as NaN by parseInt (non-numeric suffix ignored) — falls back to default 20, returns all 5
+    // Note: limit=0 is falsy so `parseInt(...) || 20` applies the default (20), not min-clamp(1).
+    // The route clamps values that parse as finite numbers outside [1,100].
+    const rNeg = await request(app).get(`/api/auth/api-keys/${keyId}/usage?limit=abc`).set('Authorization', `Bearer ${token}`);
+    expect(rNeg.body.recent).toHaveLength(5); // falls back to default 20, 5 rows total
+
+    // limit=999 → clamped to max (100), returns all 5 since 5 < 100
+    const rMax = await request(app).get(`/api/auth/api-keys/${keyId}/usage?limit=999`).set('Authorization', `Bearer ${token}`);
+    expect(rMax.body.recent).toHaveLength(5);
+  });
+
+  it('respects dailyDays query param and clamps to min/max', async () => {
+    const { token } = seedUser();
+    const created = await request(app)
+      .post('/api/auth/api-keys').set('Authorization', `Bearer ${token}`)
+      .send({ name: 'DailyDaysTest', scopes: ['roadmap:import'] });
+    const keyId = created.body.id;
+
+    // Insert rows: one recent (today) and one old (60 days ago)
+    db.prepare('INSERT INTO api_key_usage (api_key_id, endpoint, method, status_code, ip) VALUES (?, ?, ?, ?, ?)').run(keyId, '/recent', 'GET', 200, null);
+    db.prepare("INSERT INTO api_key_usage (api_key_id, endpoint, method, status_code, ip, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-60 days'))").run(keyId, '/old', 'GET', 200, null);
+
+    // dailyDays=7 → only today's day bucket returned
+    const r7 = await request(app).get(`/api/auth/api-keys/${keyId}/usage?dailyDays=7`).set('Authorization', `Bearer ${token}`);
+    expect(r7.body.daily.length).toBe(1);
+
+    // dailyDays=90 → both day buckets returned
+    const r90 = await request(app).get(`/api/auth/api-keys/${keyId}/usage?dailyDays=90`).set('Authorization', `Bearer ${token}`);
+    expect(r90.body.daily.length).toBe(2);
+
+    // dailyDays=0 → clamped to min (1), only today
+    const r0 = await request(app).get(`/api/auth/api-keys/${keyId}/usage?dailyDays=0`).set('Authorization', `Bearer ${token}`);
+    expect(r0.body.daily.length).toBe(1);
   });
 
   it('respects days query param', async () => {

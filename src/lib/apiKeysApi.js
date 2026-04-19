@@ -39,4 +39,11 @@ export const apiKeysApi = {
    */
   usage: (id, { days = 7, limit = 20, dailyDays = 30 } = {}) =>
     api.request(`/auth/api-keys/${id}/usage?days=${days}&limit=${limit}&dailyDays=${dailyDays}`),
+
+  /**
+   * Fetch aggregated 7-day usage summary for all active keys of the authenticated user.
+   * Returns one entry per key — avoids N+1 per-key fetches for the inline summary.
+   * @returns {Promise<Array<{api_key_id: number, total: number, success: number}>>}
+   */
+  usageSummary: () => api.request('/auth/api-keys/usage-summary'),
 };

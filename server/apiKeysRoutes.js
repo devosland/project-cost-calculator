@@ -7,7 +7,7 @@
 import { Router } from 'express';
 import { authMiddleware } from './middleware.js';
 import { generateApiKey } from './apiKeys.js';
-import { createApiKeyRecord, getApiKeysByUser, revokeApiKey, getApiKeyUsageStats, getApiKeyRecentUsage, getApiKeyDailyUsage } from './db.js';
+import { createApiKeyRecord, getApiKeysByUser, revokeApiKey, getApiKeyUsageStats, getApiKeyRecentUsage, getApiKeyDailyUsage, userOwnsApiKey, getApiKeyUsageSummaryByUser } from './db.js';
 
 // Whitelist of scopes that can be granted to API keys.
 // Adding new scopes here and in publicApi.js is the single change needed to extend the API.
@@ -79,9 +79,8 @@ router.get('/:id/usage', (req, res) => {
   const keyId = parseInt(req.params.id, 10);
   if (!Number.isFinite(keyId)) return res.status(404).json({ error: 'not_found' });
 
-  // Verify ownership by checking against the user's keys
-  const keys = getApiKeysByUser(req.user.id);
-  if (!keys.find(k => k.id === keyId)) {
+  // Lightweight ownership check — avoids loading all of a user's keys.
+  if (!userOwnsApiKey(keyId, req.user.id)) {
     return res.status(404).json({ error: 'not_found' });
   }
 
@@ -94,6 +93,18 @@ router.get('/:id/usage', (req, res) => {
     recent: getApiKeyRecentUsage(keyId, limit),
     daily: getApiKeyDailyUsage(keyId, dailyDays),
   });
+});
+
+/**
+ * GET /api/auth/api-keys/usage-summary
+ * Returns aggregated 7-day usage stats for all active keys of the authenticated user.
+ * Used by the inline summary shown in the collapsed key list — a single batch fetch
+ * instead of one request per key (avoids N+1 on page load).
+ * Returns: 200 [{ api_key_id, total, success }]
+ */
+router.get('/usage-summary', (req, res) => {
+  const summary = getApiKeyUsageSummaryByUser(req.user.id);
+  res.json(summary);
 });
 
 /** Safely parses a JSON string, returning fallback on any parse error. */
