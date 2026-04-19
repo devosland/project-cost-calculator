@@ -882,7 +882,6 @@ function logApiKeyUsage(keyId, endpoint, method, statusCode, ip) {
  *            lastUsedAt: string|null, topEndpoint: string|null}}
  */
 function getApiKeyUsageStats(keyId, days = 7) {
-  const since = `datetime('now', '-${days} days')`;
   const row = db.prepare(`
     SELECT
       COUNT(*) AS total,
@@ -891,15 +890,15 @@ function getApiKeyUsageStats(keyId, days = 7) {
       SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) AS serverError,
       MAX(created_at) AS lastUsedAt
     FROM api_key_usage
-    WHERE api_key_id = ? AND created_at >= ${since}
-  `).get(keyId);
+    WHERE api_key_id = ? AND created_at >= datetime('now', ?)
+  `).get(keyId, `-${days} days`);
 
   const top = db.prepare(`
     SELECT endpoint, COUNT(*) AS c
     FROM api_key_usage
-    WHERE api_key_id = ? AND created_at >= ${since}
+    WHERE api_key_id = ? AND created_at >= datetime('now', ?)
     GROUP BY endpoint ORDER BY c DESC LIMIT 1
-  `).get(keyId);
+  `).get(keyId, `-${days} days`);
 
   return {
     total: row?.total ?? 0,
@@ -941,6 +940,41 @@ function getApiKeyDailyUsage(keyId, days = 30) {
     GROUP BY day
     ORDER BY day ASC
   `).all(keyId, `-${days} days`);
+}
+
+/**
+ * Verifies that an API key belongs to a specific user.
+ * Lightweight ownership check — avoids loading all of a user's keys.
+ * @param {number} keyId
+ * @param {number} userId
+ * @returns {boolean}
+ */
+function userOwnsApiKey(keyId, userId) {
+  const row = db.prepare(
+    'SELECT 1 FROM api_keys WHERE id = ? AND user_id = ?'
+  ).get(keyId, userId);
+  return !!row;
+}
+
+/**
+ * Returns a summary of 7-day usage stats for all active API keys of a user.
+ * Used by the inline summary shown in the collapsed key list (avoids N+1 per-key fetches).
+ * @param {number} userId
+ * @returns {Array<{api_key_id: number, total: number, success: number}>}
+ */
+function getApiKeyUsageSummaryByUser(userId) {
+  return db.prepare(`
+    SELECT
+      ak.id AS api_key_id,
+      COUNT(aku.id) AS total,
+      SUM(CASE WHEN aku.status_code BETWEEN 200 AND 399 THEN 1 ELSE 0 END) AS success
+    FROM api_keys ak
+    LEFT JOIN api_key_usage aku
+      ON aku.api_key_id = ak.id
+      AND aku.created_at >= datetime('now', '-7 days')
+    WHERE ak.user_id = ? AND ak.revoked_at IS NULL
+    GROUP BY ak.id
+  `).all(userId);
 }
 
 /**
@@ -1012,5 +1046,7 @@ export {
   getApiKeyUsageStats,
   getApiKeyRecentUsage,
   getApiKeyDailyUsage,
+  userOwnsApiKey,
+  getApiKeyUsageSummaryByUser,
   findProjectByExternalId
 };

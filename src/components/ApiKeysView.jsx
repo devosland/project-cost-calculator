@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Copy, Check, Trash2, KeyRound, ChevronDown, ChevronUp, Activity, TrendingUp } from 'lucide-react';
+import { Copy, Check, Trash2, KeyRound, ChevronDown, ChevronUp, Activity } from 'lucide-react';
 import { apiKeysApi } from '../lib/apiKeysApi';
 import { useLocale } from '../lib/i18n';
 
@@ -10,16 +10,43 @@ const SCOPES = [
   { id: 'roadmap:read', labelKey: 'apiKeys.scopeRoadmapRead' },
 ];
 
-/** Formats a relative time string ("il y a 2h" / "2h ago") for a created_at ISO string. */
-function relativeTime(isoString) {
-  if (!isoString) return '—';
-  const diffMs = Date.now() - new Date(isoString + (isoString.endsWith('Z') ? '' : 'Z')).getTime();
+/**
+ * Normalises a timestamp to a valid ISO 8601 string for cross-browser Date parsing.
+ * Handles SQLite CURRENT_TIMESTAMP format ('YYYY-MM-DD HH:MM:SS') which uses a space
+ * separator instead of 'T' and has no timezone suffix.
+ */
+function normalizeTimestampToIso(timestamp) {
+  if (!timestamp) return null;
+  // Already has timezone suffix (Z or ±HH:MM) — leave alone
+  if (/[zZ]$|[+-]\d{2}:\d{2}$/.test(timestamp)) return timestamp;
+  // SQLite CURRENT_TIMESTAMP: 'YYYY-MM-DD HH:MM:SS' — convert to ISO
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(timestamp)) {
+    return timestamp.replace(' ', 'T') + 'Z';
+  }
+  return timestamp;
+}
+
+/**
+ * Formats a relative time string using Intl.RelativeTimeFormat for the given locale.
+ * Accepts both ISO strings and SQLite CURRENT_TIMESTAMP format.
+ * @param {string|null} timestamp
+ * @param {string} locale - BCP 47 locale tag (e.g. 'fr', 'en')
+ */
+function relativeTime(timestamp, locale) {
+  if (!timestamp) return '—';
+  const normalized = normalizeTimestampToIso(timestamp);
+  if (!normalized) return '—';
+  const date = new Date(normalized);
+  const ms = date.getTime();
+  if (Number.isNaN(ms)) return '—';
+  const diffMs = Date.now() - ms;
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return '< 1 min';
-  if (diffMin < 60) return `${diffMin} min`;
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always', style: 'short' });
+  if (diffMin < 1) return rtf.format(0, 'minute');
+  if (diffMin < 60) return rtf.format(-diffMin, 'minute');
   const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH}h`;
-  return `${Math.floor(diffH / 24)}j`;
+  if (diffH < 24) return rtf.format(-diffH, 'hour');
+  return rtf.format(-Math.floor(diffH / 24), 'day');
 }
 
 /** Returns a Tailwind text colour class based on HTTP status code. */
@@ -31,9 +58,10 @@ function statusColor(code) {
 
 /**
  * Inline usage panel for a single API key.
- * Fetches data lazily on first expand; subsequent toggles reuse cached data.
+ * Fetches data lazily each time the panel is expanded — the component is unmounted
+ * when collapsed, so state is reset on each toggle (no cross-toggle caching).
  */
-function KeyUsagePanel({ keyId, t }) {
+function KeyUsagePanel({ keyId, t, locale }) {
   const [usageData, setUsageData] = useState(null);
   const [loadingUsage, setLoadingUsage] = useState(false);
 
@@ -67,7 +95,7 @@ function KeyUsagePanel({ keyId, t }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-muted/40 dark:bg-muted/20 rounded p-2 text-center">
           <div className="text-lg font-bold">{stats.total}</div>
-          <div className="text-xs text-muted-foreground">{t('apiKeys.usage.calls')} (7j)</div>
+          <div className="text-xs text-muted-foreground">{t('apiKeys.usage.calls')} ({t('apiKeys.usage.window7d')})</div>
         </div>
         <div className="bg-muted/40 dark:bg-muted/20 rounded p-2 text-center">
           <div className={`text-lg font-bold ${successRate >= 90 ? 'text-green-600 dark:text-green-400' : successRate >= 70 ? 'text-orange-500 dark:text-orange-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -80,7 +108,7 @@ function KeyUsagePanel({ keyId, t }) {
           <div className="text-xs text-muted-foreground">{t('apiKeys.usage.topEndpoint')}</div>
         </div>
         <div className="bg-muted/40 dark:bg-muted/20 rounded p-2 text-center">
-          <div className="text-xs font-bold">{stats.lastUsedAt ? relativeTime(stats.lastUsedAt) : '—'}</div>
+          <div className="text-xs font-bold">{stats.lastUsedAt ? relativeTime(stats.lastUsedAt, locale) : '—'}</div>
           <div className="text-xs text-muted-foreground">{t('apiKeys.usage.lastUsed')}</div>
         </div>
       </div>
@@ -88,7 +116,7 @@ function KeyUsagePanel({ keyId, t }) {
       {/* Sparkline — 30-day bar chart */}
       {daily.length > 0 && (
         <div>
-          <div className="text-xs text-muted-foreground mb-1">30j</div>
+          <div className="text-xs text-muted-foreground mb-1">{t('apiKeys.usage.window30d')}</div>
           <div className="flex items-end gap-0.5 h-10">
             {daily.map(d => {
               const pct = maxDay > 0 ? Math.round((d.count / maxDay) * 100) : 0;
@@ -115,10 +143,10 @@ function KeyUsagePanel({ keyId, t }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-muted-foreground border-b border-border">
-                  <th className="text-left pb-1 pr-2 font-medium">Méthode</th>
-                  <th className="text-left pb-1 pr-2 font-medium">Endpoint</th>
-                  <th className="text-left pb-1 pr-2 font-medium">Status</th>
-                  <th className="text-left pb-1 font-medium">Il y a</th>
+                  <th className="text-left pb-1 pr-2 font-medium">{t('apiKeys.usage.method')}</th>
+                  <th className="text-left pb-1 pr-2 font-medium">{t('apiKeys.usage.endpoint')}</th>
+                  <th className="text-left pb-1 pr-2 font-medium">{t('apiKeys.usage.status')}</th>
+                  <th className="text-left pb-1 font-medium">{t('apiKeys.usage.ago')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -131,7 +159,7 @@ function KeyUsagePanel({ keyId, t }) {
                     </td>
                     <td className="py-1 pr-2 font-mono truncate max-w-[200px]" title={row.endpoint}>{row.endpoint}</td>
                     <td className={`py-1 pr-2 font-bold ${statusColor(row.status_code)}`}>{row.status_code}</td>
-                    <td className="py-1 text-muted-foreground">{relativeTime(row.created_at)}</td>
+                    <td className="py-1 text-muted-foreground">{relativeTime(row.created_at, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -144,7 +172,7 @@ function KeyUsagePanel({ keyId, t }) {
 }
 
 export default function ApiKeysView() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -153,6 +181,8 @@ export default function ApiKeysView() {
   const [plaintextKey, setPlaintextKey] = useState(null);
   const [copied, setCopied] = useState(false);
   const [expandedKeyId, setExpandedKeyId] = useState(null);
+  // Inline summary: Map<keyId, { total, success }> — fetched once at mount
+  const [inlineSummary, setInlineSummary] = useState({});
 
   async function refresh() {
     setLoading(true);
@@ -165,7 +195,20 @@ export default function ApiKeysView() {
     setLoading(false);
   }
 
-  useEffect(() => { refresh(); }, []);
+  async function refreshSummary() {
+    try {
+      const rows = await apiKeysApi.usageSummary();
+      if (Array.isArray(rows)) {
+        const map = {};
+        rows.forEach(r => { map[r.api_key_id] = { total: r.total, success: r.success }; });
+        setInlineSummary(map);
+      }
+    } catch {
+      // summary is non-critical — fail silently
+    }
+  }
+
+  useEffect(() => { refresh(); refreshSummary(); }, []);
 
   async function handleCreate() {
     try {
@@ -294,6 +337,15 @@ export default function ApiKeysView() {
                     <div className="text-xs text-muted-foreground mt-1">
                       {t('apiKeys.scopes')}: {(k.scopes || []).join(', ')} · {t('apiKeys.lastUsed')}: {k.last_used_at || t('apiKeys.never')}
                     </div>
+                    {/* Inline summary — visible even when usage panel is collapsed */}
+                    {!k.revoked_at && inlineSummary[k.id] !== undefined && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {inlineSummary[k.id].total} {t('apiKeys.usage.calls')} ({t('apiKeys.usage.window7d')})
+                        {inlineSummary[k.id].total > 0 && (
+                          ` • ${Math.round((inlineSummary[k.id].success / inlineSummary[k.id].total) * 100)}% ${t('apiKeys.usage.successRate')}`
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {k.revoked_at ? (
@@ -323,7 +375,7 @@ export default function ApiKeysView() {
 
                 {/* Lazy-loaded usage panel — only mounted when expanded */}
                 {expandedKeyId === k.id && !k.revoked_at && (
-                  <KeyUsagePanel keyId={k.id} t={t} />
+                  <KeyUsagePanel keyId={k.id} t={t} locale={locale} />
                 )}
               </CardContent>
             </Card>
