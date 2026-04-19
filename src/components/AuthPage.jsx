@@ -10,6 +10,7 @@ import { Mail, Lock, User, LogIn, KeyRound } from 'lucide-react';
 import { Button } from './ui/button';
 import { api } from '../lib/api';
 import { useLocale } from '../lib/i18n';
+import PrismLogo from './brand/PrismLogo';
 
 /**
  * @param {Object} props
@@ -91,35 +92,42 @@ export default function AuthPage({ onAuth }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-md">
-        {/* Branding */}
+        {/* Branding — PrismLogo + wordmark Fraunces + tagline */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-primary-foreground font-bold text-xl mb-4 shadow-lg shadow-primary/25">
-            PC
+          <div className="inline-flex items-center justify-center mb-4 text-primary">
+            <PrismLogo size={56} />
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            {t('app.name')}
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+            Prism
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t('app.subtitle')}
+          <p className="text-sm text-muted-foreground mt-2 italic">
+            One project, every perspective.
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl shadow-black/5 border border-border/50 dark:border-gray-700 p-8">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-8">
           <h2 className="text-xl font-semibold text-foreground mb-6">
             {titles[mode]}
           </h2>
 
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
+            <div className="mb-4 p-3 rounded-md bg-destructive/10 text-destructive text-sm border border-destructive/20">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="mb-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-sm border border-emerald-200 dark:border-emerald-800">
+            <div
+              className="mb-4 p-3 rounded-md text-sm border"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--prism-success) 12%, transparent)',
+                color: 'var(--prism-success)',
+                borderColor: 'color-mix(in srgb, var(--prism-success) 30%, transparent)',
+              }}
+            >
               {success}
             </div>
           )}
