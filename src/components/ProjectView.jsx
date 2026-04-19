@@ -312,18 +312,20 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
   return (
     <div className="w-full max-w-5xl mx-auto">
 
-      {/* --- Header : nom du projet (édition inline) + actions (export, history, share) + coût total --- */}
-      <div className="flex items-center justify-between mb-8 print:hidden">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
+      {/* --- Header : nom du projet (édition inline) + actions (export, history, share) + coût total ---
+          Layout responsive : sur mobile les trois clusters (back+name, actions, cost) se stackent
+          verticalement pour éviter la collision du h1 avec les icônes d'action. */}
+      <div className="flex flex-col gap-4 mb-8 print:hidden sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground shrink-0">
             <ArrowLeft className="w-4 h-4 mr-1" />
             {t('project.back')}
           </Button>
           {editingName ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <input
                 type="text"
-                className="input-field font-display text-3xl font-semibold w-64"
+                className="input-field font-display text-2xl sm:text-3xl font-semibold w-full max-w-sm"
                 value={nameValue}
                 onChange={(e) => setNameValue(e.target.value)}
                 onKeyDown={(e) => {
@@ -352,27 +354,29 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
               </Button>
             </div>
           ) : (
-            <h1 className="font-display text-3xl font-semibold tracking-tight flex items-center gap-2">
-              {project.name}
-              <Button variant="ghost" size="sm" onClick={() => { setNameValue(project.name); setEditingName(true); }} className="text-muted-foreground hover:text-foreground" aria-label={t('dashboard.rename')} title={t('dashboard.rename')}>
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight flex items-center gap-2 min-w-0">
+              <span className="truncate">{project.name}</span>
+              <Button variant="ghost" size="sm" onClick={() => { setNameValue(project.name); setEditingName(true); }} className="text-muted-foreground hover:text-foreground shrink-0" aria-label={t('dashboard.rename')} title={t('dashboard.rename')}>
                 <Pencil className="w-3 h-3" />
               </Button>
             </h1>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => exportProject(project)} className="text-muted-foreground hover:text-foreground" title={t('project.exportJSON')}>
-            <Download className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => exportProjectCSV(project, rates)} className="text-muted-foreground hover:text-foreground" title={t('project.exportCSV')}>
-            <span className="font-mono text-xs">CSV</span>
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground hover:text-foreground" title={t('project.history')}>
-            <History className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onOpenShare} className="text-muted-foreground hover:text-foreground" title={t('project.share')}>
-            <Share2 className="w-4 h-4" />
-          </Button>
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
+          <div className="flex items-center gap-1 sm:gap-3">
+            <Button variant="ghost" size="sm" onClick={() => exportProject(project)} className="text-muted-foreground hover:text-foreground" title={t('project.exportJSON')} aria-label={t('project.exportJSON')}>
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => exportProjectCSV(project, rates)} className="text-muted-foreground hover:text-foreground" title={t('project.exportCSV')} aria-label={t('project.exportCSV')}>
+              <span className="font-mono text-xs">CSV</span>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground hover:text-foreground" title={t('project.history')} aria-label={t('project.history')}>
+              <History className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onOpenShare} className="text-muted-foreground hover:text-foreground" title={t('project.share')} aria-label={t('project.share')}>
+              <Share2 className="w-4 h-4" />
+            </Button>
+          </div>
           <div className="text-right">
             <div className="text-sm text-muted-foreground">{totalWeeks} {t('project.weeks')}</div>
             <div className="font-mono text-2xl font-semibold tabular-nums">{fmt(totalCost)}</div>
@@ -453,6 +457,8 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
 
           {project.phases.map((phase, index) => (
             <div key={phase.id} className="relative">
+              {/* Desktop : controls positionnés à l'extérieur du card (left=move, right=delete).
+                  Mobile : strip inline au-dessus du card pour garder les controls accessibles. */}
               <div className="absolute -left-10 top-4 hidden sm:flex flex-col gap-1">
                 <Button
                   variant="ghost"
@@ -477,6 +483,45 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
                   <ChevronDown className="w-3 h-3" />
                 </Button>
               </div>
+
+              {/* Mobile-only controls strip */}
+              <div className="flex sm:hidden items-center justify-end gap-1 mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => movePhase(index, -1)}
+                  disabled={index === 0}
+                  aria-label={t('project.movePhaseUp') || 'Move phase up'}
+                  title={t('project.movePhaseUp') || 'Move phase up'}
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => movePhase(index, 1)}
+                  disabled={index === project.phases.length - 1}
+                  aria-label={t('project.movePhaseDown') || 'Move phase down'}
+                  title={t('project.movePhaseDown') || 'Move phase down'}
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+                {project.phases.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => removePhase(phase.id)}
+                    aria-label={t('project.deletePhase')}
+                    title={t('project.deletePhase')}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+
               <PhaseEditor
                 phase={phase}
                 rates={rates}
@@ -491,7 +536,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
               {project.phases.length > 1 && (
                 <div className="absolute -right-10 top-4 hidden sm:block">
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => removePhase(phase.id)} title={t('project.deletePhase')}>
+                    onClick={() => removePhase(phase.id)} aria-label={t('project.deletePhase')} title={t('project.deletePhase')}>
                     <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
