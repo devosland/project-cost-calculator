@@ -88,16 +88,17 @@ const ResourcePool = ({ rates }) => {
   // permanent employee. The badge is purely a display-layer derivation.
   const getTypeBadge = (level) => {
     const isPermanent = level === 'Employé interne';
-    if (isPermanent) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-          {t('capacity.permanent')}
-        </span>
-      );
-    }
+    const token = isPermanent ? '--prism-success' : '--prism-warning';
+    const label = isPermanent ? t('capacity.permanent') : t('capacity.consultant');
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
-        {t('capacity.consultant')}
+      <span
+        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+        style={{
+          backgroundColor: `color-mix(in srgb, var(${token}) 18%, transparent)`,
+          color: `var(${token})`,
+        }}
+      >
+        {label}
       </span>
     );
   };
@@ -116,7 +117,7 @@ const ResourcePool = ({ rates }) => {
     <Card className="w-full max-w-4xl">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>{t('resources.title')}</CardTitle>
+          <CardTitle className="font-display text-xl tracking-tight">{t('resources.title')}</CardTitle>
           {!adding && !editingResource && (
             <Button
               variant="default"
@@ -163,7 +164,7 @@ const ResourcePool = ({ rates }) => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b">
+              <tr className="border-b border-border">
                 <th className="text-left p-2 font-medium">{t('resources.name')}</th>
                 <th className="text-left p-2 font-medium">{t('resources.role')}</th>
                 <th className="text-left p-2 font-medium">{t('resources.level')}</th>
@@ -174,12 +175,12 @@ const ResourcePool = ({ rates }) => {
             </thead>
             <tbody>
               {filtered.map((resource) => (
-                <tr key={resource.id} className="border-b last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <tr key={resource.id} className="border-b border-border last:border-b-0 hover:bg-muted/60">
                   <td className="p-2 font-medium">{resource.name}</td>
                   <td className="p-2">{resource.role}</td>
                   <td className="p-2">{getLevelLabel(t, resource.level)}</td>
                   <td className="p-2">{getTypeBadge(resource.level)}</td>
-                  <td className="p-2 text-center">{resource.max_capacity}%</td>
+                  <td className="p-2 text-center font-mono tabular-nums">{resource.max_capacity}%</td>
                   <td className="p-2 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Button
@@ -191,10 +192,11 @@ const ResourcePool = ({ rates }) => {
                         <Pencil className="w-4 h-4" />
                       </Button>
                       <Button
-                        variant="destructive"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleDelete(resource)}
                         title={t('resources.delete')}
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -204,7 +206,7 @@ const ResourcePool = ({ rates }) => {
               ))}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-500">
+                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
                     {resources.length === 0 ? t('resources.empty') : t('resources.search')}
                   </td>
                 </tr>

@@ -28,10 +28,28 @@ function parseData(plan) {
   } catch { return []; }
 }
 
-const statusColors = {
-  draft: 'bg-gray-100 text-gray-700',
-  planned: 'bg-blue-100 text-blue-700',
-  applied: 'bg-green-100 text-green-700',
+/**
+ * Status → Prism token mapping. Rendered inline via color-mix so the badge
+ * stays in the Warm palette in both light and dark mode with a single source.
+ */
+const statusTokens = {
+  draft: null,           // neutral — uses muted tokens directly
+  planned: '--prism-info',
+  applied: '--prism-success',
+};
+
+const statusBadgeStyle = (status) => {
+  const token = statusTokens[status];
+  if (!token) {
+    return {
+      backgroundColor: 'var(--muted)',
+      color: 'var(--muted-foreground)',
+    };
+  }
+  return {
+    backgroundColor: `color-mix(in srgb, var(${token}) 18%, transparent)`,
+    color: `var(${token})`,
+  };
 };
 
 /**
@@ -73,7 +91,7 @@ const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
     <div className="space-y-4">
       {/* Header with new plan button */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{t('transitions.title')}</h2>
+        <h2 className="font-display text-xl font-semibold tracking-tight">{t('transitions.title')}</h2>
         <Button size="sm" onClick={onNewPlan}>
           <Plus className="w-4 h-4 mr-1" />
           {t('transitions.add')}
@@ -98,7 +116,7 @@ const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
             return (
               <div
                 key={plan.id}
-                className="border rounded-lg p-4 hover:border-primary/50 hover:bg-muted/30 transition-colors flex items-center gap-3"
+                className="border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-muted/30 transition-colors flex items-center gap-3"
               >
                 <button
                   className="flex-1 text-left"
@@ -106,7 +124,10 @@ const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{plan.name}</span>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColors[status] || statusColors.draft}`}>
+                    <span
+                      className="text-xs font-medium px-2 py-0.5 rounded-full"
+                      style={statusBadgeStyle(status)}
+                    >
                       {t(`transitions.status.${status}`)}
                     </span>
                   </div>
@@ -143,7 +164,7 @@ const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-muted-foreground hover:text-red-500 shrink-0"
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (confirm(t('resources.confirmDelete'))) {

@@ -26,7 +26,7 @@ const UtilizationSummary = ({ resources, assignments, months, gridCols }) => {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
-      <div className="font-medium text-sm py-1 pr-2 text-right sticky left-0 bg-background z-10">
+      <div className="font-medium text-sm py-1 pr-2 text-right sticky left-0 bg-card z-10">
         {t('capacity.utilization')}
       </div>
       {months.map((month) => {
@@ -37,17 +37,20 @@ const UtilizationSummary = ({ resources, assignments, months, gridCols }) => {
         );
         const pct = totalCapacity > 0 ? Math.round((totalAllocation / totalCapacity) * 100) : 0;
 
-        let bgColor = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-        if (pct >= 100) {
-          bgColor = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-        } else if (pct >= 80) {
-          bgColor = 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
-        }
+        // Semantic status mapping via Prism tokens:
+        //   < 80%  → success (under-allocated, headroom)
+        //   80-99% → warning (approaching capacity)
+        //   ≥ 100% → error   (over-allocated, capacity breach)
+        const token = pct >= 100 ? '--prism-error' : pct >= 80 ? '--prism-warning' : '--prism-success';
 
         return (
           <div
             key={month}
-            className={`rounded text-xs font-semibold flex items-center justify-center min-h-[28px] ${bgColor}`}
+            className="rounded-md text-xs font-semibold flex items-center justify-center min-h-[28px] font-mono tabular-nums"
+            style={{
+              backgroundColor: `color-mix(in srgb, var(${token}) 15%, transparent)`,
+              color: `var(${token})`,
+            }}
           >
             {pct}%
           </div>
