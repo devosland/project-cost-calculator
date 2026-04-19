@@ -4,11 +4,11 @@
  * Load (template list with use/delete actions). Templates are stored server-side
  * and managed via App handlers; this component is purely presentational.
  */
-import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { X, Trash2, Save, FolderOpen } from 'lucide-react';
 import { useLocale, getDateLocale } from '../lib/i18n';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 /**
  * @param {Object} props
@@ -28,6 +28,16 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
   const { t, locale } = useLocale();
   const [activeTab, setActiveTab] = useState('save');
   const [templateName, setTemplateName] = useState('');
+  const trapRef = useFocusTrap(open);
+
+  // Escape to close. Listener only registered while the modal is open to
+  // avoid interfering with other keyboard handlers when closed.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -42,15 +52,23 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
+        ref={trapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="template-manager-title"
+        tabIndex={-1}
+        className="bg-card border border-border rounded-lg shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold">{t('templates.title')}</h2>
+          <h2 id="template-manager-title" className="font-display text-xl font-semibold tracking-tight">
+            {t('templates.title')}
+          </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            aria-label={t('nonLabour.cancel')}
+            className="p-1 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="w-5 h-5" />
           </button>
@@ -59,10 +77,10 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <button
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'save'
                 ? 'bg-primary text-primary-foreground'
-                : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+                : 'bg-muted hover:bg-muted/70'
             }`}
             onClick={() => setActiveTab('save')}
           >
@@ -70,10 +88,10 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
             {t('templates.save')}
           </button>
           <button
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === 'load'
                 ? 'bg-primary text-primary-foreground'
-                : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+                : 'bg-muted hover:bg-muted/70'
             }`}
             onClick={() => setActiveTab('load')}
           >
@@ -113,7 +131,7 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
               templates.map((template) => (
                 <div
                   key={template.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                  className="flex items-center justify-between p-3 rounded-md border border-border bg-background"
                 >
                   <div>
                     <p className="font-medium text-sm">{template.name}</p>
@@ -131,7 +149,9 @@ const TemplateManager = ({ open, onClose, templates, onSaveTemplate, onLoadTempl
                     </Button>
                     <button
                       onClick={() => onDeleteTemplate(template.id)}
-                      className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                      title={t('resources.delete')}
+                      aria-label={t('resources.delete')}
+                      className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

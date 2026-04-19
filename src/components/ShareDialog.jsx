@@ -6,14 +6,25 @@
  * parent (App) before opening and passed in via props; removals update the
  * parent's state optimistically.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Mail, UserPlus, X, Shield } from 'lucide-react';
 import { useLocale } from '../lib/i18n';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
-const roleBadgeStyles = {
-  viewer: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  editor: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+/** Role → Prism token (info for viewer = read-only, warning for editor = mutable access). */
+const roleTokens = {
+  viewer: '--prism-info',
+  editor: '--prism-warning',
+};
+
+const roleBadgeStyle = (role) => {
+  const token = roleTokens[role];
+  if (!token) return undefined;
+  return {
+    backgroundColor: `color-mix(in srgb, var(${token}) 18%, transparent)`,
+    color: `var(${token})`,
+  };
 };
 
 /**
@@ -31,6 +42,15 @@ const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
   const [error, setError] = useState('');
+  const trapRef = useFocusTrap(open);
+
+  // Escape to close.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   const ROLE_OPTIONS = [
     { value: 'viewer', label: t('share.roleViewer') },
@@ -53,18 +73,26 @@ const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
+        ref={trapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-dialog-title"
+        tabIndex={-1}
+        className="bg-card border border-border rounded-lg shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
-            <h2 className="text-xl font-semibold">{t('share.title')}</h2>
+            <h2 id="share-dialog-title" className="font-display text-xl font-semibold tracking-tight">
+              {t('share.title')}
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            aria-label={t('nonLabour.cancel')}
+            className="p-1 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="w-5 h-5" />
           </button>
@@ -114,7 +142,7 @@ const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
               shares.map((share) => (
                 <div
                   key={share.user_id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                  className="flex items-center justify-between p-3 rounded-md border border-border bg-background"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="min-w-0">
@@ -123,12 +151,17 @@ const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleBadgeStyles[share.role] || ''}`}>
+                    <span
+                      className="text-xs font-medium px-2 py-0.5 rounded-full"
+                      style={roleBadgeStyle(share.role)}
+                    >
                       {ROLE_OPTIONS.find((o) => o.value === share.role)?.label || share.role}
                     </span>
                     <button
                       onClick={() => onUnshare(share.user_id)}
-                      className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-muted-foreground hover:text-destructive"
+                      title={t('resources.delete')}
+                      aria-label={t('resources.delete')}
+                      className="p-1 rounded-md hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <X className="w-4 h-4" />
                     </button>
