@@ -69,41 +69,44 @@ const ProjectSummary = ({ project, rates }) => {
 
       <Card className="print:shadow-none print:border-0">
         <CardContent className="py-8 space-y-8">
-          <div className="border-b pb-6">
-            <h1 className="text-3xl font-bold">{project.name}</h1>
+          <div className="border-b border-border pb-6">
+            <h1 className="font-display text-3xl font-semibold tracking-tight">{project.name}</h1>
             <p className="text-sm text-muted-foreground mt-2">
               {t('summary.generatedOn')}{new Date().toLocaleDateString(getDateLocale(locale))}
             </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 bg-primary/5 rounded-xl print:bg-white print:border">
+            <div className="p-4 bg-primary/10 rounded-lg print:bg-white print:border">
               <div className="text-xs text-muted-foreground">{t('summary.totalCost')}</div>
-              <div className="text-2xl font-bold text-primary">{fmt(totalCost)}</div>
+              <div className="font-mono text-2xl font-semibold tabular-nums text-primary">{fmt(totalCost)}</div>
             </div>
-            <div className="p-4 bg-secondary rounded-xl print:bg-white print:border">
+            <div className="p-4 bg-muted rounded-lg print:bg-white print:border">
               <div className="text-xs text-muted-foreground">{t('summary.duration')}</div>
-              <div className="text-xl font-bold">{totalWeeks} {t('dashboard.weeks')}</div>
+              <div className="font-mono text-xl font-semibold tabular-nums">{totalWeeks} {t('dashboard.weeks')}</div>
             </div>
-            <div className="p-4 bg-secondary rounded-xl print:bg-white print:border">
+            <div className="p-4 bg-muted rounded-lg print:bg-white print:border">
               <div className="text-xs text-muted-foreground">{t('summary.members')}</div>
-              <div className="text-xl font-bold">{totalMembers}</div>
+              <div className="font-mono text-xl font-semibold tabular-nums">{totalMembers}</div>
             </div>
-            <div className="p-4 bg-secondary rounded-xl print:bg-white print:border">
+            <div className="p-4 bg-muted rounded-lg print:bg-white print:border">
               <div className="text-xs text-muted-foreground">{t('summary.ratePerWeek')}</div>
-              <div className="text-xl font-bold">{fmt(burnRate)}</div>
+              <div className="font-mono text-xl font-semibold tabular-nums">{fmt(burnRate)}</div>
             </div>
           </div>
 
           {hasBudget && (
-            <div className="p-4 border rounded-xl">
+            <div className="p-4 border border-border rounded-lg">
               <div className="flex justify-between">
                 <span className="text-sm font-semibold">{t('summary.budget')}</span>
-                <span className="font-bold">{fmt(budget)}</span>
+                <span className="font-mono font-semibold tabular-nums">{fmt(budget)}</span>
               </div>
               <div className="flex justify-between mt-1">
                 <span className="text-sm text-muted-foreground">{t('summary.variance')}</span>
-                <span className={`font-semibold ${budget >= totalCost ? 'text-emerald-600' : 'text-red-600'}`}>
+                <span
+                  className="font-mono font-semibold tabular-nums"
+                  style={{ color: `var(${budget >= totalCost ? '--prism-success' : '--prism-error'})` }}
+                >
                   {budget >= totalCost ? '-' : '+'}{fmt(Math.abs(budget - totalCost))}
                 </span>
               </div>
@@ -111,15 +114,15 @@ const ProjectSummary = ({ project, rates }) => {
           )}
 
           <div>
-            <h3 className="font-semibold mb-3">{t('summary.costBreakdown')}</h3>
+            <h3 className="font-display font-semibold mb-3 tracking-tight">{t('summary.costBreakdown')}</h3>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex justify-between p-3 bg-secondary rounded-xl print:bg-white print:border">
+              <div className="flex justify-between p-3 bg-muted rounded-lg print:bg-white print:border">
                 <span>{t('summary.labour')}</span>
-                <span className="font-semibold">{fmt(labourCost)}</span>
+                <span className="font-mono font-semibold tabular-nums">{fmt(labourCost)}</span>
               </div>
-              <div className="flex justify-between p-3 bg-secondary rounded-xl print:bg-white print:border">
+              <div className="flex justify-between p-3 bg-muted rounded-lg print:bg-white print:border">
                 <span>{t('summary.otherCosts')}</span>
-                <span className="font-semibold">{fmt(nonLabourCost)}</span>
+                <span className="font-mono font-semibold tabular-nums">{fmt(nonLabourCost)}</span>
               </div>
             </div>
             {project.settings.includeContingency && (
@@ -133,10 +136,10 @@ const ProjectSummary = ({ project, rates }) => {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3">{t('summary.phases')}</h3>
+            <h3 className="font-display font-semibold mb-3 tracking-tight">{t('summary.phases')}</h3>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left">
+                <tr className="border-b border-border text-left">
                   <th className="p-2 text-muted-foreground font-medium">{t('summary.phase')}</th>
                   <th className="p-2 text-center text-muted-foreground font-medium">{t('summary.duration')}</th>
                   <th className="p-2 text-center text-muted-foreground font-medium">{t('summary.members')}</th>
@@ -150,12 +153,12 @@ const ProjectSummary = ({ project, rates }) => {
                   const wc = phase.durationWeeks > 0 ? tc / phase.durationWeeks : 0;
                   const mc = phase.teamMembers.reduce((s, m) => s + m.quantity, 0);
                   return (
-                    <tr key={phase.id} className="border-b last:border-b-0">
+                    <tr key={phase.id} className="border-b border-border last:border-b-0">
                       <td className="p-2 font-medium">{phase.name}</td>
-                      <td className="p-2 text-center">{phase.durationWeeks} {t('dashboard.stats.weeks')}</td>
-                      <td className="p-2 text-center">{mc}</td>
-                      <td className="p-2 text-right">{fmt(wc)}</td>
-                      <td className="p-2 text-right font-semibold">{fmt(tc)}</td>
+                      <td className="p-2 text-center font-mono tabular-nums">{phase.durationWeeks} {t('dashboard.stats.weeks')}</td>
+                      <td className="p-2 text-center font-mono tabular-nums">{mc}</td>
+                      <td className="p-2 text-right font-mono tabular-nums">{fmt(wc)}</td>
+                      <td className="p-2 text-right font-mono tabular-nums font-semibold">{fmt(tc)}</td>
                     </tr>
                   );
                 })}
@@ -165,10 +168,10 @@ const ProjectSummary = ({ project, rates }) => {
 
           {project.phases.some(p => p.teamMembers?.some(m => m.resourceName)) && (
             <div>
-              <h3 className="font-semibold mb-3">{t('capacity.resources')}</h3>
+              <h3 className="font-display font-semibold mb-3 tracking-tight">{t('capacity.resources')}</h3>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left">
+                  <tr className="border-b border-border text-left">
                     <th className="p-2 text-muted-foreground font-medium">{t('resources.name')}</th>
                     <th className="p-2 text-muted-foreground font-medium">{t('resources.role')}</th>
                     <th className="p-2 text-muted-foreground font-medium">{t('resources.type')}</th>
@@ -185,19 +188,26 @@ const ProjectSummary = ({ project, rates }) => {
                         // 'Employé interne' is the canonical level key for permanent staff;
                         // the Permanent badge is derived at runtime, not stored separately.
                         const isPermanent = m.level === 'Employé interne';
+                        const badgeToken = isPermanent ? '--prism-success' : '--prism-warning';
                         return (
-                          <tr key={`${phase.id}-${m.resourceName}`} className="border-b last:border-b-0">
+                          <tr key={`${phase.id}-${m.resourceName}`} className="border-b border-border last:border-b-0">
                             <td className="p-2 font-medium">{m.resourceName}</td>
                             <td className="p-2">{m.role}</td>
                             <td className="p-2">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isPermanent ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                              <span
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                style={{
+                                  backgroundColor: `color-mix(in srgb, var(${badgeToken}) 18%, transparent)`,
+                                  color: `var(${badgeToken})`,
+                                }}
+                              >
                                 {isPermanent ? t('capacity.permanent') : t('capacity.consultant')}
                               </span>
                             </td>
-                            <td className="p-2 text-center text-xs">
+                            <td className="p-2 text-center text-xs font-mono tabular-nums">
                               {m.startMonth && m.endMonth ? `${m.startMonth} → ${m.endMonth}` : `${phase.durationWeeks} ${t('dashboard.stats.weeks')}`}
                             </td>
-                            <td className="p-2 text-right font-medium">{fmt(cost)}</td>
+                            <td className="p-2 text-right font-mono tabular-nums font-medium">{fmt(cost)}</td>
                           </tr>
                         );
                       })
@@ -209,10 +219,10 @@ const ProjectSummary = ({ project, rates }) => {
 
           {(project.nonLabourCosts || []).length > 0 && (
             <div>
-              <h3 className="font-semibold mb-3">{t('summary.nonLabourCosts')}</h3>
+              <h3 className="font-display font-semibold mb-3 tracking-tight">{t('summary.nonLabourCosts')}</h3>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left">
+                  <tr className="border-b border-border text-left">
                     <th className="p-2 text-muted-foreground font-medium">{t('summary.name')}</th>
                     <th className="p-2 text-muted-foreground font-medium">{t('summary.category')}</th>
                     <th className="p-2 text-right text-muted-foreground font-medium">{t('summary.amount')}</th>
@@ -220,10 +230,10 @@ const ProjectSummary = ({ project, rates }) => {
                 </thead>
                 <tbody>
                   {project.nonLabourCosts.map((cost) => (
-                    <tr key={cost.id} className="border-b last:border-b-0">
+                    <tr key={cost.id} className="border-b border-border last:border-b-0">
                       <td className="p-2">{cost.name}</td>
                       <td className="p-2">{cost.category}</td>
-                      <td className="p-2 text-right font-medium">{fmt(cost.amount)}</td>
+                      <td className="p-2 text-right font-mono tabular-nums font-medium">{fmt(cost.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -233,19 +243,19 @@ const ProjectSummary = ({ project, rates }) => {
 
           {allMilestones.length > 0 && (
             <div>
-              <h3 className="font-semibold mb-3">{t('summary.milestones')}</h3>
+              <h3 className="font-display font-semibold mb-3 tracking-tight">{t('summary.milestones')}</h3>
               <div className="space-y-1 text-sm">
                 {allMilestones.map((m, i) => (
-                  <div key={i} className="flex justify-between py-1.5 border-b last:border-b-0">
+                  <div key={i} className="flex justify-between py-1.5 border-b border-border last:border-b-0">
                     <span className="font-medium">{m.name}</span>
-                    <span className="text-muted-foreground">{m.phase} — {t('summary.weekNum', { week: m.week })}</span>
+                    <span className="text-muted-foreground">{m.phase} — <span className="font-mono tabular-nums">{t('summary.weekNum', { week: m.week })}</span></span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="border-t pt-4 text-xs text-muted-foreground text-center">
+          <div className="border-t border-border pt-4 text-xs text-muted-foreground text-center">
             {t('summary.footer')}
           </div>
         </CardContent>
