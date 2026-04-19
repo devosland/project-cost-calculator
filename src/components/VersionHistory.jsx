@@ -58,16 +58,20 @@ const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreS
         />
       )}
 
-      {/* Panel */}
+      {/* Panel — kept mounted for the slide-out animation. When closed we use
+          `inert` (blocks Tab + pointer + ARIA descendants, unlike aria-hidden
+          which only hides from the a11y tree) plus `pointer-events-none` as a
+          belt-and-braces guard so the off-screen panel never intercepts clicks
+          or captures keyboard focus. */}
       <div
         ref={trapRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="version-history-title"
-        aria-hidden={!open}
+        inert={!open ? '' : undefined}
         tabIndex={-1}
         className={`fixed right-0 top-0 bottom-0 w-80 sm:w-96 bg-card border-l border-border shadow-lg z-50 transform transition-transform duration-300 ${
-          open ? 'translate-x-0' : 'translate-x-full'
+          open ? 'translate-x-0' : 'translate-x-full pointer-events-none'
         }`}
       >
         <div className="flex flex-col h-full">
