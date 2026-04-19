@@ -11,6 +11,7 @@ import { Plus, Trash2, Eye } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
+import ConfirmDialog from './ui/confirm-dialog';
 
 /**
  * Safely parses plan.data from the DB. plan.data is stored as a JSON string
@@ -66,6 +67,9 @@ const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
   const { t } = useLocale();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Plan pending deletion confirmation. Full object (not just id) so the
+  // dialog can display a contextual title if we add one later.
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,11 +171,7 @@ const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
                   className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm(t('resources.confirmDelete'))) {
-                      capacityApi.deleteTransition(plan.id).then(() => {
-                        setPlans((prev) => prev.filter((p) => p.id !== plan.id));
-                      }).catch(() => {});
-                    }
+                    setPendingDelete(plan);
                   }}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -181,6 +181,22 @@ const TransitionList = ({ onSelectPlan, onNewPlan, onPreviewPlan }) => {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
+        title={t('resources.delete')}
+        description={t('resources.confirmDelete')}
+        confirmLabel={t('resources.delete')}
+        cancelLabel={t('nonLabour.cancel')}
+        destructive
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          capacityApi.deleteTransition(pendingDelete.id).then(() => {
+            setPlans((prev) => prev.filter((p) => p.id !== pendingDelete.id));
+          }).catch(() => {}).finally(() => setPendingDelete(null));
+        }}
+      />
     </div>
   );
 };

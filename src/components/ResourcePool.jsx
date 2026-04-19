@@ -3,7 +3,9 @@
  * has a name, role, level, and max_capacity percentage. Resources are fetched
  * from the capacity API and displayed in a filterable table. Inline editing is
  * handled by toggling ResourceForm in place of the row. Duplicate name conflicts
- * (HTTP 409) are surfaced as alert() messages.
+ * (HTTP 409) are surfaced as an inline error banner above the form (replaces
+ * blocking native alert()). Deletion confirmation runs through the Prism
+ * ConfirmDialog (replaces native confirm()).
  *
  * The "Permanent" / "Consultant" type badge is derived at runtime from the
  * resource level field: level === 'Employé interne' → Permanent, anything else
@@ -12,10 +14,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { PlusCircle, Pencil, Trash2, Search } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, Search, AlertCircle } from 'lucide-react';
 import { useLocale, getLevelLabel } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
 import ResourceForm from './ResourceForm';
+import ConfirmDialog from './ui/confirm-dialog';
 
 /**
  * @param {Object} props
@@ -29,6 +32,12 @@ const ResourcePool = ({ rates }) => {
   const [adding, setAdding] = useState(false);
   const [editingResource, setEditingResource] = useState(null);
   const [search, setSearch] = useState('');
+  // Inline error shown above the form on 409 (duplicate name). Cleared when
+  // the form is re-opened or closed.
+  const [formError, setFormError] = useState(null);
+  // Resource pending deletion confirmation. Presence drives the ConfirmDialog
+  // open state; null closes it.
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const fetchResources = useCallback(async () => {
     try {
@@ -50,10 +59,11 @@ const ResourcePool = ({ rates }) => {
     try {
       await capacityApi.createResource(data);
       setAdding(false);
+      setFormError(null);
       fetchResources();
     } catch (err) {
       if (err?.status === 409 || err?.message?.includes('409')) {
-        alert(t('resources.nameExists'));
+        setFormError(t('resources.nameExists'));
       } else {
         console.error('Failed to create resource:', err);
       }
@@ -64,23 +74,26 @@ const ResourcePool = ({ rates }) => {
     try {
       await capacityApi.updateResource(editingResource.id, data);
       setEditingResource(null);
+      setFormError(null);
       fetchResources();
     } catch (err) {
       if (err?.status === 409 || err?.message?.includes('409')) {
-        alert(t('resources.nameExists'));
+        setFormError(t('resources.nameExists'));
       } else {
         console.error('Failed to update resource:', err);
       }
     }
   };
 
-  const handleDelete = async (resource) => {
-    if (!confirm(t('resources.confirmDelete'))) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
     try {
-      await capacityApi.deleteResource(resource.id);
+      await capacityApi.deleteResource(pendingDelete.id);
       fetchResources();
     } catch (err) {
       console.error('Failed to delete resource:', err);
+    } finally {
+      setPendingDelete(null);
     }
   };
 
@@ -132,12 +145,27 @@ const ResourcePool = ({ rates }) => {
         </div>
       </CardHeader>
       <CardContent>
+        {formError && (adding || editingResource) && (
+          <div
+            className="mb-4 flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
+            style={{
+              color: 'var(--prism-error)',
+              backgroundColor: 'color-mix(in srgb, var(--prism-error) 10%, transparent)',
+              borderColor: 'color-mix(in srgb, var(--prism-error) 30%, transparent)',
+            }}
+            role="alert"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{formError}</span>
+          </div>
+        )}
+
         {adding && (
           <ResourceForm
             resource={null}
             rates={rates}
             onSave={handleCreate}
-            onCancel={() => setAdding(false)}
+            onCancel={() => { setAdding(false); setFormError(null); }}
           />
         )}
 
@@ -146,7 +174,7 @@ const ResourcePool = ({ rates }) => {
             resource={editingResource}
             rates={rates}
             onSave={handleUpdate}
-            onCancel={() => setEditingResource(null)}
+            onCancel={() => { setEditingResource(null); setFormError(null); }}
           />
         )}
 
@@ -194,7 +222,7 @@ const ResourcePool = ({ rates }) => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(resource)}
+                        onClick={() => setPendingDelete(resource)}
                         title={t('resources.delete')}
                         className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       >
@@ -215,6 +243,17 @@ const ResourcePool = ({ rates }) => {
           </table>
         </div>
       </CardContent>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
+        title={t('resources.delete')}
+        description={t('resources.confirmDelete')}
+        confirmLabel={t('resources.delete')}
+        cancelLabel={t('nonLabour.cancel')}
+        destructive
+        onConfirm={confirmDelete}
+      />
     </Card>
   );
 };

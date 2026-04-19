@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Copy, Check, Trash2, KeyRound, ChevronDown, ChevronUp, Activity } from 'lucide-react';
 import { apiKeysApi } from '../lib/apiKeysApi';
 import { useLocale } from '../lib/i18n';
+import ConfirmDialog from './ui/confirm-dialog';
 
 const SCOPES = [
   { id: 'roadmap:import', labelKey: 'apiKeys.scopeRoadmapImport' },
@@ -181,6 +182,8 @@ export default function ApiKeysView() {
   const [plaintextKey, setPlaintextKey] = useState(null);
   const [copied, setCopied] = useState(false);
   const [expandedKeyId, setExpandedKeyId] = useState(null);
+  // Key pending revoke confirmation. null when no confirmation is active.
+  const [pendingRevokeId, setPendingRevokeId] = useState(null);
   // Inline summary: Map<keyId, { total, success }> — fetched once at mount
   const [inlineSummary, setInlineSummary] = useState({});
 
@@ -224,13 +227,15 @@ export default function ApiKeysView() {
     }
   }
 
-  async function handleRevoke(id) {
-    if (!window.confirm(t('apiKeys.revokeConfirm'))) return;
+  async function confirmRevoke() {
+    if (!pendingRevokeId) return;
     try {
-      await apiKeysApi.revoke(id);
+      await apiKeysApi.revoke(pendingRevokeId);
       await refresh();
     } catch (err) {
       console.error('Failed to revoke API key:', err);
+    } finally {
+      setPendingRevokeId(null);
     }
   }
 
@@ -365,7 +370,7 @@ export default function ApiKeysView() {
                             ? <ChevronUp className="w-3 h-3" />
                             : <ChevronDown className="w-3 h-3" />}
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleRevoke(k.id)} title={t('apiKeys.revoke')}>
+                        <Button size="sm" variant="ghost" onClick={() => setPendingRevokeId(k.id)} title={t('apiKeys.revoke')}>
                           <Trash2 className="w-4 h-4 text-muted-foreground hover:text-red-500" />
                         </Button>
                       </>
@@ -382,6 +387,16 @@ export default function ApiKeysView() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingRevokeId}
+        onOpenChange={(open) => { if (!open) setPendingRevokeId(null); }}
+        title={t('apiKeys.revoke')}
+        description={t('apiKeys.revokeConfirm')}
+        confirmLabel={t('apiKeys.revoke')}
+        destructive
+        onConfirm={confirmRevoke}
+      />
     </div>
   );
 }
