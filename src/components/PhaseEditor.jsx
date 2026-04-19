@@ -161,7 +161,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
               </Button>
             </div>
           ) : (
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="font-display text-xl tracking-tight flex items-center gap-2">
               {phase.name}
               <Button variant="ghost" size="sm" onClick={() => { setNameValue(phase.name); setEditingName(true); }}>
                 <Pencil className="w-3 h-3" />
@@ -203,7 +203,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
           {phase.teamMembers.map((member, index) => {
             const details = getMemberDetails(member);
             return (
-              <div key={index} className="space-y-2 p-4 border rounded-xl bg-secondary/20 hover:bg-secondary/40 transition-colors">
+              <div key={index} className="space-y-2 p-4 border border-border rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors">
 
                 {/* Autocomplete pool : champ texte avec datalist ou badge "lié" si resourceId set */}
                 {resourcePool && (
@@ -402,29 +402,29 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
           {/* Résumé coût phase : coût hebdo moyen + coût total */}
           {phase.teamMembers.length > 0 && (
             <div className="grid grid-cols-2 gap-4 pt-2">
-              <div className="p-4 bg-secondary/50 rounded-xl">
+              <div className="p-4 bg-muted rounded-lg">
                 <div className="text-xs text-muted-foreground">{t('phase.weeklyCost')}</div>
                 {/*
                   Coût hebdo = totalCost / durationWeeks (coût moyen sur la durée de la phase).
                   Ce n'est pas un "what-if full phase à pleine allocation" — c'est la moyenne
                   réelle incluant les allocations partielles et les quantités multiples.
                 */}
-                <div className="text-lg font-bold">{fmt(totalCost / phase.durationWeeks)}</div>
+                <div className="font-mono text-lg font-semibold tabular-nums">{fmt(totalCost / phase.durationWeeks)}</div>
               </div>
-              <div className="p-4 bg-primary/5 rounded-xl">
+              <div className="p-4 bg-primary/10 rounded-lg">
                 <div className="text-xs text-muted-foreground">
                   {t('phase.totalCost', { weeks: phase.durationWeeks })}
                 </div>
-                <div className="text-lg font-bold text-primary">{fmt(totalCost)}</div>
+                <div className="font-mono text-lg font-semibold tabular-nums text-primary">{fmt(totalCost)}</div>
               </div>
             </div>
           )}
 
           {/* --- Section Milestones --- */}
-          <div className="border-t pt-4 mt-4">
+          <div className="border-t border-border pt-4 mt-4">
             <div className="flex justify-between items-center mb-2">
               <h4 className="font-semibold flex items-center gap-2">
-                <Flag className="w-4 h-4 text-amber-500" />
+                <Flag className="w-4 h-4 text-primary" />
                 {t('phase.milestones')}
               </h4>
               {!addingMilestone && (
@@ -436,7 +436,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
             </div>
 
             {addingMilestone && (
-              <div className="flex items-center gap-2 mb-3 p-3 border rounded-xl bg-secondary/30">
+              <div className="flex items-center gap-2 mb-3 p-3 border border-border rounded-lg bg-muted/40">
                 <input
                   type="text"
                   className="input-field flex-1"
@@ -473,7 +473,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
               .map((milestone) => (
                 <div key={milestone.id} className="flex items-center justify-between py-1.5 text-sm">
                   <span className="flex items-center gap-1.5">
-                    <Flag className="w-3 h-3 text-amber-500" />
+                    <Flag className="w-3 h-3 text-primary" />
                     {milestone.name}
                   </span>
                   <div className="flex items-center gap-2">
@@ -488,9 +488,9 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
 
           {/* --- Section Dépendances inter-phases (masquée si phase unique) --- */}
           {allPhases.length > 1 && (
-            <div className="border-t pt-4 mt-4">
+            <div className="border-t border-border pt-4 mt-4">
               <h4 className="font-semibold flex items-center gap-2 mb-2">
-                <Link2 className="w-4 h-4 text-blue-500" />
+                <Link2 className="w-4 h-4" style={{ color: 'var(--prism-info)' }} />
                 {t('phase.dependencies')}
               </h4>
               <div className="space-y-1">
@@ -502,7 +502,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                     return (
                       <label
                         key={otherPhase.id}
-                        className="flex items-center gap-2 text-sm py-1 px-2 rounded hover:bg-secondary/30 cursor-pointer"
+                        className="flex items-center gap-2 text-sm py-1 px-2 rounded-md hover:bg-muted cursor-pointer"
                       >
                         <input
                           type="checkbox"
@@ -513,7 +513,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                               : [...deps, otherPhase.id];
                             update({ dependencies: newDeps });
                           }}
-                          className="rounded border-gray-300"
+                          className="rounded border-border"
                         />
                         {otherPhase.name}
                       </label>
