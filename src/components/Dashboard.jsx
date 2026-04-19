@@ -236,21 +236,21 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                 }`}
               >
                 <CardContent className="py-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
                       {compareMode && (
-                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors mt-1 sm:mt-0 ${
                           isSelected ? 'bg-primary border-primary' : 'border-border'
                         }`}>
                           {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                         </div>
                       )}
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         {renamingId === project.id ? (
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="text"
-                              className="input-field text-lg font-semibold w-64"
+                              className="input-field text-lg font-semibold w-full max-w-xs"
                               value={renameValue}
                               onChange={(e) => setRenameValue(e.target.value)}
                               onKeyDown={handleKeyDown}
@@ -289,8 +289,8 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+                      <div className="text-left sm:text-right">
                         <div className="text-xs text-muted-foreground">{t('dashboard.totalCost')}</div>
                         <div className="font-mono text-xl font-semibold tabular-nums">{formatCurrency(totalCost, currency)}</div>
                       </div>
