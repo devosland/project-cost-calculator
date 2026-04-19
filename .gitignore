@@ -34,3 +34,4 @@ start
 *.njsproj
 *.sln
 *.sw?
+data-test/
