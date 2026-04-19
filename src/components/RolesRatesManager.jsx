@@ -123,19 +123,19 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
   return (
     <Card className="w-full max-w-4xl">
       <CardHeader>
-        <CardTitle>{t('rates.title')}</CardTitle>
+        <CardTitle className="font-display text-xl tracking-tight">{t('rates.title')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           {/* Internal Rate */}
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border border-border rounded-lg">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">{t('rates.internalRate')}</h3>
+              <h3 className="font-display text-lg font-semibold tracking-tight">{t('rates.internalRate')}</h3>
               {editingInternalRate ? (
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    className="p-2 border rounded w-32"
+                    className="p-2 border border-border rounded-md w-32 font-mono tabular-nums"
                     value={internalRateValue}
                     min="0"
                     step="0.01"
@@ -143,7 +143,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                     onKeyDown={(e) => handleKeyDown(e, saveInternalRate, cancelEditInternalRate)}
                     autoFocus
                   />
-                  <span className="text-sm text-gray-500">$/h</span>
+                  <span className="text-sm text-muted-foreground">$/h</span>
                   <Button variant="ghost" size="sm" onClick={saveInternalRate}>
                     <Check className="w-4 h-4" />
                   </Button>
@@ -153,7 +153,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold">{formatRate(rates.INTERNAL_RATE)}/h</span>
+                  <span className="font-mono text-xl font-semibold tabular-nums">{formatRate(rates.INTERNAL_RATE)}/h</span>
                   <Button variant="ghost" size="sm" onClick={startEditInternalRate}>
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -163,9 +163,9 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
           </div>
 
           {/* Consultant Rates Table */}
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border border-border rounded-lg">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">{t('rates.consultantRates')}</h3>
+              <h3 className="font-display text-lg font-semibold tracking-tight">{t('rates.consultantRates')}</h3>
               {!isAddingRole && (
                 <Button
                   variant="default"
@@ -180,10 +180,10 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
             </div>
 
             {isAddingRole && (
-              <div className="flex items-center gap-2 mb-4 p-3 border rounded-lg bg-gray-50">
+              <div className="flex items-center gap-2 mb-4 p-3 border border-border rounded-lg bg-muted/40">
                 <input
                   type="text"
-                  className="p-2 border rounded flex-1"
+                  className="p-2 border border-border rounded-md flex-1 bg-background"
                   value={newRoleName}
                   onChange={(e) => setNewRoleName(e.target.value)}
                   onKeyDown={(e) => handleKeyDown(e, addRole, () => { setIsAddingRole(false); setNewRoleName(''); })}
@@ -204,7 +204,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b">
+                  <tr className="border-b border-border">
                     <th className="text-left p-2 font-medium">{t('rates.role')}</th>
                     {CONSULTANT_LEVEL_KEYS.map((level) => (
                       <th key={level} className="text-center p-2 font-medium">
@@ -216,7 +216,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                 </thead>
                 <tbody>
                   {roles.map((role) => (
-                    <tr key={role} className="border-b last:border-b-0 hover:bg-gray-50">
+                    <tr key={role} className="border-b border-border last:border-b-0 hover:bg-muted/60">
                       <td className="p-2 font-medium">{role}</td>
                       {CONSULTANT_LEVEL_KEYS.map((level) => {
                         const isEditing =
@@ -227,7 +227,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                               <div className="flex items-center gap-1 justify-center">
                                 <input
                                   type="number"
-                                  className="p-1 border rounded w-20 text-center"
+                                  className="p-1 border border-border rounded-md w-20 text-center font-mono tabular-nums bg-background"
                                   value={editValue}
                                   min="0"
                                   step="0.01"
@@ -244,7 +244,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                               </div>
                             ) : (
                               <span
-                                className="cursor-pointer hover:text-primary hover:underline"
+                                className="cursor-pointer hover:text-primary hover:underline font-mono tabular-nums"
                                 onClick={() => startEdit(role, level)}
                                 title={t('rates.clickToEdit')}
                               >
@@ -256,10 +256,11 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                       })}
                       <td className="p-2 text-center">
                         <Button
-                          variant="destructive"
+                          variant="ghost"
                           size="sm"
                           onClick={() => removeRole(role)}
                           title={t('rates.deleteRole')}
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -268,7 +269,7 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                   ))}
                   {roles.length === 0 && (
                     <tr>
-                      <td colSpan={CONSULTANT_LEVEL_KEYS.length + 2} className="p-8 text-center text-gray-500">
+                      <td colSpan={CONSULTANT_LEVEL_KEYS.length + 2} className="p-8 text-center text-muted-foreground">
                         {t('rates.noRoles')}
                       </td>
                     </tr>
