@@ -25,9 +25,10 @@
  *     Tab order is limited to elements that match a static focusable selector.
  *     Good enough for the modals in this app; Radix uses `tabbable` which
  *     does full visibility computation.
- *   - Doesn't handle dynamic content mutations inside the modal — if
- *     tabbables are added/removed while the trap is active, the wrap-around
- *     logic re-queries on every Tab keypress, so it picks up changes.
+ *   - Doesn't proactively observe dynamic content mutations inside the
+ *     modal, but if tabbables are added/removed while the trap is active,
+ *     the wrap-around logic re-queries on every Tab keypress and picks up
+ *     those changes during keyboard navigation.
  */
 import { useEffect, useRef } from 'react';
 
@@ -56,8 +57,8 @@ export function useFocusTrap(active) {
     // Step 1 : remember where focus was so we can restore it.
     previouslyFocusedRef.current = document.activeElement;
 
-    // Step 2 : move focus inside the modal. Query is deferred by one frame
-    // to let any conditional children mount first.
+    // Step 2 : move focus inside the modal. Query is deferred by one macrotask
+    // (setTimeout 0) to let any conditional children mount first.
     const focusFirst = () => {
       const tabbables = container.querySelectorAll(FOCUSABLE_SELECTOR);
       if (tabbables.length > 0) {
@@ -73,24 +74,34 @@ export function useFocusTrap(active) {
     // Step 3 : intercept Tab / Shift+Tab to wrap within container.
     const onKey = (e) => {
       if (e.key !== 'Tab') return;
-      const tabbables = container.querySelectorAll(FOCUSABLE_SELECTOR);
+      const tabbables = Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR));
       if (tabbables.length === 0) {
         e.preventDefault();
         return;
       }
       const first = tabbables[0];
       const last = tabbables[tabbables.length - 1];
+      const activeElement = document.activeElement;
       // If focus is outside the container entirely (rare but possible with
       // async content), snap it to the first tabbable.
-      if (!container.contains(document.activeElement)) {
+      if (!container.contains(activeElement)) {
         e.preventDefault();
         first.focus();
         return;
       }
-      if (e.shiftKey && document.activeElement === first) {
+      // If focus is inside the container but not on a tabbable (e.g. the
+      // modal root with tabindex=-1 after a backdrop click), snap to the
+      // appropriate edge rather than letting focus escape the trap.
+      const activeIndex = tabbables.indexOf(activeElement);
+      if (activeIndex === -1) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+        return;
+      }
+      if (e.shiftKey && activeIndex === 0) {
         e.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
+      } else if (!e.shiftKey && activeIndex === tabbables.length - 1) {
         e.preventDefault();
         first.focus();
       }
