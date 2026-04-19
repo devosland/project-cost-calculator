@@ -69,7 +69,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>{t('nonLabour.title')}</CardTitle>
+          <CardTitle className="font-display text-xl tracking-tight">{t('nonLabour.title')}</CardTitle>
           {!adding && (
             <Button
               size="sm"
@@ -85,7 +85,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
       <CardContent>
         <div className="space-y-4">
           {adding && (
-            <div className="p-4 border rounded-xl bg-secondary/30 space-y-3">
+            <div className="p-4 border border-border rounded-lg bg-muted/40 space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 <input
                   type="text"
@@ -138,7 +138,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
           {costs.length > 0 && (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left">
+                <tr className="border-b border-border text-left">
                   <th className="p-2 font-medium text-muted-foreground">{t('nonLabour.name')}</th>
                   <th className="p-2 font-medium text-muted-foreground">{t('nonLabour.category')}</th>
                   <th className="p-2 text-right font-medium text-muted-foreground">{t('nonLabour.amount')}</th>
@@ -147,7 +147,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
               </thead>
               <tbody>
                 {costs.map((cost) => (
-                  <tr key={cost.id} className="border-b last:border-b-0 hover:bg-secondary/30 transition-colors">
+                  <tr key={cost.id} className="border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors">
                     <td className="p-2">
                       <input
                         type="text"
@@ -170,7 +170,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
                     <td className="p-2 text-right">
                       <input
                         type="number"
-                        className="bg-transparent border-0 p-0 w-24 text-right focus:outline-none"
+                        className="bg-transparent border-0 p-0 w-24 text-right font-mono tabular-nums focus:outline-none"
                         value={cost.amount}
                         min="0"
                         step="0.01"
@@ -181,7 +181,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         onClick={() => removeCost(cost.id)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -191,9 +191,9 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t font-semibold">
+                <tr className="border-t border-border font-semibold">
                   <td className="p-2" colSpan="2">{t('nonLabour.total')}</td>
-                  <td className="p-2 text-right">{fmt(total)}</td>
+                  <td className="p-2 text-right font-mono tabular-nums">{fmt(total)}</td>
                   <td></td>
                 </tr>
               </tfoot>
@@ -201,7 +201,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
           )}
 
           {Object.keys(byCategory).length > 1 && (
-            <div className="border-t pt-3">
+            <div className="border-t border-border pt-3">
               <h4 className="text-xs text-muted-foreground mb-2">{t('nonLabour.byCategory')}</h4>
               <div className="space-y-1">
                 {Object.entries(byCategory)
@@ -209,7 +209,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
                   .map(([cat, amount]) => (
                     <div key={cat} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{cat}</span>
-                      <span className="font-medium">{fmt(amount)}</span>
+                      <span className="font-medium font-mono tabular-nums">{fmt(amount)}</span>
                     </div>
                   ))}
               </div>
