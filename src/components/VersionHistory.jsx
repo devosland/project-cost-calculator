@@ -5,10 +5,11 @@
  * than conditional rendering so it can animate in and out smoothly. Snapshots
  * are fetched by the parent (App) before opening and passed in via props.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { X, History, RotateCcw, Save } from 'lucide-react';
 import { useLocale, getDateLocale } from '../lib/i18n';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 /**
  * @param {Object} props
@@ -24,6 +25,17 @@ import { useLocale, getDateLocale } from '../lib/i18n';
 const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreSnapshot }) => {
   const { t, locale } = useLocale();
   const [label, setLabel] = useState('');
+  // Focus-trap is tied to `open` : the panel is always mounted (drives CSS
+  // slide animation) but the trap should only engage while visible.
+  const trapRef = useFocusTrap(open);
+
+  // Escape to close (only while open).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   const handleCreate = () => {
     onCreateSnapshot(label.trim() || undefined);
@@ -48,27 +60,36 @@ const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreS
 
       {/* Panel */}
       <div
-        className={`fixed right-0 top-0 bottom-0 w-80 sm:w-96 bg-white dark:bg-gray-800 shadow-2xl z-50 transform transition-transform duration-300 ${
+        ref={trapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="version-history-title"
+        aria-hidden={!open}
+        tabIndex={-1}
+        className={`fixed right-0 top-0 bottom-0 w-80 sm:w-96 bg-card border-l border-border shadow-lg z-50 transform transition-transform duration-300 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center justify-between p-4 border-b border-border">
             <div className="flex items-center gap-2">
               <History className="w-5 h-5" />
-              <h2 className="text-lg font-semibold">{t('history.title')}</h2>
+              <h2 id="version-history-title" className="font-display text-lg font-semibold tracking-tight">
+                {t('history.title')}
+              </h2>
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label={t('nonLabour.cancel')}
+              className="p-1 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Create Snapshot */}
-          <div className="p-4 border-b space-y-3">
+          <div className="p-4 border-b border-border space-y-3">
             <input
               type="text"
               className="input-field w-full"
@@ -93,7 +114,7 @@ const VersionHistory = ({ open, onClose, snapshots, onCreateSnapshot, onRestoreS
                 {snapshots.map((snapshot) => (
                   <div
                     key={snapshot.id}
-                    className="p-3 rounded-lg border bg-card"
+                    className="p-3 rounded-md border border-border bg-background"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
