@@ -390,7 +390,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
                 // Pourquoi nested et non flat : une grille plate nécessiterait des divs vides
                 // pour les colonnes sans barre, créant des lignes parasites dans le layout.
                 <div key={`${projectId}-${rid}`} style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
-                  <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-card z-10">
+                  <div className="text-sm truncate py-1 pr-2 pl-1 flex items-center sticky left-0 bg-card z-10 border-r border-border">
                     {renderResourceDot(resource)}
                     {resource.name}
                   </div>
@@ -466,7 +466,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
               return (
                 // Nested grid (voir explication renderByProject ci-dessus)
                 <div key={resource.id} style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
-                  <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-card z-10">
+                  <div className="text-sm truncate py-1 pr-2 pl-1 flex items-center sticky left-0 bg-card z-10 border-r border-border">
                     {renderResourceDot(resource)}
                     {resource.name}
                   </div>
@@ -597,7 +597,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
           }}
         >
           {/* En-têtes des colonnes mois */}
-          <div className="font-medium text-sm text-muted-foreground sticky left-0 bg-card z-10" />
+          <div className="font-medium text-sm text-muted-foreground sticky left-0 bg-card z-10 border-r border-border" />
           {months.map((m) => (
             <div key={m} className="text-center text-xs font-medium text-muted-foreground py-1">
               {formatMonth(m)}
