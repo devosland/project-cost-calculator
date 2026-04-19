@@ -256,8 +256,8 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                               onKeyDown={handleKeyDown}
                               autoFocus
                             />
-                            <Button variant="ghost" size="sm" onClick={saveRename}><Check className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="sm" onClick={cancelRename}><X className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={saveRename} aria-label={t('resources.save')} title={t('resources.save')}><Check className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={cancelRename} aria-label={t('nonLabour.cancel')} title={t('nonLabour.cancel')}><X className="w-4 h-4" /></Button>
                           </div>
                         ) : (
                           <h3 className="text-lg font-semibold truncate flex items-center gap-2">
