@@ -230,8 +230,12 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
 
       {/* --- Header : titre + bouton fermer --- */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{t('transitions.title')}</h2>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+        <h2 className="font-display text-xl font-semibold tracking-tight">{t('transitions.title')}</h2>
+        <button
+          onClick={onClose}
+          className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+          aria-label={t('resources.cancel')}
+        >
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -253,7 +257,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
         {transitions.map((tr, idx) => {
           const conflicts = getConflicts(tr);
           return (
-            <div key={tr.id} className="border rounded-lg p-4 space-y-3">
+            <div key={tr.id} className="border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">#{idx + 1}</span>
                 <button
@@ -343,7 +347,13 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
 
               {/* Warning si le consultant a des assignments qui débordent après transition_date */}
               {conflicts.length > 0 && (
-                <div className="flex items-center gap-2 text-amber-600 text-sm bg-amber-50 dark:bg-amber-900/20 rounded px-3 py-2">
+                <div
+                  className="flex items-center gap-2 text-sm rounded-md px-3 py-2"
+                  style={{
+                    color: 'var(--prism-warning)',
+                    backgroundColor: 'color-mix(in srgb, var(--prism-warning) 12%, transparent)',
+                  }}
+                >
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{t('transitions.conflict')}</span>
                 </div>
@@ -353,7 +363,15 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
                   et non `annualSavings` : c'est la métrique overlap-aware qui matche le total affiché en bas. */}
               {impacts[idx] && (
                 <div className="text-sm text-muted-foreground flex gap-4">
-                  <span>{t('transitions.savings')}: <span className={impacts[idx].savings > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>{formatCurrency(impacts[idx].savings)}</span></span>
+                  <span>
+                    {t('transitions.savings')}:{' '}
+                    <span
+                      className="font-mono tabular-nums font-medium"
+                      style={{ color: `var(${impacts[idx].savings > 0 ? '--prism-success' : '--prism-error'})` }}
+                    >
+                      {formatCurrency(impacts[idx].savings)}
+                    </span>
+                  </span>
                 </div>
               )}
             </div>
@@ -369,28 +387,34 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
       {/* --- Cartes de résumé coût global (avant / après / économie) --- */}
       {transitions.length > 0 && impacts.some(Boolean) && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="border rounded-lg p-4 text-center bg-red-50 dark:bg-red-900/20">
+          <div
+            className="border border-border rounded-lg p-4 text-center"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--prism-error) 10%, transparent)' }}
+          >
             <div className="text-xs font-medium text-muted-foreground mb-1">
               {t('transitions.costCurrent')}
             </div>
-            <div className="text-xl font-bold text-red-600">
+            <div className="font-mono text-xl font-semibold tabular-nums" style={{ color: 'var(--prism-error)' }}>
               {formatCurrency(totals.currentCost)}
             </div>
           </div>
-          <div className="border rounded-lg p-4 text-center bg-green-50 dark:bg-green-900/20">
+          <div
+            className="border border-border rounded-lg p-4 text-center"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--prism-success) 10%, transparent)' }}
+          >
             <div className="text-xs font-medium text-muted-foreground mb-1">
               {t('transitions.costAfter')}
             </div>
-            <div className="text-xl font-bold text-green-600">
+            <div className="font-mono text-xl font-semibold tabular-nums" style={{ color: 'var(--prism-success)' }}>
               {/* afterCost = coût permanent + coût d'overlap consultant sur la période */}
               {formatCurrency(totals.afterCost)}
             </div>
           </div>
-          <div className="border rounded-lg p-4 text-center bg-primary/5">
+          <div className="border border-border rounded-lg p-4 text-center bg-primary/10">
             <div className="text-xs font-medium text-muted-foreground mb-1">
               {t('transitions.savings')}
             </div>
-            <div className="text-xl font-bold text-primary">
+            <div className="font-mono text-xl font-semibold tabular-nums text-primary">
               {/* totalSavings = currentCost − afterCost : économie réelle avec overlap inclus */}
               {formatCurrency(totals.totalSavings)}
             </div>
@@ -400,7 +424,7 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
 
       {/* --- Erreur d'application --- */}
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{error}</div>
+        <div className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</div>
       )}
 
       {/* --- Actions : Annuler / Sauvegarder / Appliquer --- */}

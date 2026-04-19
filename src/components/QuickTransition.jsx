@@ -6,7 +6,7 @@
  * apply the transition plan in one action. The cost preview is computed
  * client-side via calculateTransitionCostImpact; no round-trip until Apply.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
@@ -84,6 +84,15 @@ const QuickTransition = ({ consultant, assignment, resources, rates, onClose, on
     });
   }, [consultant, replacement, assignment.allocation, remainingWeeks, overlapWeeks, rates]);
 
+  // Escape to close. Listener only lives while this component is mounted —
+  // the modal is conditionally rendered by the parent so this is effectively
+  // scoped to "while open".
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const handleApply = async () => {
     if (!replacementId) return;
     setApplying(true);
@@ -111,28 +120,41 @@ const QuickTransition = ({ consultant, assignment, resources, rates, onClose, on
     }
   };
 
+  // Token-driven savings color : positive → success, negative → error.
+  // Inline style because tokens are hex vars, not HSL (can't use Tailwind class).
+  const savingsColor = (n) => ({ color: `var(${n > 0 ? '--prism-success' : '--prism-error'})` });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
-        className="bg-background border rounded-lg shadow-lg w-full max-w-md mx-4 p-5 space-y-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="quick-transition-title"
+        className="bg-card border border-border rounded-lg shadow-lg w-full max-w-md mx-4 p-5 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-lg">{t('transitions.quick')}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <h3 id="quick-transition-title" className="font-display text-xl font-semibold tracking-tight">
+            {t('transitions.quick')}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+            aria-label={t('common.cancel')}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Consultant summary */}
-        <div className="bg-muted/50 rounded p-3 text-sm space-y-1">
+        <div className="bg-muted/50 rounded-md p-3 text-sm space-y-1">
           <div className="font-medium">{consultant.name}</div>
           <div className="text-muted-foreground">
             {consultant.role} — {consultant.level}
           </div>
           <div className="text-muted-foreground">
-            {assignment.project_name} · {assignment.allocation}%
+            {assignment.project_name} · <span className="font-mono tabular-nums">{assignment.allocation}%</span>
           </div>
         </div>
 
@@ -140,7 +162,7 @@ const QuickTransition = ({ consultant, assignment, resources, rates, onClose, on
         <div className="space-y-1">
           <label className="text-sm font-medium">{t('transitions.replacement')}</label>
           <select
-            className="w-full border rounded px-3 py-2 text-sm bg-background"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
             value={replacementId}
             onChange={(e) => setReplacementId(e.target.value)}
           >
@@ -159,7 +181,7 @@ const QuickTransition = ({ consultant, assignment, resources, rates, onClose, on
           <label className="text-sm font-medium">{t('transitions.date')}</label>
           <input
             type="month"
-            className="w-full border rounded px-3 py-2 text-sm bg-background"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
             value={transitionDate}
             onChange={(e) => setTransitionDate(e.target.value)}
           />
@@ -174,7 +196,7 @@ const QuickTransition = ({ consultant, assignment, resources, rates, onClose, on
             type="number"
             min={0}
             max={8}
-            className="w-full border rounded px-3 py-2 text-sm bg-background"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
             value={overlapWeeks}
             onChange={(e) => setOverlapWeeks(Math.min(8, Math.max(0, Number(e.target.value))))}
           />
@@ -182,30 +204,30 @@ const QuickTransition = ({ consultant, assignment, resources, rates, onClose, on
 
         {/* Cost impact */}
         {impact && (
-          <div className="border rounded p-3 text-sm space-y-1">
+          <div className="border border-border rounded-md p-3 text-sm space-y-1">
             <div className="font-medium mb-2">{t('transitions.impact')}</div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('transitions.consultant')}</span>
-              <span>{formatCurrency(impact.consultantCost)}</span>
+              <span className="font-mono tabular-nums">{formatCurrency(impact.consultantCost)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('transitions.replacement')}</span>
-              <span>{formatCurrency(impact.replacementCost)}</span>
+              <span className="font-mono tabular-nums">{formatCurrency(impact.replacementCost)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('transitions.overlapCost')}</span>
-              <span>{formatCurrency(impact.overlapCost)}</span>
+              <span className="font-mono tabular-nums">{formatCurrency(impact.overlapCost)}</span>
             </div>
-            <hr className="my-1" />
+            <hr className="my-1 border-border" />
             <div className="flex justify-between font-medium">
               <span>{t('transitions.savings')}</span>
-              <span className={impact.savings > 0 ? 'text-green-600' : 'text-red-600'}>
+              <span className="font-mono tabular-nums" style={savingsColor(impact.savings)}>
                 {formatCurrency(impact.savings)}
               </span>
             </div>
             <div className="flex justify-between font-medium">
               <span>{t('transitions.annualSavings')}</span>
-              <span className={impact.annualSavings > 0 ? 'text-green-600' : 'text-red-600'}>
+              <span className="font-mono tabular-nums" style={savingsColor(impact.annualSavings)}>
                 {formatCurrency(impact.annualSavings)}
               </span>
             </div>
