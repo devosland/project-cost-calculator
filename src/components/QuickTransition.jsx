@@ -13,6 +13,7 @@ import { useLocale } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
 import { calculateTransitionCostImpact } from '../lib/capacityCalculations';
 import { formatCurrency } from '../lib/costCalculations';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 /** Generates a short collision-resistant ID for a new transition entry. */
 function generateId() {
@@ -93,6 +94,11 @@ const QuickTransition = ({ consultant, assignment, resources, rates, onClose, on
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // Focus-trap the modal while it's mounted. The parent conditionally renders
+  // this component so the trap's `active` argument can be a constant true —
+  // mount/unmount already scopes activation.
+  const trapRef = useFocusTrap(true);
+
   const handleApply = async () => {
     if (!replacementId) return;
     setApplying(true);
@@ -127,9 +133,11 @@ const QuickTransition = ({ consultant, assignment, resources, rates, onClose, on
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
+        ref={trapRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="quick-transition-title"
+        tabIndex={-1}
         className="bg-card border border-border rounded-lg shadow-lg w-full max-w-md mx-4 p-5 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
