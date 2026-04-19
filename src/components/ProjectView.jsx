@@ -335,20 +335,26 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
                 }}
                 autoFocus
               />
-              <Button variant="ghost" size="sm" onClick={() => {
-                if (nameValue.trim()) onProjectChange({ ...project, name: nameValue.trim() });
-                setEditingName(false);
-              }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (nameValue.trim()) onProjectChange({ ...project, name: nameValue.trim() });
+                  setEditingName(false);
+                }}
+                aria-label={t('resources.save')}
+                title={t('resources.save')}
+              >
                 <Check className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setEditingName(false)}>
+              <Button variant="ghost" size="sm" onClick={() => setEditingName(false)} aria-label={t('nonLabour.cancel')} title={t('nonLabour.cancel')}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           ) : (
             <h1 className="font-display text-3xl font-semibold tracking-tight flex items-center gap-2">
               {project.name}
-              <Button variant="ghost" size="sm" onClick={() => { setNameValue(project.name); setEditingName(true); }} className="text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="sm" onClick={() => { setNameValue(project.name); setEditingName(true); }} className="text-muted-foreground hover:text-foreground" aria-label={t('dashboard.rename')} title={t('dashboard.rename')}>
                 <Pencil className="w-3 h-3" />
               </Button>
             </h1>
@@ -448,10 +454,26 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
           {project.phases.map((phase, index) => (
             <div key={phase.id} className="relative">
               <div className="absolute -left-10 top-4 hidden sm:flex flex-col gap-1">
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => movePhase(index, -1)} disabled={index === 0}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => movePhase(index, -1)}
+                  disabled={index === 0}
+                  aria-label={t('project.movePhaseUp') || 'Move phase up'}
+                  title={t('project.movePhaseUp') || 'Move phase up'}
+                >
                   <ChevronUp className="w-3 h-3" />
                 </Button>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => movePhase(index, 1)} disabled={index === project.phases.length - 1}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => movePhase(index, 1)}
+                  disabled={index === project.phases.length - 1}
+                  aria-label={t('project.movePhaseDown') || 'Move phase down'}
+                  title={t('project.movePhaseDown') || 'Move phase down'}
+                >
                   <ChevronDown className="w-3 h-3" />
                 </Button>
               </div>

@@ -144,17 +144,17 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                     autoFocus
                   />
                   <span className="text-sm text-muted-foreground">$/h</span>
-                  <Button variant="ghost" size="sm" onClick={saveInternalRate}>
+                  <Button variant="ghost" size="sm" onClick={saveInternalRate} aria-label={t('resources.save')} title={t('resources.save')}>
                     <Check className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={cancelEditInternalRate}>
+                  <Button variant="ghost" size="sm" onClick={cancelEditInternalRate} aria-label={t('nonLabour.cancel')} title={t('nonLabour.cancel')}>
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xl font-semibold tabular-nums">{formatRate(rates.INTERNAL_RATE)}/h</span>
-                  <Button variant="ghost" size="sm" onClick={startEditInternalRate}>
+                  <Button variant="ghost" size="sm" onClick={startEditInternalRate} aria-label={t('resources.edit')} title={t('resources.edit')}>
                     <Pencil className="w-4 h-4" />
                   </Button>
                 </div>
@@ -235,10 +235,10 @@ const RolesRatesManager = ({ rates, onRatesChange }) => {
                                   onKeyDown={(e) => handleKeyDown(e, saveEdit, cancelEdit)}
                                   autoFocus
                                 />
-                                <Button variant="ghost" size="sm" onClick={saveEdit} className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="sm" onClick={saveEdit} className="h-8 w-8 p-0" aria-label={t('resources.save')} title={t('resources.save')}>
                                   <Check className="w-3 h-3" />
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={cancelEdit} className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="sm" onClick={cancelEdit} className="h-8 w-8 p-0" aria-label={t('nonLabour.cancel')} title={t('nonLabour.cancel')}>
                                   <X className="w-3 h-3" />
                                 </Button>
                               </div>

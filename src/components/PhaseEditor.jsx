@@ -153,17 +153,17 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                 }}
                 autoFocus
               />
-              <Button variant="ghost" size="sm" onClick={saveName}>
+              <Button variant="ghost" size="sm" onClick={saveName} aria-label={t('resources.save')} title={t('resources.save')}>
                 <Check className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setEditingName(false)}>
+              <Button variant="ghost" size="sm" onClick={() => setEditingName(false)} aria-label={t('nonLabour.cancel')} title={t('nonLabour.cancel')}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           ) : (
             <CardTitle className="font-display text-xl tracking-tight flex items-center gap-2">
               {phase.name}
-              <Button variant="ghost" size="sm" onClick={() => { setNameValue(phase.name); setEditingName(true); }}>
+              <Button variant="ghost" size="sm" onClick={() => { setNameValue(phase.name); setEditingName(true); }} aria-label={t('resources.edit')} title={t('resources.edit')}>
                 <Pencil className="w-3 h-3" />
               </Button>
             </CardTitle>
@@ -458,8 +458,8 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                   max={phase.durationWeeks}
                   onChange={(e) => setMilestoneWeek(parseInt(e.target.value) || 1)}
                 />
-                <Button size="sm" onClick={addMilestone}><Check className="w-3 h-3" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => setAddingMilestone(false)}><X className="w-3 h-3" /></Button>
+                <Button size="sm" onClick={addMilestone} aria-label={t('phase.add')} title={t('phase.add')}><Check className="w-3 h-3" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => setAddingMilestone(false)} aria-label={t('nonLabour.cancel')} title={t('nonLabour.cancel')}><X className="w-3 h-3" /></Button>
               </div>
             )}
 
@@ -478,7 +478,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground text-xs">{t('phase.week', { week: milestone.weekOffset })}</span>
-                    <Button variant="ghost" size="sm" onClick={() => removeMilestone(milestone.id)} className="h-6 w-6 p-0">
+                    <Button variant="ghost" size="sm" onClick={() => removeMilestone(milestone.id)} className="h-6 w-6 p-0" aria-label={t('phase.remove')} title={t('phase.remove')}>
                       <X className="w-3 h-3" />
                     </Button>
                   </div>
