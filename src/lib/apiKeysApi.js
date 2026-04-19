@@ -29,4 +29,14 @@ export const apiKeysApi = {
    * @returns {Promise<void>}
    */
   revoke: (id) => api.request(`/auth/api-keys/${id}`, { method: 'DELETE' }),
+
+  /**
+   * Fetch aggregated usage stats, recent calls, and daily sparkline data for a key.
+   * Lazy-loaded only when the user expands the usage panel.
+   * @param {number} id
+   * @param {{ days?: number, limit?: number, dailyDays?: number }} [opts]
+   * @returns {Promise<{ stats: object, recent: object[], daily: object[] }>}
+   */
+  usage: (id, { days = 7, limit = 20, dailyDays = 30 } = {}) =>
+    api.request(`/auth/api-keys/${id}/usage?days=${days}&limit=${limit}&dailyDays=${dailyDays}`),
 };
