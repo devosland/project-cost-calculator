@@ -84,9 +84,9 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
 
   return (
     <div className="w-full max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-wrap justify-between items-start gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">{t('dashboard.title')}</h1>
           <p className="text-muted-foreground mt-1">
             {projects.length > 0
               ? t('dashboard.projectCount', { count: projects.length, plural: projects.length > 1 ? 's' : '' })
@@ -158,15 +158,15 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
         return (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             {stats.map((stat) => (
-              <Card key={stat.label}>
+              <Card key={stat.label} className="shadow-sm">
                 <CardContent className="py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                       <stat.icon className="w-5 h-5 text-primary" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs text-muted-foreground">{stat.label}</p>
-                      <p className="text-lg font-bold truncate">{stat.value}</p>
+                      <p className="font-mono text-lg font-semibold tabular-nums truncate">{stat.value}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -177,13 +177,13 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
       })()}
 
       {sortedProjects.length === 0 ? (
-        <Card className="border-dashed">
+        <Card className="border-dashed shadow-none">
           <CardContent className="py-16">
             <div className="text-center">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <FolderOpen className="w-8 h-8 text-primary" />
               </div>
-              <p className="text-lg font-semibold mb-1">{t('dashboard.noProjects')}</p>
+              <p className="font-display text-xl font-semibold mb-1">{t('dashboard.noProjects')}</p>
               <p className="text-sm text-muted-foreground mb-6">
                 {t('dashboard.startMessage')}
               </p>
@@ -206,22 +206,39 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
             );
             const isSelected = selectedForCompare.includes(project.id);
 
+            const handleCardActivate = () => {
+              if (renamingId === project.id) return;
+              if (compareMode) toggleCompareSelect(project.id);
+              else onOpenProject(project.id);
+            };
+            const handleCardKeyDown = (e) => {
+              if (renamingId === project.id) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleCardActivate();
+              }
+            };
+
             return (
               <Card
                 key={project.id}
-                className={`hover:shadow-md transition-all cursor-pointer group ${
+                role="button"
+                tabIndex={0}
+                onClick={handleCardActivate}
+                onKeyDown={handleCardKeyDown}
+                aria-pressed={compareMode ? isSelected : undefined}
+                className={`shadow-sm hover:shadow-md transition-all cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                   compareMode && isSelected ? 'ring-2 ring-primary shadow-md' : ''
                 }`}
-                onClick={() => compareMode ? toggleCompareSelect(project.id) : onOpenProject(project.id)}
               >
                 <CardContent className="py-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       {compareMode && (
                         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
-                          isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                          isSelected ? 'bg-primary border-primary' : 'border-border'
                         }`}>
-                          {isSelected && <Check className="w-3 h-3 text-white" />}
+                          {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                         </div>
                       )}
                       <div className="min-w-0">
@@ -242,20 +259,27 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                           <h3 className="text-lg font-semibold truncate flex items-center gap-2">
                             {project.name}
                             {project.role && project.role !== 'owner' && (
-                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shrink-0">
+                              <span
+                                className="text-xs font-medium px-2 py-0.5 rounded-full border shrink-0"
+                                style={{
+                                  backgroundColor: 'color-mix(in srgb, var(--prism-sage) 18%, transparent)',
+                                  color: 'var(--prism-sage)',
+                                  borderColor: 'color-mix(in srgb, var(--prism-sage) 35%, transparent)',
+                                }}
+                              >
                                 <Users className="w-3 h-3 inline mr-1" />
                                 {project.role === 'editor' ? t('dashboard.role.editor') : t('dashboard.role.viewer')}
                               </span>
                             )}
                           </h3>
                         )}
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-sm text-muted-foreground">
                           <span>{t('dashboard.phases', { count: phaseCount, plural: phaseCount > 1 ? 's' : '' })}</span>
-                          <span className="text-border">|</span>
+                          <span aria-hidden="true">·</span>
                           <span>{t('dashboard.members', { count: memberCount, plural: memberCount > 1 ? 's' : '' })}</span>
-                          <span className="text-border">|</span>
+                          <span aria-hidden="true">·</span>
                           <span>{totalWeeks} {t('dashboard.weeks')}</span>
-                          <span className="text-border">|</span>
+                          <span aria-hidden="true">·</span>
                           <span>{t('dashboard.modified')}{new Date(project.updatedAt).toLocaleDateString(getDateLocale(locale))}</span>
                         </div>
                       </div>
@@ -264,12 +288,12 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <div className="text-xs text-muted-foreground">{t('dashboard.totalCost')}</div>
-                        <div className="text-xl font-bold">{formatCurrency(totalCost, currency)}</div>
+                        <div className="font-mono text-xl font-semibold tabular-nums">{formatCurrency(totalCost, currency)}</div>
                       </div>
 
                       {!compareMode && (
                         <div
-                          className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                          className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Button variant="ghost" size="sm" onClick={() => startRename(project)} title={t('dashboard.rename')}>
@@ -282,9 +306,15 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                             <Download className="w-4 h-4" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => exportProjectCSV(project, rates)} title={t('dashboard.exportCSV')}>
-                            CSV
+                            <span className="font-mono text-xs">CSV</span>
                           </Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDelete(project.id)} title={t('dashboard.delete')}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(project.id)}
+                            title={t('dashboard.delete')}
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
