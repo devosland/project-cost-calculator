@@ -3,10 +3,11 @@
  * de plans de transition avec calcul d'impact de coûts (overlap inclus).
  *
  * Invariants critiques :
- * - totalSavings = currentCost − afterCost (reflète le coût réel d'overlap),
- *   pas annualSavings (qui est un delta fixe de taux sans overlap) — les deux
- *   valeurs sont calculées par calculateTransitionCostImpact() mais seul totalSavings
- *   est correct pour la comparaison avant/après avec chevauchement.
+ * - Les économies affichées (par ligne ET en total) utilisent la métrique overlap-aware :
+ *   - par ligne : `savings` = consultantCost − replacementCost − overlapCost (de calculateTransitionCostImpact)
+ *   - en total  : `totalSavings` = currentCost − afterCost (somme équivalente au niveau plan)
+ *   `annualSavings` est volontairement PAS affiché — c'est un delta de taux fixe sur 52 semaines
+ *   qui ignore l'overlap et donnait une valeur trompeuse à l'utilisateur (corrigé avril 2026).
  * - handleApply() persiste le plan AVANT d'appeler applyTransition() pour éviter
  *   une race condition où l'état local n'est pas encore en base.
  * - Les transitions appliquées sont irréversibles par design (statut 'applied' figé),
@@ -348,10 +349,11 @@ const TransitionPlanner = ({ plan, resources, rates, onClose, onSave }) => {
                 </div>
               )}
 
-              {/* Impact de coût de la transition individuelle (annualSavings = delta de taux sur 52 sem) */}
+              {/* Impact de coût individuel — on affiche `savings` (consultantCost − replacementCost − overlapCost)
+                  et non `annualSavings` : c'est la métrique overlap-aware qui matche le total affiché en bas. */}
               {impacts[idx] && (
                 <div className="text-sm text-muted-foreground flex gap-4">
-                  <span>{t('transitions.savings')}: <span className={impacts[idx].annualSavings > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>{formatCurrency(impacts[idx].annualSavings)}</span></span>
+                  <span>{t('transitions.savings')}: <span className={impacts[idx].savings > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>{formatCurrency(impacts[idx].savings)}</span></span>
                 </div>
               )}
             </div>
