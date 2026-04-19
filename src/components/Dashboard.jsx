@@ -213,6 +213,10 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
             };
             const handleCardKeyDown = (e) => {
               if (renamingId === project.id) return;
+              // Only activate when the event fires directly on the Card itself.
+              // Prevents Enter/Space on nested action buttons (rename, delete, etc.)
+              // from bubbling up and triggering the card's open/select.
+              if (e.target !== e.currentTarget) return;
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 handleCardActivate();
