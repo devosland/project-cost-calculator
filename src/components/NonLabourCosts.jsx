@@ -86,7 +86,7 @@ const NonLabourCosts = ({ costs, currency, onChange }) => {
         <div className="space-y-4">
           {adding && (
             <div className="p-4 border border-border rounded-lg bg-muted/40 space-y-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <input
                   type="text"
                   className="input-field"

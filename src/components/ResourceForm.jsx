@@ -53,7 +53,7 @@ const ResourceForm = ({ resource, rates, onSave, onCancel }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-900 mb-4 space-y-4">
+    <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="p-4 border border-border rounded-lg bg-muted/40 mb-4 space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">{t('resources.name')}</label>
