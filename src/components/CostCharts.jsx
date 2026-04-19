@@ -89,7 +89,7 @@ const PieChart = ({ data, currency, size = 200 }) => {
               style={{ backgroundColor: slice.color }}
             />
             <span className="truncate font-medium">{slice.label}</span>
-            <span className="text-muted-foreground ml-auto whitespace-nowrap">
+            <span className="text-muted-foreground ml-auto whitespace-nowrap font-mono tabular-nums">
               {formatCurrency(slice.value, currency)} ({((slice.value / total) * 100).toFixed(1)}%)
             </span>
           </div>
@@ -120,11 +120,11 @@ const BarChart = ({ data, currency }) => {
         <div key={label} className="space-y-1">
           <div className="flex justify-between text-sm">
             <span className="font-medium truncate">{label}</span>
-            <span className="text-muted-foreground whitespace-nowrap ml-2">
+            <span className="text-muted-foreground whitespace-nowrap ml-2 font-mono tabular-nums">
               {formatCurrency(value, currency)}
             </span>
           </div>
-          <div className="w-full h-2.5 bg-secondary rounded-full overflow-hidden">
+          <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
@@ -168,14 +168,14 @@ const CostCharts = ({ project, rates }) => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>{t('charts.title')}</CardTitle>
-          <div className="flex gap-1 bg-secondary rounded-lg p-1">
+          <CardTitle className="font-display text-xl tracking-tight">{t('charts.title')}</CardTitle>
+          <div className="flex gap-1 bg-muted rounded-lg p-1">
             {VIEWS.map((v) => (
               <button
                 key={v.id}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                   view === v.id
-                    ? 'bg-white text-foreground shadow-sm'
+                    ? 'bg-card text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={() => setView(v.id)}
@@ -194,7 +194,7 @@ const CostCharts = ({ project, rates }) => {
         ) : (
           <div className="space-y-8">
             <PieChart data={data} currency={currency} />
-            <div className="border-t pt-6">
+            <div className="border-t border-border pt-6">
               <BarChart data={data} currency={currency} />
             </div>
           </div>
