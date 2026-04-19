@@ -466,8 +466,8 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
                   className="h-6 w-6 p-0"
                   onClick={() => movePhase(index, -1)}
                   disabled={index === 0}
-                  aria-label={t('project.movePhaseUp') || 'Move phase up'}
-                  title={t('project.movePhaseUp') || 'Move phase up'}
+                  aria-label={t('project.movePhaseUp')}
+                  title={t('project.movePhaseUp')}
                 >
                   <ChevronUp className="w-3 h-3" />
                 </Button>
@@ -477,8 +477,8 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
                   className="h-6 w-6 p-0"
                   onClick={() => movePhase(index, 1)}
                   disabled={index === project.phases.length - 1}
-                  aria-label={t('project.movePhaseDown') || 'Move phase down'}
-                  title={t('project.movePhaseDown') || 'Move phase down'}
+                  aria-label={t('project.movePhaseDown')}
+                  title={t('project.movePhaseDown')}
                 >
                   <ChevronDown className="w-3 h-3" />
                 </Button>
@@ -492,8 +492,8 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
                   className="h-7 w-7 p-0"
                   onClick={() => movePhase(index, -1)}
                   disabled={index === 0}
-                  aria-label={t('project.movePhaseUp') || 'Move phase up'}
-                  title={t('project.movePhaseUp') || 'Move phase up'}
+                  aria-label={t('project.movePhaseUp')}
+                  title={t('project.movePhaseUp')}
                 >
                   <ChevronUp className="w-4 h-4" />
                 </Button>
@@ -503,8 +503,8 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
                   className="h-7 w-7 p-0"
                   onClick={() => movePhase(index, 1)}
                   disabled={index === project.phases.length - 1}
-                  aria-label={t('project.movePhaseDown') || 'Move phase down'}
-                  title={t('project.movePhaseDown') || 'Move phase down'}
+                  aria-label={t('project.movePhaseDown')}
+                  title={t('project.movePhaseDown')}
                 >
                   <ChevronDown className="w-4 h-4" />
                 </Button>
