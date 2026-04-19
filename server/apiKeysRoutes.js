@@ -7,7 +7,7 @@
 import { Router } from 'express';
 import { authMiddleware } from './middleware.js';
 import { generateApiKey } from './apiKeys.js';
-import { createApiKeyRecord, getApiKeysByUser, revokeApiKey } from './db.js';
+import { createApiKeyRecord, getApiKeysByUser, revokeApiKey, getApiKeyUsageStats, getApiKeyRecentUsage, getApiKeyDailyUsage } from './db.js';
 
 // Whitelist of scopes that can be granted to API keys.
 // Adding new scopes here and in publicApi.js is the single change needed to extend the API.
@@ -66,6 +66,34 @@ router.delete('/:id', (req, res) => {
   // result.changes === 0 means no row was updated (wrong id or already revoked)
   if (result.changes === 0) return res.status(404).json({ error: 'not_found' });
   res.json({ success: true });
+});
+
+/**
+ * GET /api/auth/api-keys/:id/usage
+ * Retourne les stats d'usage de la clé pour l'utilisateur authentifié.
+ * Query params : ?days=7 (fenêtre pour stats), ?limit=20 (nb d'appels récents), ?dailyDays=30
+ * Returns: { stats, recent, daily }
+ * Errors: 404 si clé non trouvée ou pas owned
+ */
+router.get('/:id/usage', (req, res) => {
+  const keyId = parseInt(req.params.id, 10);
+  if (!Number.isFinite(keyId)) return res.status(404).json({ error: 'not_found' });
+
+  // Verify ownership by checking against the user's keys
+  const keys = getApiKeysByUser(req.user.id);
+  if (!keys.find(k => k.id === keyId)) {
+    return res.status(404).json({ error: 'not_found' });
+  }
+
+  const days = Math.min(365, Math.max(1, parseInt(req.query.days, 10) || 7));
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+  const dailyDays = Math.min(365, Math.max(1, parseInt(req.query.dailyDays, 10) || 30));
+
+  res.json({
+    stats: getApiKeyUsageStats(keyId, days),
+    recent: getApiKeyRecentUsage(keyId, limit),
+    daily: getApiKeyDailyUsage(keyId, dailyDays),
+  });
 });
 
 /** Safely parses a JSON string, returning fallback on any parse error. */

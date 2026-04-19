@@ -875,6 +875,75 @@ function logApiKeyUsage(keyId, endpoint, method, statusCode, ip) {
 }
 
 /**
+ * Retourne les stats agrégées d'une clé sur une fenêtre de N jours.
+ * @param {number} keyId
+ * @param {number} days - fenêtre en jours (défaut 7)
+ * @returns {{total: number, success: number, clientError: number, serverError: number,
+ *            lastUsedAt: string|null, topEndpoint: string|null}}
+ */
+function getApiKeyUsageStats(keyId, days = 7) {
+  const since = `datetime('now', '-${days} days')`;
+  const row = db.prepare(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN status_code BETWEEN 200 AND 399 THEN 1 ELSE 0 END) AS success,
+      SUM(CASE WHEN status_code BETWEEN 400 AND 499 THEN 1 ELSE 0 END) AS clientError,
+      SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) AS serverError,
+      MAX(created_at) AS lastUsedAt
+    FROM api_key_usage
+    WHERE api_key_id = ? AND created_at >= ${since}
+  `).get(keyId);
+
+  const top = db.prepare(`
+    SELECT endpoint, COUNT(*) AS c
+    FROM api_key_usage
+    WHERE api_key_id = ? AND created_at >= ${since}
+    GROUP BY endpoint ORDER BY c DESC LIMIT 1
+  `).get(keyId);
+
+  return {
+    total: row?.total ?? 0,
+    success: row?.success ?? 0,
+    clientError: row?.clientError ?? 0,
+    serverError: row?.serverError ?? 0,
+    lastUsedAt: row?.lastUsedAt ?? null,
+    topEndpoint: top?.endpoint ?? null,
+  };
+}
+
+/**
+ * Retourne les N derniers appels d'une clé (tri desc par created_at).
+ * @param {number} keyId
+ * @param {number} limit
+ * @returns {Array<{id, endpoint, method, status_code, ip, created_at}>}
+ */
+function getApiKeyRecentUsage(keyId, limit = 20) {
+  return db.prepare(`
+    SELECT id, endpoint, method, status_code, ip, created_at
+    FROM api_key_usage
+    WHERE api_key_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?
+  `).all(keyId, limit);
+}
+
+/**
+ * Retourne le nombre d'appels par jour sur une fenêtre, pour la sparkline.
+ * @param {number} keyId
+ * @param {number} days
+ * @returns {Array<{day: string, count: number}>} - day en YYYY-MM-DD, triée asc
+ */
+function getApiKeyDailyUsage(keyId, days = 30) {
+  return db.prepare(`
+    SELECT DATE(created_at) AS day, COUNT(*) AS count
+    FROM api_key_usage
+    WHERE api_key_id = ? AND created_at >= datetime('now', ?)
+    GROUP BY day
+    ORDER BY day ASC
+  `).all(keyId, `-${days} days`);
+}
+
+/**
  * Finds a project by its externalId field stored inside the data JSON column.
  * Uses SQLite's json_extract() so no separate indexed column is needed.
  * This is intentional: externalId is an external API concept, not a core schema field,
@@ -940,5 +1009,8 @@ export {
   revokeApiKey,
   touchApiKey,
   logApiKeyUsage,
+  getApiKeyUsageStats,
+  getApiKeyRecentUsage,
+  getApiKeyDailyUsage,
   findProjectByExternalId
 };
