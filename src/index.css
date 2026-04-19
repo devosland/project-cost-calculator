@@ -1,65 +1,132 @@
+/* ── Prism Design System — Font imports (@fontsource, not CDN) ────────── */
+@import '@fontsource-variable/dm-sans';
+@import '@fontsource-variable/fraunces';
+@import '@fontsource-variable/jetbrains-mono';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* ── Light mode — Warm palette ────────────────────────────────────────── */
   :root {
-    --background: 220 20% 97%;
-    --foreground: 224 71% 4%;
+    /* Surfaces — converted to HSL for hsl(var(--x)) pattern */
+    /* #FDFAF5 cream → hsl(40 60% 97%) */
+    --background: 40 60% 97%;
+    /* #1A1815 warm dark → hsl(30 8% 9%) */
+    --foreground: 30 8% 9%;
 
+    /* #FFFFFF elevated card */
     --card: 0 0% 100%;
-    --card-foreground: 224 71% 4%;
+    --card-foreground: 30 8% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 224 71% 4%;
+    --popover-foreground: 30 8% 9%;
 
-    --primary: 243 75% 59%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary — amber #F59E0B → hsl(38 92% 50%) */
+    --primary: 38 92% 50%;
+    /* Primary foreground on amber — warm dark */
+    --primary-foreground: 30 8% 9%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 224 71% 4%;
+    /* Secondary — #F5F0E8 subtle warm → hsl(37 33% 93%) */
+    --secondary: 37 33% 93%;
+    --secondary-foreground: 30 8% 9%;
 
-    --accent: 243 75% 95%;
-    --accent-foreground: 243 75% 40%;
+    /* Muted — #F5F0E8 → same as secondary */
+    --muted: 37 33% 93%;
+    /* #5C554A → hsl(30 10% 33%) */
+    --muted-foreground: 30 10% 33%;
 
-    --destructive: 0 84% 60%;
+    /* Accent — sage #84A98C → hsl(134 13% 59%) */
+    --accent: 134 13% 59%;
+    --accent-foreground: 30 8% 9%;
+
+    /* Destructive — #DC2626 → hsl(0 72% 51%) */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 243 75% 59%;
+    /* Borders — #E8DFD0 → hsl(35 27% 85%) */
+    --border: 35 27% 85%;
+    /* Input border same as border */
+    --input: 35 27% 85%;
+    /* Ring — amber focus */
+    --ring: 38 92% 50%;
 
     --radius: 0.75rem;
+
+    /* ── Prism-specific tokens (not shadcn) ───────────────────────────── */
+    --prism-bg: #fdfaf5;
+    --prism-bg-elevated: #ffffff;
+    --prism-bg-subtle: #f5f0e8;
+    --prism-border: #e8dfd0;
+    --prism-border-strong: #d4c5a8;
+    --prism-text: #1a1815;
+    --prism-text-secondary: #5c554a;
+    --prism-text-tertiary: #8b8274;
+    --prism-amber: #f59e0b;
+    --prism-sage: #84a98c;
+    --prism-success: #16a34a;
+    --prism-warning: #f59e0b;
+    --prism-error: #dc2626;
+    --prism-info: #2563eb;
   }
 
+  /* ── Dark mode — Warm dark palette ───────────────────────────────────── */
   .dark {
-    --background: 224 10% 10%;
-    --foreground: 210 40% 96%;
+    /* #1A1815 warm dark → hsl(30 8% 9%) */
+    --background: 30 8% 9%;
+    /* #FAF7F0 warm white → hsl(40 50% 96%) */
+    --foreground: 40 50% 96%;
 
-    --card: 224 10% 13%;
-    --card-foreground: 210 40% 96%;
+    /* #24211D elevated → hsl(30 8% 12%) */
+    --card: 30 8% 12%;
+    --card-foreground: 40 50% 96%;
 
-    --popover: 224 10% 13%;
-    --popover-foreground: 210 40% 96%;
+    --popover: 30 8% 12%;
+    --popover-foreground: 40 50% 96%;
 
-    --primary: 243 75% 65%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary dark — amber #FBBF24 → hsl(43 96% 56%) */
+    --primary: 43 96% 56%;
+    --primary-foreground: 30 8% 9%;
 
-    --secondary: 224 10% 18%;
-    --secondary-foreground: 210 40% 96%;
+    /* Secondary — #2F2B26 nested → hsl(30 8% 16%) */
+    --secondary: 30 8% 16%;
+    --secondary-foreground: 40 50% 96%;
 
-    --muted: 224 10% 18%;
-    --muted-foreground: 215 20% 55%;
+    /* Muted */
+    --muted: 30 8% 16%;
+    /* #B8AF9E → hsl(35 12% 67%) */
+    --muted-foreground: 35 12% 67%;
 
-    --accent: 224 10% 18%;
-    --accent-foreground: 210 40% 96%;
+    /* Accent — sage dark #A8C6B0 → hsl(140 17% 72%) */
+    --accent: 140 17% 72%;
+    --accent-foreground: 30 8% 9%;
 
-    --destructive: 0 62% 55%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive dark — #EF4444 → hsl(0 83% 60%) */
+    --destructive: 0 83% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 224 10% 20%;
-    --input: 224 10% 20%;
-    --ring: 243 75% 65%;
+    /* Borders — #3A3530 → hsl(30 8% 21%) */
+    --border: 30 8% 21%;
+    /* Input focus — #504940 → hsl(30 10% 28%) */
+    --input: 30 10% 28%;
+    --ring: 43 96% 56%;
+
+    /* ── Prism-specific tokens (dark) ─────────────────────────────────── */
+    --prism-bg: #1a1815;
+    --prism-bg-elevated: #24211d;
+    --prism-bg-subtle: #2f2b26;
+    --prism-border: #3a3530;
+    --prism-border-strong: #504940;
+    --prism-text: #faf7f0;
+    --prism-text-secondary: #b8af9e;
+    --prism-text-tertiary: #8b8274;
+    --prism-amber: #fbbf24;
+    --prism-sage: #a8c6b0;
+    --prism-success: #22c55e;
+    --prism-warning: #fbbf24;
+    --prism-error: #ef4444;
+    --prism-info: #3b82f6;
   }
 
   .dark .bg-white {
@@ -71,9 +138,48 @@
   * {
     @apply border-border;
   }
+
+  html {
+    font-family:
+      'DM Sans Variable',
+      system-ui,
+      -apple-system,
+      sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Better digits */
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: 'JetBrains Mono Variable', ui-monospace, Consolas, monospace;
+    font-feature-settings:
+      'liga' 1,
+      'calt' 1;
+  }
+
+  .font-display {
+    font-family: 'Fraunces Variable', Georgia, serif;
+    font-variation-settings:
+      'opsz' 72,
+      'SOFT' 50;
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -110,7 +216,8 @@
     margin: 15mm;
   }
 
-  html, body {
+  html,
+  body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     background: white !important;
@@ -125,12 +232,17 @@
   }
 
   /* Ensure tables don't break across pages */
-  table, tr, td, th {
+  table,
+  tr,
+  td,
+  th {
     page-break-inside: avoid;
   }
 
   /* Avoid breaking sections */
-  h3, .p-4, .space-y-1 > div {
+  h3,
+  .p-4,
+  .space-y-1 > div {
     page-break-inside: avoid;
   }
 }
