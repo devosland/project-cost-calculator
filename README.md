@@ -107,33 +107,33 @@ Screenshots are generated automatically by `scripts/screenshots/capture.mjs` fro
 
 ## Public API (v1)
 
-Endpoint public permettant à des outils externes (ex: roadmap tools) de créer des projets via un import structuré.
+Public endpoint allowing external tools (e.g. roadmap tools) to create projects via a structured import.
 
-**Documentation d'intégration complète** : voir [`docs/integration-api-roadmap.md`](docs/integration-api-roadmap.md)
+**Full integration documentation**: see [`docs/integration-api-roadmap.md`](docs/integration-api-roadmap.md)
 
-### Authentification
+### Authentication
 
-Les appels à `/api/v1/*` utilisent une **clé d'API** (`X-API-Key: ckc_live_...`) distincte du JWT utilisateur. Les clés sont générées depuis le profil (`#/profile`), scopées (`roadmap:import`, `roadmap:read`), et révocables à tout moment.
+Calls to `/api/v1/*` use an **API key** (`X-API-Key: ckc_live_...`) distinct from the user JWT. Keys are generated from the profile (`#/profile`), scoped (`roadmap:import`, `roadmap:read`), and revocable at any time.
 
-### Endpoints disponibles
+### Available endpoints
 
-- `POST /api/v1/roadmap/import` — Créer (ou upsert avec `?upsert=true`) un projet depuis une roadmap
-- `GET /api/v1/roadmap/import/:externalId/status` — Vérifier si un `externalId` a déjà été importé
+- `POST /api/v1/roadmap/import` — Create (or upsert with `?upsert=true`) a project from a roadmap
+- `GET /api/v1/roadmap/import/:externalId/status` — Check if an `externalId` has already been imported
 
-### Configuration requise
+### Required configuration
 
-Variables d'environnement :
+Environment variables:
 
-- `PUBLIC_API_ALLOWED_ORIGINS` — Origines CORS autorisées (liste CSV)
-- `PUBLIC_BASE_URL` — URL publique pour construire les liens retournés aux clients
+- `PUBLIC_API_ALLOWED_ORIGINS` — Allowed CORS origins (CSV list)
+- `PUBLIC_BASE_URL` — Public URL used to build links returned to clients
 
-### Sécurité
+### Security
 
-- Clés d'API hashées SHA-256 en DB (lookup direct, 192 bits d'entropie)
-- Rate limiting : 60 requêtes/minute par clé
-- CORS whitelist stricte sur `/api/v1/*`
-- Audit log de chaque utilisation (`api_key_usage` table)
-- Validation Zod stricte du payload (schéma, dates ISO, graphe de dépendances sans cycles)
+- API keys hashed with SHA-256 in DB (direct lookup, 192 bits of entropy)
+- Rate limiting: 60 requests/minute per key
+- Strict CORS whitelist on `/api/v1/*`
+- Audit log for each use (`api_key_usage` table)
+- Strict Zod payload validation (schema, ISO dates, acyclic dependency graph)
 
 ## Tech Stack
 
@@ -370,69 +370,69 @@ The app uses hash-based routing for refresh-safe navigation:
 
 ## FAQ / Troubleshooting
 
-### Installation et setup
+### Installation and setup
 
-**`npm install` échoue avec des erreurs natives (better-sqlite3)**
-Le projet utilise `better-sqlite3` qui se compile nativement. Assure-toi d'avoir Node.js 20+ et les build tools :
+**`npm install` fails with native errors (better-sqlite3)**
+The project uses `better-sqlite3` which compiles natively. Make sure you have Node.js 20+ and the build tools:
 
-- Windows : `npm install --global windows-build-tools` (ou Visual Studio Build Tools)
-- macOS : `xcode-select --install`
-- Linux : `sudo apt install build-essential python3`
+- Windows: `npm install --global windows-build-tools` (or Visual Studio Build Tools)
+- macOS: `xcode-select --install`
+- Linux: `sudo apt install build-essential python3`
 
-**Le port 3000 est déjà utilisé**
-Change le port via la variable d'env `PORT` : `PORT=3001 npm run dev`
+**Port 3000 is already in use**
+Change the port via the `PORT` env var: `PORT=3001 npm run dev`
 
-### Développement
+### Development
 
-**Les tests sont lents au premier run**
-Vitest compile et cache les modules. Après le premier run, c'est ~10x plus rapide. Pour watch mode : `npx vitest`.
+**Tests are slow on the first run**
+Vitest compiles and caches modules. After the first run, it's ~10x faster. For watch mode: `npx vitest`.
 
-**L'auto-save ne fonctionne pas**
-Vérifie dans la console navigateur : un `401` signifie que le JWT a expiré (30j). Reconnecte-toi. Un `500` peut indiquer un problème SQLite (disk full, permissions sur `data/`).
+**Auto-save is not working**
+Check the browser console: a `401` means the JWT has expired (30d). Log in again. A `500` may indicate a SQLite issue (disk full, permissions on `data/`).
 
-**Les clés d'API ne fonctionnent pas**
+**API keys are not working**
 
-- Vérifie que la clé commence par `ckc_live_`
-- Vérifie qu'elle n'a pas été révoquée (Profil > Clés d'API)
-- Vérifie le scope (`roadmap:import` vs `roadmap:read`)
+- Check that the key starts with `ckc_live_`
+- Check that it has not been revoked (Profile > API Keys)
+- Check the scope (`roadmap:import` vs `roadmap:read`)
 
-### Déploiement
+### Deployment
 
-**Le container Docker crash au démarrage avec `ERR_MODULE_NOT_FOUND`**
-Vérifie que toutes les deps backend sont dans `server/package.json`, pas seulement dans le `package.json` racine. Voir commit `0143f92` pour l'exemple du bug zod.
+**Docker container crashes on startup with `ERR_MODULE_NOT_FOUND`**
+Check that all backend deps are in `server/package.json`, not only in the root `package.json`. See commit `0143f92` for the zod bug example.
 
-**Le port mapping ne marche pas derrière nginx-proxy-manager**
-Si `docker-compose.yml` n'a pas de `ports:` mapping (utilise uniquement Traefik), ajoute-le manuellement après chaque `docker compose up` :
+**Port mapping does not work behind nginx-proxy-manager**
+If `docker-compose.yml` has no `ports:` mapping (uses Traefik only), add it manually after each `docker compose up`:
 
 ```bash
 sed -i '/restart: unless-stopped/a\    ports:\n      - "3002:80"' docker-compose.yml && \
   docker compose up -d && git checkout docker-compose.yml
 ```
 
-**Les variables d'env `PUBLIC_API_ALLOWED_ORIGINS` et `PUBLIC_BASE_URL` ne sont pas lues**
-Vérifie qu'elles sont dans le `.env` à la racine et que `docker-compose.yml` les référence via `env_file: .env`.
+**Env vars `PUBLIC_API_ALLOWED_ORIGINS` and `PUBLIC_BASE_URL` are not read**
+Check that they are in the root `.env` and that `docker-compose.yml` references them via `env_file: .env`.
 
-### Intégration API publique
+### Public API integration
 
-**Erreur 409 `duplicate_external_id` alors que c'est un nouveau projet**
-L'`externalId` est unique par utilisateur. Soit change la valeur, soit utilise `?upsert=true` pour mettre à jour le projet existant.
+**Error 409 `duplicate_external_id` for what is a new project**
+The `externalId` is unique per user. Either change the value, or use `?upsert=true` to update the existing project.
 
-**Erreur 422 `validation_error: durationMonths is required`**
-Fournis soit `durationMonths`, soit les DEUX dates (`startDate` ET `endDate`) sur chaque phase. Voir [`docs/integration-api-roadmap.md`](docs/integration-api-roadmap.md).
+**Error 422 `validation_error: durationMonths is required`**
+Provide either `durationMonths` or BOTH dates (`startDate` AND `endDate`) on each phase. See [`docs/integration-api-roadmap.md`](docs/integration-api-roadmap.md).
 
-**Les dépendances (`dependsOn`) ne s'affichent pas dans le Gantt**
-C'est volontaire (pour l'instant) : les dépendances sont stockées mais la visualisation Gantt utilise `order` + durées cumulées. Feature future.
+**Dependencies (`dependsOn`) do not show in the Gantt**
+Intentional (for now): dependencies are stored but the Gantt visualization uses `order` + cumulative durations. Future feature.
 
-### Autres
+### Other
 
-**Où sont stockées les données ?**
-SQLite local dans `data/app.db`. Backups automatiques dans `data/backups/` (hourly).
+**Where is the data stored?**
+Local SQLite in `data/app.db`. Automated backups in `data/backups/` (hourly).
 
-**Comment réinitialiser la base ?**
-Supprimer `data/app.db` et redémarrer. Les migrations se relancent automatiquement (`server/db.js`).
+**How do I reset the database?**
+Delete `data/app.db` and restart. Migrations will re-run automatically (`server/db.js`).
 
-**Comment ajouter une autre langue que FR/EN ?**
-Éditer `src/lib/i18n.jsx`, ajouter un 3e objet de traductions, et étendre le sélecteur de langue dans `ThemeToggle` ou créer un `LocaleToggle`.
+**How do I add a language other than FR/EN?**
+Edit `src/lib/i18n.jsx`, add a 3rd translations object, and extend the language selector in `ThemeToggle` or create a `LocaleToggle`.
 
 ## License
 
