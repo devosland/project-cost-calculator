@@ -26,7 +26,7 @@ const UtilizationSummary = ({ resources, assignments, months, gridCols }) => {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
-      <div className="font-medium text-sm py-1 pr-2 text-right sticky left-0 bg-card z-10">
+      <div className="font-medium text-sm py-1 pr-2 text-right sticky left-0 bg-card z-10 border-r border-border">
         {t('capacity.utilization')}
       </div>
       {months.map((month) => {
