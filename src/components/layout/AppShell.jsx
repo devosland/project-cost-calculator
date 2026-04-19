@@ -11,7 +11,7 @@
  * `onNavigate` en props, et délègue la logique métier (auth, data, save)
  * à App.jsx. Seule la logique de chrome vit ici.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './Sidebar';
 import MobileDrawer from './MobileDrawer';
 import Topbar from './Topbar';
@@ -52,6 +52,13 @@ export default function AppShell({
   });
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Stable callbacks so child effects (e.g. MobileDrawer's Escape listener)
+  // don't tear down/re-install on every AppShell render.
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+  const openMobile = useCallback(() => setMobileOpen(true), []);
+  const toggleCollapsed = useCallback(() => setCollapsed((v) => !v), []);
+  const navigateProfile = useCallback(() => onNavigate('profile'), [onNavigate]);
+
   // Persist collapsed preference. Wrapped in try/catch because some browsers
   // block localStorage access in privacy modes — we degrade gracefully rather
   // than crashing the UI.
@@ -67,14 +74,14 @@ export default function AppShell({
     <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar
         collapsed={collapsed}
-        onToggleCollapsed={() => setCollapsed((v) => !v)}
+        onToggleCollapsed={toggleCollapsed}
         currentView={currentView}
         onNavigate={onNavigate}
       />
 
       <MobileDrawer
         open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
+        onClose={closeMobile}
         currentView={currentView}
         onNavigate={onNavigate}
       />
@@ -88,7 +95,8 @@ export default function AppShell({
           locale={locale}
           onLocaleChange={onLocaleChange}
           onLogout={onLogout}
-          onToggleMobile={() => setMobileOpen(true)}
+          onNavigateProfile={navigateProfile}
+          onToggleMobile={openMobile}
           onNavigateRoot={onNavigateRoot}
         />
 

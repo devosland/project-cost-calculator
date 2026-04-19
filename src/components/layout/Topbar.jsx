@@ -20,6 +20,7 @@ import { useLocale } from '../../lib/i18n';
  * @param {() => void} props.onLogout
  * @param {() => void} props.onToggleMobile - Open mobile drawer
  * @param {() => void} props.onNavigateRoot - Navigate back to root of current section (for breadcrumb root click)
+ * @param {() => void} [props.onNavigateProfile] - Open the Profile view (delegated to UserMenu)
  */
 export default function Topbar({
   user,
@@ -31,6 +32,7 @@ export default function Topbar({
   onLogout,
   onToggleMobile,
   onNavigateRoot,
+  onNavigateProfile,
 }) {
   const { t } = useLocale();
 
@@ -78,6 +80,7 @@ export default function Topbar({
           locale={locale}
           onLocaleChange={onLocaleChange}
           onLogout={onLogout}
+          onNavigateProfile={onNavigateProfile}
         />
       </div>
     </header>
