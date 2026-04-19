@@ -87,7 +87,7 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
           <ArrowLeft className="w-4 h-4 mr-1" />
           {t('project.back')}
         </Button>
-        <h1 className="text-2xl font-bold">{t('capacity.title')}</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">{t('capacity.title')}</h1>
       </div>
 
       {/* Tabs */}
@@ -122,7 +122,7 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
             </label>
             <select
               id="preview-plan-select"
-              className="text-sm border rounded px-2 py-1 bg-background"
+              className="text-sm border border-border rounded-md px-2 py-1 bg-background"
               value={previewPlanId ?? ''}
               onChange={(e) => setPreviewPlanId(e.target.value ? Number(e.target.value) : null)}
             >
