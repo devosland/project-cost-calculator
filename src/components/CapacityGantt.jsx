@@ -333,9 +333,10 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
     const isPermanent = resource.level === 'Employé interne';
     return (
       <span
-        className={`inline-block w-2 h-2 rounded-full mr-1.5 shrink-0 ${
-          isPermanent ? 'bg-green-500' : 'bg-orange-500'
-        }`}
+        className="inline-block w-2 h-2 rounded-full mr-1.5 shrink-0"
+        style={{
+          backgroundColor: isPermanent ? 'var(--prism-success)' : 'var(--prism-warning)',
+        }}
       />
     );
   };
@@ -358,7 +359,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
         <React.Fragment key={projectId}>
           {/* En-tête du projet (collapsible) */}
           <div
-            className="col-span-full flex items-center gap-2 py-1.5 px-2 cursor-pointer rounded font-medium text-sm text-white"
+            className="col-span-full flex items-center gap-2 py-1.5 px-2 cursor-pointer rounded-md font-medium text-sm text-white"
             style={{ backgroundColor: color }}
             onClick={() => toggleCollapse(`p-${projectId}`)}
           >
@@ -389,7 +390,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
                 // Pourquoi nested et non flat : une grille plate nécessiterait des divs vides
                 // pour les colonnes sans barre, créant des lignes parasites dans le layout.
                 <div key={`${projectId}-${rid}`} style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
-                  <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-background z-10">
+                  <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-card z-10">
                     {renderResourceDot(resource)}
                     {resource.name}
                   </div>
@@ -441,7 +442,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
       return (
         <React.Fragment key={key}>
           <div
-            className="col-span-full flex items-center gap-2 py-1.5 px-2 cursor-pointer rounded font-medium text-sm text-white"
+            className="col-span-full flex items-center gap-2 py-1.5 px-2 cursor-pointer rounded-md font-medium text-sm text-white"
             style={{ backgroundColor: headerColor }}
             onClick={() => toggleCollapse(key)}
           >
@@ -465,7 +466,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
               return (
                 // Nested grid (voir explication renderByProject ci-dessus)
                 <div key={resource.id} style={{ display: 'grid', gridTemplateColumns: gridCols, gridColumn: '1 / -1' }} className="items-center">
-                  <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-background z-10">
+                  <div className="text-sm truncate py-1 pr-2 flex items-center sticky left-0 bg-card z-10">
                     {renderResourceDot(resource)}
                     {resource.name}
                   </div>
@@ -505,8 +506,8 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
 
     return (
       <>
-        {renderSection(t('capacity.permanent'), permanents, '#10b981', 'type-perm')}
-        {renderSection(t('capacity.consultant'), consultants, '#f97316', 'type-cons')}
+        {renderSection(t('capacity.permanent'), permanents, 'var(--prism-success)', 'type-perm')}
+        {renderSection(t('capacity.consultant'), consultants, 'var(--prism-warning)', 'type-cons')}
       </>
     );
   };
@@ -516,9 +517,9 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
 
       {/* --- Preview mode banner --- */}
       {previewPlanId && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-4 py-2 text-sm">
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="font-medium text-amber-800 dark:text-amber-300">
+            <span className="font-medium text-foreground">
               {previewError
                 ? t('capacity.previewMode.planNotFound')
                 : previewPlan
@@ -526,18 +527,18 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
                   : t('capacity.previewMode.loading')}
             </span>
             {previewResult && (
-              <label className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 cursor-pointer select-none">
+              <label className="flex items-center gap-1.5 text-muted-foreground cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={showCurrent}
                   onChange={(e) => setShowCurrent(e.target.checked)}
-                  className="rounded"
+                  className="rounded border-border"
                 />
                 {t('capacity.previewMode.showCurrent')}
               </label>
             )}
             {previewResult && (
-              <span className="text-xs text-amber-600 dark:text-amber-500 hidden sm:inline">
+              <span className="text-xs text-muted-foreground hidden sm:inline">
                 {t('capacity.previewMode.legend')}
               </span>
             )}
@@ -545,7 +546,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
           <Button
             variant="ghost"
             size="sm"
-            className="text-amber-700 hover:text-amber-900 dark:text-amber-400 shrink-0"
+            className="shrink-0"
             onClick={onExitPreview}
           >
             {t('capacity.previewMode.exit')}
@@ -585,7 +586,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
       </div>
 
       {/* --- Grille principale Gantt --- */}
-      <div className="overflow-x-auto border rounded-lg">
+      <div className="overflow-x-auto border border-border rounded-lg bg-card">
         <div
           className="min-w-[900px]"
           style={{
@@ -596,7 +597,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
           }}
         >
           {/* En-têtes des colonnes mois */}
-          <div className="font-medium text-sm text-muted-foreground sticky left-0 bg-background z-10" />
+          <div className="font-medium text-sm text-muted-foreground sticky left-0 bg-card z-10" />
           {months.map((m) => (
             <div key={m} className="text-center text-xs font-medium text-muted-foreground py-1">
               {formatMonth(m)}
