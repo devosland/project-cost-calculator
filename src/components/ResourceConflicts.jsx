@@ -75,21 +75,31 @@ const ResourceConflicts = ({ project }) => {
     }
   }
 
+  const warningStyle = {
+    color: 'var(--prism-warning)',
+    backgroundColor: 'color-mix(in srgb, var(--prism-warning) 12%, transparent)',
+    borderColor: 'color-mix(in srgb, var(--prism-warning) 30%, transparent)',
+  };
+  const successStyle = {
+    color: 'var(--prism-success)',
+    backgroundColor: 'color-mix(in srgb, var(--prism-success) 12%, transparent)',
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="font-display text-xl tracking-tight flex items-center gap-2">
           {conflicts.length > 0 ? (
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <AlertTriangle className="w-5 h-5" style={{ color: 'var(--prism-warning)' }} />
           ) : (
-            <CheckCircle className="w-5 h-5 text-green-500" />
+            <CheckCircle className="w-5 h-5" style={{ color: 'var(--prism-success)' }} />
           )}
           {t('conflicts.title')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {conflicts.length === 0 ? (
-          <div className="flex items-center gap-2 text-green-600 text-sm p-3 bg-green-50 rounded-lg">
+          <div className="flex items-center gap-2 text-sm p-3 rounded-lg" style={successStyle}>
             <CheckCircle className="w-4 h-4" />
             {t('conflicts.none')}
           </div>
@@ -98,9 +108,10 @@ const ResourceConflicts = ({ project }) => {
             {conflicts.map((c, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 text-sm p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800"
+                className="flex items-start gap-2 text-sm p-3 border rounded-lg"
+                style={warningStyle}
               >
-                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-500" />
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>
                   {t('conflicts.warning', { role: c.role, level: c.level, alloc: c.totalAlloc, start: c.startWeek, end: c.endWeek })}
                 </span>

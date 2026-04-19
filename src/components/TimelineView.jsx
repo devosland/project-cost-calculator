@@ -72,7 +72,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>{t('timeline.title')}</CardTitle>
+          <CardTitle className="font-display text-xl tracking-tight">{t('timeline.title')}</CardTitle>
           {phasesWithOffsets.some((p) => p.milestones.length > 0) && (
             <Button
               variant="outline"
@@ -137,7 +137,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                           style={{ left: `${milestoneLeft}%` }}
                           title={`${milestone.name} (${t('timeline.weekLabel', { week: phase.offset + milestone.weekOffset })})`}
                         >
-                          <Flag className="w-3.5 h-3.5 text-amber-500 -translate-x-1/2 drop-shadow-sm" />
+                          <Flag className="w-3.5 h-3.5 text-primary -translate-x-1/2 drop-shadow-sm" />
                         </div>
                       );
                     })}
@@ -147,12 +147,12 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
             })}
           </div>
 
-          <div className="border-t pt-6">
-            <h4 className="font-semibold mb-4">{t('timeline.costBreakdown')}</h4>
+          <div className="border-t border-border pt-6">
+            <h4 className="font-display font-semibold mb-4 tracking-tight">{t('timeline.costBreakdown')}</h4>
             <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left">
+                <tr className="border-b border-border text-left">
                   <th className="p-2 text-muted-foreground font-medium">{t('timeline.phase')}</th>
                   <th className="p-2 text-center text-muted-foreground font-medium">{t('timeline.duration')}</th>
                   <th className="p-2 text-center text-muted-foreground font-medium">{t('timeline.members')}</th>
@@ -169,16 +169,16 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                   const memberCount = phase.teamMembers.reduce((s, m) => s + m.quantity, 0);
 
                   return (
-                    <tr key={phase.id} className="border-b last:border-b-0 hover:bg-secondary/30 transition-colors">
+                    <tr key={phase.id} className="border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors">
                       <td className="p-2">
                         <span className={`inline-block w-3 h-3 rounded-sm mr-2 ${COLORS[phase.colorIndex]}`} />
                         {phase.name}
                       </td>
-                      <td className="p-2 text-center">{phase.durationWeeks} {t('budget.weeksAbbr')}</td>
-                      <td className="p-2 text-center">{memberCount}</td>
-                      <td className="p-2 text-right">{fmt(weeklyCost)}</td>
-                      <td className="p-2 text-right font-semibold">{fmt(phaseTotalCost)}</td>
-                      <td className="p-2 text-right text-muted-foreground">{fmt(runningTotal)}</td>
+                      <td className="p-2 text-center font-mono tabular-nums">{phase.durationWeeks} {t('budget.weeksAbbr')}</td>
+                      <td className="p-2 text-center font-mono tabular-nums">{memberCount}</td>
+                      <td className="p-2 text-right font-mono tabular-nums">{fmt(weeklyCost)}</td>
+                      <td className="p-2 text-right font-mono tabular-nums font-semibold">{fmt(phaseTotalCost)}</td>
+                      <td className="p-2 text-right font-mono tabular-nums text-muted-foreground">{fmt(runningTotal)}</td>
                     </tr>
                   );
                 })}
@@ -188,9 +188,9 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
           </div>
 
           {phasesWithOffsets.some((p) => p.milestones.length > 0) && (
-            <div className="border-t pt-6">
-              <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <Flag className="w-4 h-4 text-amber-500" />
+            <div className="border-t border-border pt-6">
+              <h4 className="font-display font-semibold mb-3 tracking-tight flex items-center gap-2">
+                <Flag className="w-4 h-4 text-primary" />
                 {t('timeline.milestones')}
               </h4>
               <div className="space-y-1">
@@ -206,13 +206,13 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                   .map((m) => (
                     <div key={m.id} className="flex items-center justify-between text-sm py-1.5">
                       <div className="flex items-center gap-2">
-                        <Flag className="w-3 h-3 text-amber-500" />
+                        <Flag className="w-3 h-3 text-primary" />
                         <span className="font-medium">{m.name}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${LIGHT_COLORS[m.colorIndex]}`}>
                           {m.phaseName}
                         </span>
                       </div>
-                      <span className="text-muted-foreground">{t('timeline.weekLabel', { week: m.absoluteWeek })}</span>
+                      <span className="text-muted-foreground font-mono tabular-nums">{t('timeline.weekLabel', { week: m.absoluteWeek })}</span>
                     </div>
                   ))}
               </div>
