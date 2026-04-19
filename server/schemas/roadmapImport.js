@@ -7,7 +7,7 @@
 import { z } from 'zod';
 
 // Reusable ISO 8601 date string validator (YYYY-MM-DD only, no time component).
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid ISO 8601 date (YYYY-MM-DD expected)');
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'Invalid ISO 8601 date (YYYY-MM-DD expected)' });
 
 /**
  * Per-phase schema.
@@ -18,7 +18,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid ISO 8601 date (
  *   - endDate must be strictly after startDate when both are provided.
  */
 const phaseSchema = z.object({
-  id: z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-_]*$/i, 'id must be slug-like'),
+  id: z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-_]*$/i, { error: 'id must be slug-like' }),
   name: z.string().min(1).max(100),
   order: z.number().int().positive(),
   // Optional: used as fallback when no explicit dates are given.
@@ -32,12 +32,12 @@ const phaseSchema = z.object({
 .refine(
   // At least one duration source must be provided.
   p => p.durationMonths !== undefined || (p.startDate && p.endDate),
-  { message: 'durationMonths is required unless both startDate and endDate are provided', path: ['durationMonths'] }
+  { error: 'durationMonths is required unless both startDate and endDate are provided', path: ['durationMonths'] }
 )
 .refine(
   // Guard against inverted date ranges (endDate === startDate is also invalid).
   p => !(p.startDate && p.endDate) || p.endDate > p.startDate,
-  { message: 'endDate must be after startDate', path: ['endDate'] }
+  { error: 'endDate must be after startDate', path: ['endDate'] }
 );
 
 /** Top-level payload schema. At least one phase is required. */
