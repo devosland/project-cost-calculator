@@ -331,10 +331,10 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                   </div>
 
                   <Button
-                    variant="destructive"
+                    variant="ghost"
                     size="sm"
                     onClick={() => removeTeamMember(index)}
-                    className="flex items-center gap-1"
+                    className="flex items-center gap-1 col-span-2 sm:col-span-1 justify-self-end text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="w-3 h-3" />
                     {t('phase.remove')}
