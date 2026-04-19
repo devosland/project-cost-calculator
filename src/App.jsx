@@ -20,17 +20,14 @@ import ProfileView from './components/ProfileView'
 import { getRatesConfig } from './config/rates'
 import { api } from './lib/api'
 import { createProject } from './lib/projectStore'
-import { LogOut, User, LayoutDashboard, BarChart3 } from 'lucide-react'
-import { Button } from './components/ui/button'
-import SaveIndicator from './components/SaveIndicator'
-import ThemeToggle from './components/ThemeToggle'
 import { LocaleProvider, useLocale } from './lib/i18n'
 import { useHashRouter } from './lib/useHashRouter'
 import OnboardingGuide from './components/OnboardingGuide'
+import AppShell from './components/layout/AppShell'
 import './App.css'
 
 function AppContent() {
-  const { t, locale, setLocale } = useLocale();
+  const { locale, setLocale } = useLocale();
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [rates, setRates] = useState(null);
@@ -293,70 +290,18 @@ function AppContent() {
   const activeProject = projects.find(p => p.id === activeProjectId);
 
   return (
-    <div className="min-h-screen">
-      {/* Top bar */}
-      <header className="bg-white border-b sticky top-0 z-20 print:hidden">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">PC</span>
-            </div>
-            <span className="font-semibold text-lg tracking-tight">{t('app.name')}</span>
-            <div className="flex items-center gap-1 ml-4">
-              <Button
-                variant={view === 'projects' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setView('projects')}
-                className="flex items-center gap-1.5"
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                {t('dashboard.title')}
-              </Button>
-              <Button
-                variant={view === 'capacity' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setView('capacity')}
-                className="flex items-center gap-1.5"
-              >
-                <BarChart3 className="w-4 h-4" />
-                {t('capacity.title')}
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant={view === 'profile' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setView('profile')}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
-            >
-              <User className="w-4 h-4" />
-              <span className="hidden sm:inline">{user.name}</span>
-            </Button>
-            <SaveIndicator status={saveStatus} />
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocale(locale === 'fr' ? 'en' : 'fr')}
-              className="text-muted-foreground hover:text-foreground font-medium"
-            >
-              {locale === 'fr' ? 'EN' : 'FR'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-muted-foreground hover:text-foreground"
-              title={t('app.logout')}
-            >
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-6">
+    <>
+      <AppShell
+        user={user}
+        saveStatus={saveStatus}
+        currentView={view}
+        onNavigate={setView}
+        activeProjectName={activeProject?.name || null}
+        onNavigateRoot={() => setActiveProjectId(null)}
+        locale={locale}
+        onLocaleChange={setLocale}
+        onLogout={handleLogout}
+      >
         {view === 'profile' ? (
           <ProfileView user={user} />
         ) : view === 'capacity' ? (
@@ -409,7 +354,7 @@ function AppContent() {
           />
           </>
         )}
-      </main>
+      </AppShell>
 
       {/* Modals */}
       <TemplateManager
@@ -437,7 +382,7 @@ function AppContent() {
         onCreateSnapshot={handleCreateSnapshot}
         onRestoreSnapshot={handleRestoreSnapshot}
       />
-    </div>
+    </>
   );
 }
 
