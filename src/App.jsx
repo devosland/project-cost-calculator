@@ -40,7 +40,13 @@ function AppContent() {
   // Derive view state from URL hash
   const view = segments[0] === 'capacity' ? 'capacity' : segments[0] === 'profile' ? 'profile' : 'projects';
   const activeProjectId = (view === 'projects' && segments[1]) ? segments[1] : null;
-  const hashTab = segments[2] || null;
+  // Tab segment depends on the view:
+  //   /projects/:id/:tab → segments[2]
+  //   /capacity/:tab     → segments[1]
+  // Without this branching, a deep link like #/capacity/gantt would fall back
+  // to the default 'resources' tab on mount (state initialised from initialTab
+  // prop, and for capacity the tab was being read from the wrong index).
+  const hashTab = view === 'capacity' ? (segments[1] || null) : (segments[2] || null);
 
   const setView = useCallback((v) => {
     if (v === 'capacity') navigate('capacity');

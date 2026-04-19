@@ -1,4 +1,4 @@
-# Planificateur - Project Cost Calculator
+# Prism — One project, every perspective.
 
 [![CI](https://github.com/devosland/project-cost-calculator/actions/workflows/ci.yml/badge.svg)](https://github.com/devosland/project-cost-calculator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -12,24 +12,40 @@ A full-featured project planning, budgeting, and capacity management tool built 
 
 ## Screenshots
 
-<!-- TODO: Daniel, replace with actual screenshots/GIFs after deployment.
-Suggested captures:
-- `docs/screenshots/dashboard.png` — Dashboard avec liste de projets et onboarding
-- `docs/screenshots/project-view.png` — Vue projet avec phases éditables
-- `docs/screenshots/capacity-gantt.png` — Gantt de capacité 12 mois
-- `docs/screenshots/transition-planner.png` — Planificateur de transitions avec impact coût
-- `docs/screenshots/api-tester.gif` — Testeur API en action
-Place the files in `docs/screenshots/` and uncomment the block below. -->
+| Dashboard                                       | Project timeline                                              |
+| ----------------------------------------------- | ------------------------------------------------------------- |
+| ![Dashboard](docs/screenshots/02-dashboard.png) | ![Project timeline](docs/screenshots/04-project-timeline.png) |
 
-<!--
-| Dashboard | Project View |
-|-----------|--------------|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Project](docs/screenshots/project-view.png) |
+| Capacity Gantt                                            | Printable summary                                           |
+| --------------------------------------------------------- | ----------------------------------------------------------- |
+| ![Capacity Gantt](docs/screenshots/10-capacity-gantt.png) | ![Project summary](docs/screenshots/07-project-summary.png) |
 
-| Capacity Gantt | Transition Planner |
-|----------------|---------------------|
-| ![Gantt](docs/screenshots/capacity-gantt.png) | ![Transitions](docs/screenshots/transition-planner.png) |
--->
+<details>
+<summary>More screenshots (13 total)</summary>
+
+| Auth                                  | Phases editor                                     |
+| ------------------------------------- | ------------------------------------------------- |
+| ![Auth](docs/screenshots/01-auth.png) | ![Phases](docs/screenshots/03-project-phases.png) |
+
+| Budget tracker                                    | Cost charts                                       |
+| ------------------------------------------------- | ------------------------------------------------- |
+| ![Budget](docs/screenshots/05-project-budget.png) | ![Charts](docs/screenshots/06-project-charts.png) |
+
+| Risk register                                   | Resource pool                                            |
+| ----------------------------------------------- | -------------------------------------------------------- |
+| ![Risks](docs/screenshots/08-project-risks.png) | ![Resources](docs/screenshots/09-capacity-resources.png) |
+
+| Transition plans                                             | Enterprise rates                                 |
+| ------------------------------------------------------------ | ------------------------------------------------ |
+| ![Transitions](docs/screenshots/11-capacity-transitions.png) | ![Rates](docs/screenshots/12-capacity-rates.png) |
+
+| Profile + API keys                          |
+| ------------------------------------------- |
+| ![Profile](docs/screenshots/13-profile.png) |
+
+Screenshots are generated automatically by `scripts/screenshots/capture.mjs` from a deterministic fixture — see [`docs/ui-test-plan.md`](docs/ui-test-plan.md).
+
+</details>
 
 ## Features
 
