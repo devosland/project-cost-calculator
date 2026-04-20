@@ -88,6 +88,7 @@ export function mapRoadmapToProject(payload) {
       includeContingency: false,
       contingencyPercentage: 10,
       includeTaxes: false,
+      taxRate: 4.9875,
       currency: 'CAD',
       startDate: project.startDate,
     },

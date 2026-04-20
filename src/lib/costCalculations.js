@@ -32,10 +32,20 @@ export const DAYS_PER_WEEK = 5;
 export const HOURS_PER_WEEK = HOURS_PER_DAY * DAYS_PER_WEEK;
 
 /**
- * Quebec QST+GST combined tax multiplier (9.975% effective rate).
- * Applied to labour costs only when project.settings.includeTaxes is true.
+ * Default tax rate, in percent, applied to labour costs when
+ * `project.settings.includeTaxes` is true and no per-project `taxRate` is set.
+ * 4.9875% corresponds to Quebec's QST on labour (half of 9.975%, the combined
+ * QST+GST effective rate). Kept as the default for backward compatibility with
+ * projects created before the rate became editable.
  */
-export const TAX_MULTIPLIER = 1.049875;
+export const DEFAULT_TAX_RATE = 4.9875;
+
+/**
+ * @deprecated Prefer reading `project.settings.taxRate` (percent) and computing
+ * `1 + rate/100`. Retained because a legacy, currently-unmounted
+ * `ProjectCostCalculator` still imports it.
+ */
+export const TAX_MULTIPLIER = 1 + DEFAULT_TAX_RATE / 100;
 
 /** Supported display currencies with their Intl locale strings. */
 export const CURRENCIES = [
@@ -244,7 +254,8 @@ export function calculateProjectCost(project, rates) {
     labourCost *= 1 + project.settings.contingencyPercentage / 100;
   }
   if (project.settings.includeTaxes) {
-    labourCost *= TAX_MULTIPLIER;
+    const taxRate = project.settings.taxRate ?? DEFAULT_TAX_RATE;
+    labourCost *= 1 + taxRate / 100;
   }
 
   return labourCost + calculateNonLabourCost(project);

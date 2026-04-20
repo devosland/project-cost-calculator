@@ -131,7 +131,9 @@ const ProjectSummary = ({ project, rates }) => {
               </p>
             )}
             {project.settings.includeTaxes && (
-              <p className="text-xs text-muted-foreground">{t('summary.taxesIncluded')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('summary.taxesIncluded', { percent: project.settings.taxRate ?? 4.9875 })}
+              </p>
             )}
           </div>
 

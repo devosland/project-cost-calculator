@@ -434,6 +434,18 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
                 checked={project.settings.includeTaxes}
                 onCheckedChange={(val) => updateSettings({ includeTaxes: val })}
               />
+              {project.settings.includeTaxes && (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    className="input-field w-20 text-center"
+                    value={project.settings.taxRate ?? 4.9875}
+                    min="0" max="100" step="0.0001"
+                    onChange={(e) => updateSettings({ taxRate: parseFloat(e.target.value) || 0 })}
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">{t('project.startDate')}</Label>
