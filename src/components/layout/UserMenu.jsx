@@ -70,7 +70,7 @@ export default function UserMenu({ user, locale, onLocaleChange, onLogout, onNav
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        aria-label={t('app.user_menu') || 'User menu'}
+        aria-label={t('app.user_menu')}
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -92,19 +92,19 @@ export default function UserMenu({ user, locale, onLocaleChange, onLogout, onNav
           {onNavigateProfile && (
             <div className="py-1">
               <MenuItem icon={User} onClick={() => { onNavigateProfile(); setOpen(false); }}>
-                {t('profile.title') || 'Profile'}
+                {t('profile.title')}
               </MenuItem>
             </div>
           )}
 
           <div className="border-t border-border py-1">
             <MenuItem icon={isDark ? Sun : Moon} onClick={toggleTheme}>
-              {isDark ? t('app.theme_light') || 'Mode clair' : t('app.theme_dark') || 'Mode sombre'}
+              {isDark ? t('app.theme_light') : t('app.theme_dark')}
             </MenuItem>
 
             <div className="px-2 py-1">
               <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                {t('app.language') || 'Langue'}
+                {t('app.language')}
               </p>
               <button
                 type="button"
@@ -133,7 +133,7 @@ export default function UserMenu({ user, locale, onLocaleChange, onLogout, onNav
 
           <div className="border-t border-border py-1">
             <MenuItem icon={LogOut} onClick={() => { onLogout(); setOpen(false); }} destructive>
-              {t('app.logout') || 'Déconnexion'}
+              {t('app.logout')}
             </MenuItem>
           </div>
         </div>

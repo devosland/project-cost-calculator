@@ -28,6 +28,11 @@ const translations = {
     'app.name': 'Planificateur',
     'app.subtitle': 'Calculateur de coûts de projet',
     'app.logout': 'Déconnexion',
+    'app.collapse': 'Réduire',
+    'app.user_menu': 'Menu utilisateur',
+    'app.theme_light': 'Mode clair',
+    'app.theme_dark': 'Mode sombre',
+    'app.language': 'Langue',
 
     // Auth
     'auth.login': 'Connexion',
@@ -535,6 +540,11 @@ const translations = {
     'app.name': 'Planner',
     'app.subtitle': 'Project Cost Calculator',
     'app.logout': 'Log out',
+    'app.collapse': 'Collapse',
+    'app.user_menu': 'User menu',
+    'app.theme_light': 'Light mode',
+    'app.theme_dark': 'Dark mode',
+    'app.language': 'Language',
 
     // Auth
     'auth.login': 'Log in',
