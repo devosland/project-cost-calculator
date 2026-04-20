@@ -73,7 +73,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, currentView, onN
           ) : (
             <>
               <PanelLeftClose className="h-4 w-4" />
-              <span>{t('app.collapse') || 'Collapse'}</span>
+              <span>{t('app.collapse')}</span>
             </>
           )}
         </button>

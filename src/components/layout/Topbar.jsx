@@ -38,7 +38,7 @@ export default function Topbar({
 
   const sectionLabel =
     currentView === 'capacity' ? t('capacity.title') :
-    currentView === 'profile' ? (t('profile.title') || 'Profile') :
+    currentView === 'profile' ? t('profile.title') :
     t('dashboard.title');
 
   return (
