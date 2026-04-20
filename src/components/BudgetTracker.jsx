@@ -195,7 +195,7 @@ const BudgetTracker = ({ project, rates }) => {
               )}
               {project.settings.includeTaxes && (
                 <div className="flex justify-between items-center text-muted-foreground">
-                  <span className="text-sm">{t('budget.taxes')}</span>
+                  <span className="text-sm">{t('budget.taxes', { percent: project.settings.taxRate ?? 4.9875 })}</span>
                   <span className="text-sm">{t('budget.taxesIncluded')}</span>
                 </div>
               )}

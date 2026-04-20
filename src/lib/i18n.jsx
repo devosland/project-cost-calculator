@@ -108,7 +108,7 @@ const translations = {
     'project.share': 'Partager',
     'project.weeks': 'semaines',
     'project.contingency': 'Contingence',
-    'project.taxes': 'Taxes (4,9875%)',
+    'project.taxes': 'Taxes',
     'project.currency': 'Devise',
     'project.addPhase': 'Ajouter une phase',
     'project.totalDuration': 'Durée totale',
@@ -201,7 +201,7 @@ const translations = {
     'budget.otherCosts': 'Autres coûts',
     'budget.contingency': 'Contingence ({percent}%)',
     'budget.contingencyIncluded': "Incluse dans main-d\u2019\u0153uvre",
-    'budget.taxes': 'Taxes (4,9875%)',
+    'budget.taxes': 'Taxes ({percent}%)',
     'budget.taxesIncluded': "Incluses dans main-d\u2019\u0153uvre",
 
     // Non-labour costs
@@ -253,7 +253,7 @@ const translations = {
     'summary.labour': "Main-d\u2019\u0153uvre",
     'summary.otherCosts': 'Autres coûts',
     'summary.contingencyIncluded': 'Contingence de {percent}% incluse',
-    'summary.taxesIncluded': 'Taxes (4,9875%) incluses',
+    'summary.taxesIncluded': 'Taxes de {percent}% incluses',
     'summary.phases': 'Phases',
     'summary.phase': 'Phase',
     'summary.budget': 'Budget',
@@ -615,7 +615,7 @@ const translations = {
     'project.share': 'Share',
     'project.weeks': 'weeks',
     'project.contingency': 'Contingency',
-    'project.taxes': 'Taxes (4.9875%)',
+    'project.taxes': 'Taxes',
     'project.currency': 'Currency',
     'project.addPhase': 'Add a phase',
     'project.totalDuration': 'Total duration',
@@ -708,7 +708,7 @@ const translations = {
     'budget.otherCosts': 'Other costs',
     'budget.contingency': 'Contingency ({percent}%)',
     'budget.contingencyIncluded': 'Included in labour',
-    'budget.taxes': 'Taxes (4.9875%)',
+    'budget.taxes': 'Taxes ({percent}%)',
     'budget.taxesIncluded': 'Included in labour',
 
     // Non-labour costs
@@ -760,7 +760,7 @@ const translations = {
     'summary.labour': 'Labour',
     'summary.otherCosts': 'Other costs',
     'summary.contingencyIncluded': '{percent}% contingency included',
-    'summary.taxesIncluded': 'Taxes (4.9875%) included',
+    'summary.taxesIncluded': 'Taxes ({percent}%) included',
     'summary.phases': 'Phases',
     'summary.phase': 'Phase',
     'summary.budget': 'Budget',

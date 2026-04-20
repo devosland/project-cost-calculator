@@ -83,7 +83,7 @@ Screenshots are generated automatically by `scripts/screenshots/capture.mjs` fro
 - Budget tracking with progress bar and variance analysis
 - Non-labour cost categories (infrastructure, licenses, SaaS, travel, etc.)
 - Multi-currency support: CAD, USD, EUR, GBP with locale-aware formatting
-- Contingency percentage and Quebec tax (4.9875%) toggles
+- Contingency and tax toggles, with editable rates (tax defaults to 4.9875%)
 
 ### Collaboration
 
