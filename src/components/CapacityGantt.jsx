@@ -18,9 +18,10 @@
  * projected-only view.
  */
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileSpreadsheet } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
+import { api } from '../lib/api';
 import { capacityApi } from '../lib/capacityApi';
 import { getMonthRange, calculateUtilization, projectAssignmentsWithPlan } from '../lib/capacityCalculations';
 import GanttBar from './GanttBar';
@@ -85,6 +86,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
   const [data, setData] = useState({ resources: [], assignments: [] });
   const [collapsed, setCollapsed] = useState({});
   const [quickTransition, setQuickTransition] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   // Preview mode state
   const [previewPlan, setPreviewPlan] = useState(null);   // full plan object once fetched
@@ -138,6 +140,38 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
 
   const toggleCollapse = (key) =>
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  /**
+   * Export the current Gantt window to an XLSX file (one sheet per project).
+   * Fetches the user's projects from /data so the export has access to budgets
+   * and non-labour costs that aren't carried by the Gantt endpoint.
+   */
+  const handleExportExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // Dynamic import keeps exceljs (~400kB) out of the initial bundle —
+      // only users who click Export pay the download cost.
+      const [{ projects }, { downloadGanttExcel }] = await Promise.all([
+        api.loadData(),
+        import('../lib/ganttExcelExport'),
+      ]);
+      await downloadGanttExcel({
+        projects: projects || [],
+        resources,
+        assignments,
+        months,
+        rates,
+        locale,
+      });
+    } catch (err) {
+      console.error('Excel export failed:', err);
+      // eslint-disable-next-line no-alert
+      alert(t('capacity.exportError'));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   /**
    * Formate un mois 'YYYY-MM' en abréviation localisée (ex: "jan.", "Feb").
@@ -572,16 +606,30 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
             {t('capacity.byType')}
           </Button>
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" onClick={() => setStartMonth(addMonths(startMonth, -1))}>
-            <ChevronLeft className="w-4 h-4" />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={exporting || assignments.length === 0}
+            title={t('capacity.exportExcel')}
+            aria-label={t('capacity.exportExcel')}
+            className="flex items-center gap-1.5"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span className="hidden sm:inline">{t('capacity.exportExcel')}</span>
           </Button>
-          <span className="text-sm font-medium px-2">
-            {formatMonth(startMonth)} — {formatMonth(endMonth)}
-          </span>
-          <Button variant="outline" size="sm" onClick={() => setStartMonth(addMonths(startMonth, 1))}>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" onClick={() => setStartMonth(addMonths(startMonth, -1))}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-medium px-2">
+              {formatMonth(startMonth)} — {formatMonth(endMonth)}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setStartMonth(addMonths(startMonth, 1))}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
