@@ -345,8 +345,11 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                   Période capacity : affichée seulement si startMonth ou endMonth est défini.
                   UX : éviter de polluer l'interface par défaut — le lien "+" permet d'ajouter
                   la période uniquement si nécessaire (cas: même ressource sur périodes discontinues).
+                  Pas de verrou sur resourceId : une période reste utile même pour un membre
+                  "rôle seul" (non lié au pool), puisque calculateMemberProratedCost l'utilise
+                  pour proratiser le coût quel que soit le membre.
                 */}
-                {member.resourceId && (member.startMonth || member.endMonth ? (
+                {(member.startMonth || member.endMonth) ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                     <span>{t('phase.period')} :</span>
                     <input
@@ -385,7 +388,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                   >
                     + {t('phase.period')}
                   </button>
-                ))}
+                )}
 
                 {/* Détails de coût (taux, h/sem, coût/sem) — visibles seulement en mode authorized */}
                 {isAuthorized && (
