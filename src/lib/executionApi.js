@@ -102,6 +102,10 @@ export const executionApi = {
   /** Per-epic hours + cost, includes zero-cost epics. */
   getEpicCosts: (projectId) => request(`/projects/${projectId}/epic-costs`),
 
+  /** Cross-project "My work": tasks whose assignee resource is linked to the
+   *  logged-in user. Rows carry project_id + project_name for grouping. */
+  getMyTasks: () => request('/my-tasks'),
+
   // --- Accounting period lock (Decision 8) ---
 
   /** List the past 12 months with open/closed status + who closed. */

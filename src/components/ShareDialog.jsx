@@ -15,6 +15,7 @@ import { useFocusTrap } from '../lib/useFocusTrap';
 /** Role → Prism token (info for viewer = read-only, warning for editor = mutable access). */
 const roleTokens = {
   viewer: '--prism-info',
+  member: '--prism-success',
   editor: '--prism-warning',
 };
 
@@ -52,8 +53,12 @@ const ShareDialog = ({ open, onClose, shares, onShare, onUnshare }) => {
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // `member` is the team-level role: logs time + transitions own tasks,
+  // never sees finance tabs. Positioned between viewer and editor so the
+  // dropdown reads naturally from least-to-most privileged.
   const ROLE_OPTIONS = [
     { value: 'viewer', label: t('share.roleViewer') },
+    { value: 'member', label: t('share.roleMember') },
     { value: 'editor', label: t('share.roleEditor') },
   ];
 

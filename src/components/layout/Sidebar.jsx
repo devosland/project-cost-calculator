@@ -8,7 +8,7 @@
  *   - Nav items : Dashboard + Capacity, état actif dérivé de currentView
  *   - Footer : bouton de bascule collapse/expand
  */
-import { LayoutDashboard, BarChart3, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Briefcase, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import PrismLogo from '../brand/PrismLogo';
 import PrismWordmark from '../brand/PrismWordmark';
 import { useLocale } from '../../lib/i18n';
@@ -26,6 +26,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, currentView, onN
 
   const items = [
     { id: 'projects', label: t('dashboard.title'), icon: LayoutDashboard },
+    { id: 'my-work', label: t('myWork.title'), icon: Briefcase },
     { id: 'capacity', label: t('capacity.title'), icon: BarChart3 },
   ];
 
