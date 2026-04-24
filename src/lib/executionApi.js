@@ -101,4 +101,19 @@ export const executionApi = {
 
   /** Per-epic hours + cost, includes zero-cost epics. */
   getEpicCosts: (projectId) => request(`/projects/${projectId}/epic-costs`),
+
+  // --- Accounting period lock (Decision 8) ---
+
+  /** List the past 12 months with open/closed status + who closed. */
+  listPeriods: (projectId) => request(`/projects/${projectId}/periods`),
+
+  /** Close a period (YYYY-MM). Idempotent — calling twice is fine. */
+  closePeriod: (projectId, yyyyMM) => request(`/projects/${projectId}/periods/${yyyyMM}`, {
+    method: 'POST',
+  }),
+
+  /** Reopen a period. */
+  reopenPeriod: (projectId, yyyyMM) => request(`/projects/${projectId}/periods/${yyyyMM}`, {
+    method: 'DELETE',
+  }),
 };
