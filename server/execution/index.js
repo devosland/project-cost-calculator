@@ -21,12 +21,15 @@ import {
   storyCreateSchema, storyUpdateSchema,
   taskCreateSchema, taskUpdateSchema,
   transitionSchema,
+  timeEntryCreateSchema, timeEntryUpdateSchema,
 } from './schemas.js';
 import {
   getProjectRole, hasRole,
   projectIdForEpic, projectIdForStory, projectIdForTask,
 } from './permissions.js';
 import { nextKey } from './keys.js';
+import { loadProjectRates, getHourlyRate } from './rates.js';
+import { getProjectActuals, getEpicCosts } from './rollups.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -449,6 +452,243 @@ router.post('/tasks/:id/transition', (req, res) => {
 
   db.prepare('UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(to, id);
   res.json(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id));
+});
+
+// ---------------------------------------------------------------------------
+// Time entries
+// ---------------------------------------------------------------------------
+
+/**
+ * True iff `date` (YYYY-MM-DD) falls inside a period that the project's
+ * owner / editor has marked closed. No API to close yet (PR 5), so this is
+ * effectively a no-op today — wiring it now means PR 5 does not need to
+ * retrofit any endpoint.
+ */
+function isPeriodClosed(projectId, dateStr) {
+  const period = dateStr.slice(0, 7); // YYYY-MM
+  const row = db.prepare(
+    'SELECT 1 FROM project_closed_periods WHERE project_id = ? AND period = ?'
+  ).get(projectId, period);
+  return !!row;
+}
+
+/**
+ * True iff `dateStr` is strictly after today (local wallclock). Prevents
+ * post-dated entries from inflating forecasts that haven't happened yet.
+ */
+function isFutureDate(dateStr) {
+  const today = new Date().toISOString().slice(0, 10);
+  return dateStr > today;
+}
+
+/**
+ * Resolve which resource the caller is logging time against, and the rate
+ * to snapshot. Encapsulates Decision 9 ("own tasks only") plus the owner
+ * override for unassigned backlog tasks.
+ *
+ * Returns either `{ ok: true, resourceId, rate, role, level }` or a failure
+ * `{ ok: false, status, body }` that the caller passes straight to res.
+ *
+ * The caller has already verified project access; this only layers on the
+ * logging-specific checks.
+ */
+function resolveLogger({ userId, role, task, bodyResourceId, rates }) {
+  let resourceId = task.assignee_id;
+
+  if (resourceId === null) {
+    // Unassigned backlog — Decision 9: only the project owner can log time
+    // on these, and they must explicitly name the resource they are logging
+    // on behalf of (so the rate lookup has inputs).
+    if (role !== 'owner') {
+      return { ok: false, status: 403, body: { error: 'unassigned_task_owner_only' } };
+    }
+    if (!bodyResourceId) {
+      return { ok: false, status: 400, body: { error: 'resource_id_required', hint: 'Include resource_id when logging on an unassigned task.' } };
+    }
+    resourceId = bodyResourceId;
+  }
+
+  const resource = db.prepare('SELECT * FROM resources WHERE id = ?').get(resourceId);
+  if (!resource) {
+    return { ok: false, status: 400, body: { error: 'unknown_resource' } };
+  }
+
+  // Ownership: caller is either the project owner (override) or the linked
+  // user for this resource. Linked-user flow is fully unlocked once PR 4
+  // lands the UI; before then, only owners can log (linked_user_id stays
+  // null on every resource).
+  const isOwner = role === 'owner';
+  const isLinked = resource.linked_user_id === userId;
+  if (!isOwner && !isLinked) {
+    return { ok: false, status: 403, body: { error: 'not_your_task' } };
+  }
+
+  const rate = getHourlyRate(rates, resource.role, resource.level);
+  return { ok: true, resource, rate };
+}
+
+/**
+ * GET /api/execution/tasks/:taskId/time
+ * List all entries logged on a task. Anyone who can read the project can see them.
+ */
+router.get('/tasks/:taskId/time', (req, res) => {
+  const taskId = Number(req.params.taskId);
+  const projectId = projectIdForTask(taskId);
+  const role = projectId ? getProjectRole(projectId, req.user.id) : null;
+  if (gateAccess(res, role, 'viewer')) return;
+  const entries = db.prepare(`
+    SELECT * FROM time_entries WHERE task_id = ? ORDER BY date DESC, id DESC
+  `).all(taskId);
+  res.json(entries);
+});
+
+/**
+ * POST /api/execution/tasks/:taskId/time
+ * Body: { date, hours, note?, source?, resource_id? }
+ *
+ * Creates a time_entry with rate SNAPSHOTTED from the project owner's rate
+ * card at this moment. The IPC May rate bump is the motivating case: April
+ * entries logged today must freeze at today's rate, not get repriced in May.
+ */
+router.post('/tasks/:taskId/time', (req, res) => {
+  const taskId = Number(req.params.taskId);
+  const projectId = projectIdForTask(taskId);
+  const role = projectId ? getProjectRole(projectId, req.user.id) : null;
+  if (gateAccess(res, role, 'editor')) return;
+
+  const parsed = timeEntryCreateSchema.safeParse(req.body);
+  if (!parsed.success) return respondValidationError(res, parsed.error);
+  const data = parsed.data;
+
+  if (isFutureDate(data.date)) {
+    return res.status(400).json({ error: 'future_date' });
+  }
+  if (isPeriodClosed(projectId, data.date)) {
+    return res.status(423).json({ error: 'period_closed', period: data.date.slice(0, 7) });
+  }
+
+  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+  const rates = loadProjectRates(projectId);
+  const resolved = resolveLogger({
+    userId: req.user.id, role, task, bodyResourceId: data.resource_id, rates,
+  });
+  if (!resolved.ok) return res.status(resolved.status).json(resolved.body);
+  const { resource, rate } = resolved;
+
+  try {
+    const r = db.prepare(`
+      INSERT INTO time_entries (task_id, resource_id, date, hours, note, rate_hourly, rate_role, rate_level, source, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run(taskId, resource.id, data.date, data.hours, data.note ?? null, rate, resource.role, resource.level, data.source ?? 'manual');
+    const entry = db.prepare('SELECT * FROM time_entries WHERE id = ?').get(Number(r.lastInsertRowid));
+    res.status(201).json(entry);
+  } catch (err) {
+    console.error('Create time entry error:', err);
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+/**
+ * PUT /api/execution/time/:id
+ * Only hours / date / note are editable. Rate and task/resource are frozen —
+ * to re-log against a different resource, delete and recreate.
+ *
+ * Both the OLD and NEW date must be in open periods. Moving an entry out of
+ * a closed month is forbidden (the row is locked); moving one into a closed
+ * month is also forbidden (preserves the closure's integrity).
+ */
+router.put('/time/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT * FROM time_entries WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'not_found' });
+  const projectId = projectIdForTask(existing.task_id);
+  const role = projectId ? getProjectRole(projectId, req.user.id) : null;
+  if (gateAccess(res, role, 'editor')) return;
+
+  // Own-entry check: editors can edit only their own entries; owners can
+  // edit any. The resource's linked_user_id is the identity tie-in.
+  if (role !== 'owner') {
+    const resource = db.prepare('SELECT linked_user_id FROM resources WHERE id = ?').get(existing.resource_id);
+    if (!resource || resource.linked_user_id !== req.user.id) {
+      return res.status(403).json({ error: 'not_your_entry' });
+    }
+  }
+
+  const parsed = timeEntryUpdateSchema.safeParse(req.body);
+  if (!parsed.success) return respondValidationError(res, parsed.error);
+  const data = parsed.data;
+
+  if (data.date) {
+    if (isFutureDate(data.date)) return res.status(400).json({ error: 'future_date' });
+    if (isPeriodClosed(projectId, data.date)) {
+      return res.status(423).json({ error: 'period_closed', period: data.date.slice(0, 7) });
+    }
+  }
+  if (isPeriodClosed(projectId, existing.date)) {
+    return res.status(423).json({ error: 'period_closed', period: existing.date.slice(0, 7) });
+  }
+
+  const columns = {};
+  if (data.date !== undefined) columns.date = data.date;
+  if (data.hours !== undefined) columns.hours = data.hours;
+  if (data.note !== undefined) columns.note = data.note;
+
+  if (Object.keys(columns).length > 0) {
+    const sets = Object.keys(columns).map((k) => `${k} = @${k}`);
+    sets.push('updated_at = CURRENT_TIMESTAMP');
+    db.prepare(`UPDATE time_entries SET ${sets.join(', ')} WHERE id = @id`).run({ ...columns, id });
+  }
+  res.json(db.prepare('SELECT * FROM time_entries WHERE id = ?').get(id));
+});
+
+/** DELETE /api/execution/time/:id */
+router.delete('/time/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare('SELECT * FROM time_entries WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'not_found' });
+  const projectId = projectIdForTask(existing.task_id);
+  const role = projectId ? getProjectRole(projectId, req.user.id) : null;
+  if (gateAccess(res, role, 'editor')) return;
+
+  if (role !== 'owner') {
+    const resource = db.prepare('SELECT linked_user_id FROM resources WHERE id = ?').get(existing.resource_id);
+    if (!resource || resource.linked_user_id !== req.user.id) {
+      return res.status(403).json({ error: 'not_your_entry' });
+    }
+  }
+  if (isPeriodClosed(projectId, existing.date)) {
+    return res.status(423).json({ error: 'period_closed', period: existing.date.slice(0, 7) });
+  }
+  db.prepare('DELETE FROM time_entries WHERE id = ?').run(id);
+  res.json({ success: true });
+});
+
+// ---------------------------------------------------------------------------
+// Rollups — read-only views over time_entries
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/execution/projects/:projectId/actuals
+ * Returns { hours, cost, by_month, by_phase }. by_month is a map 'YYYY-MM' →
+ * { hours, cost }; by_phase is a map phase_id → { hours, cost } with epic
+ * costs equal-split across linked phases.
+ */
+router.get('/projects/:projectId/actuals', (req, res) => {
+  const { projectId } = req.params;
+  const role = getProjectRole(projectId, req.user.id);
+  if (gateAccess(res, role, 'viewer')) return;
+  res.json(getProjectActuals(projectId));
+});
+
+/**
+ * GET /api/execution/projects/:projectId/epic-costs
+ * Per-epic rollup including zero-cost epics, for Board/Dashboard widgets.
+ */
+router.get('/projects/:projectId/epic-costs', (req, res) => {
+  const { projectId } = req.params;
+  const role = getProjectRole(projectId, req.user.id);
+  if (gateAccess(res, role, 'viewer')) return;
+  res.json(getEpicCosts(projectId));
 });
 
 export default router;
