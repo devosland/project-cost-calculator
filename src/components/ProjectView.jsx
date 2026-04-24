@@ -12,7 +12,7 @@ import { Dropdown } from './ui/dropdown';
 import {
   ArrowLeft, PlusCircle, Trash2, ChevronUp, ChevronDown,
   LayoutDashboard, Calendar, DollarSign, BarChart3, FileText,
-  Share2, History, AlertTriangle, Bell, Pencil, Check, X, Download,
+  Share2, History, AlertTriangle, Bell, Pencil, Check, X, Download, Briefcase,
 } from 'lucide-react';
 import PhaseEditor from './PhaseEditor';
 import TimelineView from './TimelineView';
@@ -22,6 +22,7 @@ import CostCharts from './CostCharts';
 import ProjectSummary from './ProjectSummary';
 import ResourceConflicts from './ResourceConflicts';
 import RiskRegister from './RiskRegister';
+import WorkView from './execution/WorkView';
 import { createPhase, exportProject, exportProjectCSV } from '../lib/projectStore';
 import { capacityApi } from '../lib/capacityApi';
 import {
@@ -251,6 +252,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
     { id: 'phases', label: t('tab.phases'), icon: LayoutDashboard },
     { id: 'timeline', label: t('tab.timeline'), icon: Calendar },
     { id: 'budget', label: t('tab.budget'), icon: DollarSign },
+    { id: 'work', label: t('tab.work'), icon: Briefcase },
     { id: 'charts', label: t('tab.charts'), icon: BarChart3 },
     { id: 'summary', label: t('tab.summary'), icon: FileText },
     { id: 'risks', label: t('tab.risks'), icon: AlertTriangle },
@@ -620,6 +622,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
       )}
 
       {/* --- Onglets Charts et Sommaire --- */}
+      {activeTab === 'work' && <WorkView project={project} />}
       {activeTab === 'charts' && <CostCharts project={project} rates={rates} />}
       {activeTab === 'summary' && <ProjectSummary project={project} rates={rates} />}
       {/* Note: l'onglet Rates a été déplacé dans CapacityView (Rates tab moved to CapacityView) */}
