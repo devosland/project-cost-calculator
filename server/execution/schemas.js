@@ -80,3 +80,28 @@ export const taskUpdateSchema = z.object({
 export const transitionSchema = z.object({
   to: z.string().min(1),
 });
+
+// --- Time entries ---
+//
+// Date is YYYY-MM-DD. Hours is decimal (Decision 11). `resource_id` is only
+// accepted on POST — and only by the project owner when logging on an
+// unassigned task. It is deliberately NOT in the update schema since moving
+// a time entry between resources would break the snapshotted rate_* columns.
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' });
+const hoursField = z.number().positive().max(24);
+const noteField = z.string().max(2000).optional().nullable();
+
+export const timeEntryCreateSchema = z.object({
+  date: isoDate,
+  hours: hoursField,
+  note: noteField,
+  source: z.enum(['manual', 'timer']).optional(),
+  resource_id: z.number().int().positive().optional(),
+});
+
+export const timeEntryUpdateSchema = z.object({
+  date: isoDate.optional(),
+  hours: hoursField.optional(),
+  note: noteField,
+});

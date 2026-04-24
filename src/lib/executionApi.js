@@ -71,4 +71,34 @@ export const executionApi = {
   transitionTask: (id, to) => request(`/tasks/${id}/transition`, {
     method: 'POST', body: JSON.stringify({ to }),
   }),
+
+  // --- Time entries ---
+
+  /** List every time entry logged on a task. */
+  listTime: (taskId) => request(`/tasks/${taskId}/time`),
+
+  /** Log time on a task. The rate is snapshotted server-side from the project
+   *  owner's rate card — clients never compute it.
+   *  @param {object} body - { date, hours, note?, source?, resource_id? }.
+   *    `resource_id` is only needed when the task has no assignee (project
+   *    owner logging on behalf of a resource).
+   */
+  logTime: (taskId, body) => request(`/tasks/${taskId}/time`, {
+    method: 'POST', body: JSON.stringify(body),
+  }),
+
+  /** Edit a time entry — only hours, date, note are mutable. */
+  updateTime: (id, body) => request(`/time/${id}`, {
+    method: 'PUT', body: JSON.stringify(body),
+  }),
+
+  removeTime: (id) => request(`/time/${id}`, { method: 'DELETE' }),
+
+  // --- Rollups ---
+
+  /** Project-wide actuals: totals + by_month (YYYY-MM map) + by_phase map. */
+  getActuals: (projectId) => request(`/projects/${projectId}/actuals`),
+
+  /** Per-epic hours + cost, includes zero-cost epics. */
+  getEpicCosts: (projectId) => request(`/projects/${projectId}/epic-costs`),
 };
