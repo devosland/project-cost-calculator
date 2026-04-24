@@ -166,7 +166,6 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
       });
     } catch (err) {
       console.error('Excel export failed:', err);
-      // eslint-disable-next-line no-alert
       alert(t('capacity.exportError'));
     } finally {
       setExporting(false);
