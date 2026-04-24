@@ -70,6 +70,7 @@ const LABELS = {
     cost: 'Coût',
     totalHT: 'Total prévisionnel (hors tx.)',
     totalTTC: 'Total prévisionnel (avec tx.)',
+    realsMonthly: 'Réels cumulés (tx incl.)',
     nlHeader: 'Non-labour',
     nlName: 'Nom',
     nlCat: 'Catégorie',
@@ -99,6 +100,7 @@ const LABELS = {
     cost: 'Cost',
     totalHT: 'Forecast (pre-tax)',
     totalTTC: 'Forecast (tax incl.)',
+    realsMonthly: 'Actuals cumulative (tax incl.)',
     nlHeader: 'Non-labour',
     nlName: 'Name',
     nlCat: 'Category',
@@ -172,6 +174,7 @@ function allocationForMonth(assignments, resourceId, projectId, ym) {
 function buildProjectSheet(ws, ctx) {
   const {
     project, projectAssignments, months, resourceById, rates, labels, projectResourceIds,
+    actualsByMonth,
   } = ctx;
 
   const taxRate = project?.settings?.taxRate ?? 4.9875;
@@ -342,7 +345,26 @@ function buildProjectSheet(ws, ctx) {
     ttcCell.font = { bold: true };
   });
 
-  currentRow = totalTTCRow + 2; // leave a blank row
+  // --- Réels cumulés row (optional) -----------------------------------------
+  // Populated only when the caller passes `actuals` — otherwise the exporter
+  // still works exactly as before (backwards-compatible with the v1 of this
+  // generator that shipped before the execution module existed).
+  let realsRow = null;
+  if (actualsByMonth) {
+    realsRow = totalTTCRow + 1;
+    ws.getCell(realsRow, 4).value = labels.realsMonthly;
+    ws.getCell(realsRow, 4).font = { bold: true, italic: true };
+    months.forEach((ym, i) => {
+      const costCol = FIRST_MONTH_COL + i * MONTH_COLS_PER_MONTH + 1;
+      const cell = ws.getCell(realsRow, costCol);
+      const entry = actualsByMonth[ym];
+      cell.value = entry ? entry.cost : 0;
+      cell.numFmt = '#,##0.00';
+      cell.font = { italic: true };
+    });
+  }
+
+  currentRow = (realsRow ?? totalTTCRow) + 2; // leave a blank row
 
   // --- Non-labour block ----------------------------------------------------
   const nlItems = project?.nonLabourCosts || [];
@@ -458,9 +480,15 @@ function cellAddr(row, col) {
  * @param {Array<string>} params.months - `YYYY-MM` labels defining the export window (typically the Gantt's 12-month range).
  * @param {object} params.rates       - User rate card ({ INTERNAL_RATE, CONSULTANT_RATES }).
  * @param {string} [params.locale]    - 'fr' or 'en' — drives header labels and month formatting.
+ * @param {object} [params.actuals]   - Optional rollup output keyed by
+ *   project id: `{ <projectId>: { by_month: { 'YYYY-MM': { cost, hours } } } }`.
+ *   When present, each sheet gets a "Réels cumulés" row below the forecast
+ *   totals with the monthly actuals from that project's rollup. Omitting
+ *   this param keeps the exporter's pre-execution-module behaviour
+ *   (backwards-compatible with existing callers that don't fetch actuals).
  * @returns {Promise<ArrayBuffer>}
  */
-export async function generateGanttExcelBuffer({ projects, resources, assignments, months, rates, locale = 'fr' }) {
+export async function generateGanttExcelBuffer({ projects, resources, assignments, months, rates, locale = 'fr', actuals }) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Prism';
   wb.created = new Date();
@@ -502,6 +530,7 @@ export async function generateGanttExcelBuffer({ projects, resources, assignment
       rates,
       labels,
       projectResourceIds,
+      actualsByMonth: actuals?.[projectId]?.by_month ?? null,
     });
   }
 

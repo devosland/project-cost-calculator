@@ -143,4 +143,53 @@ describe('ganttExcelExport', () => {
     expect(wb.worksheets).toHaveLength(1);
     expect(wb.worksheets[0].getCell('A1').value).toMatch(/aucune|no data/i);
   });
+
+  it('omits the Réels row when no actuals are provided (backwards-compatible)', async () => {
+    const buf = await generateGanttExcelBuffer({
+      projects: PROJECTS, resources: RESOURCES, assignments: ASSIGNMENTS, months: MONTHS, rates: RATES, locale: 'fr',
+    });
+    const wb = await reload(buf);
+    const ws = wb.getWorksheet('Portail Client');
+    // Sweep a reasonable range for the Réels label — it must not appear.
+    let found = false;
+    for (let r = 1; r < 50; r++) {
+      const v = ws.getCell(r, 4).value;
+      if (typeof v === 'string' && /Réels cumulés/i.test(v)) found = true;
+    }
+    expect(found).toBe(false);
+  });
+
+  it('adds a Réels cumulés row when actuals are provided', async () => {
+    const actuals = {
+      10: { by_month: { '2026-01': { cost: 1500, hours: 10 }, '2026-03': { cost: 800, hours: 5 } } },
+    };
+    const buf = await generateGanttExcelBuffer({
+      projects: PROJECTS, resources: RESOURCES, assignments: ASSIGNMENTS, months: MONTHS, rates: RATES, locale: 'fr', actuals,
+    });
+    const wb = await reload(buf);
+    const ws = wb.getWorksheet('Portail Client');
+
+    // Find the Réels label in column D.
+    let realsRow = null;
+    for (let r = 1; r < 60; r++) {
+      const v = ws.getCell(r, 4).value;
+      if (typeof v === 'string' && v.includes('Réels cumulés')) { realsRow = r; break; }
+    }
+    expect(realsRow).not.toBeNull();
+
+    // Month columns start at column F (=6); cost cell is the second of each 2-col month pair (G, I, K...).
+    // MONTHS = ['2026-01', '2026-02', '2026-03']. Costs should be 1500, 0, 800.
+    expect(ws.getCell(realsRow, 7).value).toBe(1500); // Jan cost
+    expect(ws.getCell(realsRow, 9).value).toBe(0);    // Feb — absent from actuals, falls back to 0
+    expect(ws.getCell(realsRow, 11).value).toBe(800); // Mar cost
+
+    // Projects without actuals in the map still render without a Réels row.
+    const wsB = wb.getWorksheet('Migration ERP');
+    let found = false;
+    for (let r = 1; r < 60; r++) {
+      const v = wsB.getCell(r, 4).value;
+      if (typeof v === 'string' && v.includes('Réels cumulés')) found = true;
+    }
+    expect(found).toBe(false);
+  });
 });

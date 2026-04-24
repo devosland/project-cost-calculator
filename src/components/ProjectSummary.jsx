@@ -8,11 +8,12 @@
  * startMonth/endMonth, capped to the phase duration — kept local to avoid
  * changing the shared library for a single display use-case.
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Download } from 'lucide-react';
 import { useLocale, getDateLocale } from '../lib/i18n';
+import { executionApi } from '../lib/executionApi';
 import {
   calculateProjectCost,
   calculateProjectDurationWeeks,
@@ -42,6 +43,18 @@ const ProjectSummary = ({ project, rates }) => {
   const burnRate = calculateBurnRate(project, rates);
   const budget = project.budget;
   const hasBudget = budget !== null && budget !== undefined && budget > 0;
+
+  // Actuals pulled from the execution module. Non-fatal: empty projects
+  // and shares without execution visibility still render the rest of the
+  // summary normally; the actuals row falls back to zeros.
+  const [actuals, setActuals] = useState({ hours: 0, cost: 0 });
+  useEffect(() => {
+    let cancelled = false;
+    executionApi.getActuals(project.id)
+      .then((d) => { if (!cancelled) setActuals({ hours: d.hours || 0, cost: d.cost || 0 }); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [project.id]);
 
   const totalMembers = project.phases.reduce(
     (sum, p) => sum + p.teamMembers.reduce((s, m) => s + m.quantity, 0),
@@ -135,6 +148,22 @@ const ProjectSummary = ({ project, rates }) => {
                 {t('summary.taxesIncluded', { percent: project.settings.taxRate ?? 4.9875 })}
               </p>
             )}
+
+            {/* Actuals from logged time — appears even when zero so the loop
+                between execution and pilotage is always visible on the report. */}
+            <div className="mt-4 pt-3 border-t border-border print:break-inside-avoid">
+              <h4 className="text-sm font-semibold mb-2">{t('summary.actualsTitle')}</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex justify-between p-2 bg-muted rounded print:bg-white print:border">
+                  <span>{t('summary.hoursLogged')}</span>
+                  <span className="font-mono font-semibold tabular-nums">{actuals.hours.toFixed(2)} h</span>
+                </div>
+                <div className="flex justify-between p-2 bg-muted rounded print:bg-white print:border">
+                  <span>{t('summary.actualCost')}</span>
+                  <span className="font-mono font-semibold tabular-nums">{fmt(actuals.cost)}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div>

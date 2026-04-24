@@ -152,10 +152,27 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
     try {
       // Dynamic import keeps exceljs (~400kB) out of the initial bundle —
       // only users who click Export pay the download cost.
-      const [{ projects }, { downloadGanttExcel }] = await Promise.all([
+      const [{ projects }, { downloadGanttExcel }, { executionApi }] = await Promise.all([
         api.loadData(),
         import('../lib/ganttExcelExport'),
+        import('../lib/executionApi'),
       ]);
+      // Fetch actuals in parallel for every project that has assignments in
+      // the current Gantt window. Best-effort per project — a 404 / 403 on
+      // one project (rare, only if ACL drifts mid-session) is swallowed so
+      // the rest of the export still ships.
+      const projectIdsInScope = [...new Set(assignments.map((a) => a.project_id))];
+      const actualsEntries = await Promise.all(
+        projectIdsInScope.map(async (pid) => {
+          try {
+            const rollup = await executionApi.getActuals(pid);
+            return [pid, rollup];
+          } catch {
+            return [pid, null];
+          }
+        })
+      );
+      const actuals = Object.fromEntries(actualsEntries.filter(([, v]) => v));
       await downloadGanttExcel({
         projects: projects || [],
         resources,
@@ -163,6 +180,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
         months,
         rates,
         locale,
+        actuals,
       });
     } catch (err) {
       console.error('Excel export failed:', err);
