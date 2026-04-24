@@ -43,7 +43,15 @@ router.use(authMiddleware);
  */
 router.get('/resources', (req, res) => {
   try {
-    const resources = getResourcesByUser(req.user.id);
+    // LEFT JOIN users so the UI can show "Linked user" without a second query.
+    // linked_user_email is null for resources with no linkage (most consultants).
+    const resources = db.prepare(`
+      SELECT r.*, u.email AS linked_user_email, u.name AS linked_user_name
+      FROM resources r
+      LEFT JOIN users u ON u.id = r.linked_user_id
+      WHERE r.user_id = ?
+      ORDER BY r.name
+    `).all(req.user.id);
     res.json(resources);
   } catch (err) {
     console.error('List resources error:', err);
@@ -124,6 +132,107 @@ router.delete('/resources/:id', (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Delete resource error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/capacity/share-candidates
+ * Returns the set of users who may legally be linked to one of this user's
+ * resources: the caller themselves plus anyone shared on any project they
+ * own. Powering the "Linked user" dropdown in ResourcePool without exposing
+ * the full user directory.
+ *
+ * Returns: 200 [{ id, email, name, linked_resource_id }]
+ *   linked_resource_id is the id of the resource they are already linked to
+ *   in the caller's pool (null if not linked), so the UI can show "Bob
+ *   (already linked to Alice)" in the dropdown rather than a silent server-
+ *   side 409 on save.
+ */
+router.get('/share-candidates', (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT u.id, u.email, u.name,
+             (SELECT r.id FROM resources r WHERE r.user_id = ? AND r.linked_user_id = u.id) AS linked_resource_id
+      FROM users u
+      WHERE u.id = ?
+         OR u.id IN (
+           SELECT ps.user_id FROM project_shares ps
+           JOIN projects p ON p.id = ps.project_id
+           WHERE p.owner_id = ?
+         )
+      ORDER BY u.name, u.email
+    `).all(req.user.id, req.user.id, req.user.id);
+    res.json(rows);
+  } catch (err) {
+    console.error('List share candidates error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /api/capacity/resources/:id/user
+ * Body: { user_id: number | null }
+ *
+ * Dedicated endpoint for the linkage so the Resource Pool can set it from a
+ * single dropdown interaction, and so validation can be specific:
+ *   400 invalid_user    — target user is not a share candidate
+ *   409 already_linked  — that user is already linked to a different resource
+ *                         in this pool (the schema's partial unique index
+ *                         would raise this too, but returning it cleanly
+ *                         avoids forcing the frontend to parse SQL errors)
+ *   403 not_owner       — caller does not own this resource
+ */
+router.put('/resources/:id/user', (req, res) => {
+  try {
+    const resource = getResourceById(parseInt(req.params.id, 10));
+    if (!resource || resource.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const { user_id } = req.body;
+    if (user_id !== null && !Number.isInteger(user_id)) {
+      return res.status(400).json({ error: 'user_id must be an integer or null' });
+    }
+
+    if (user_id !== null) {
+      // Validate the target is a legitimate share candidate.
+      const candidate = db.prepare(`
+        SELECT 1 FROM users u
+        WHERE u.id = ?
+          AND (
+            u.id = ?
+            OR u.id IN (
+              SELECT ps.user_id FROM project_shares ps
+              JOIN projects p ON p.id = ps.project_id
+              WHERE p.owner_id = ?
+            )
+          )
+      `).get(user_id, req.user.id, req.user.id);
+      if (!candidate) {
+        return res.status(400).json({ error: 'invalid_user' });
+      }
+      // Pre-check the unique index so we can 409 cleanly instead of erroring out.
+      const existing = db.prepare(
+        'SELECT id FROM resources WHERE user_id = ? AND linked_user_id = ? AND id <> ?'
+      ).get(req.user.id, user_id, resource.id);
+      if (existing) {
+        return res.status(409).json({ error: 'already_linked', resource_id: existing.id });
+      }
+    }
+
+    db.prepare(
+      'UPDATE resources SET linked_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).run(user_id, resource.id);
+
+    const updated = db.prepare(`
+      SELECT r.*, u.email AS linked_user_email, u.name AS linked_user_name
+      FROM resources r
+      LEFT JOIN users u ON u.id = r.linked_user_id
+      WHERE r.id = ?
+    `).get(resource.id);
+    res.json(updated);
+  } catch (err) {
+    console.error('Link resource user error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

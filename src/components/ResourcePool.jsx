@@ -19,6 +19,7 @@ import { useLocale, getLevelLabel } from '../lib/i18n';
 import { capacityApi } from '../lib/capacityApi';
 import ResourceForm from './ResourceForm';
 import ConfirmDialog from './ui/confirm-dialog';
+import LinkUserToResource from './capacity/LinkUserToResource';
 
 /**
  * @param {Object} props
@@ -38,6 +39,10 @@ const ResourcePool = ({ rates }) => {
   // Resource pending deletion confirmation. Presence drives the ConfirmDialog
   // open state; null closes it.
   const [pendingDelete, setPendingDelete] = useState(null);
+  // Share candidates: users eligible to be linked to a resource. Fetched once
+  // on mount, refetched after each link change so newly-assigned users shift
+  // into the "already linked" state for other rows.
+  const [shareCandidates, setShareCandidates] = useState([]);
 
   const fetchResources = useCallback(async () => {
     try {
@@ -51,9 +56,26 @@ const ResourcePool = ({ rates }) => {
     }
   }, []);
 
+  const fetchShareCandidates = useCallback(async () => {
+    try {
+      const data = await capacityApi.getShareCandidates();
+      setShareCandidates(Array.isArray(data) ? data : []);
+    } catch (err) {
+      // Non-fatal: the dropdown just shows "not linked" + the current value.
+      console.error('Failed to fetch share candidates:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchResources();
-  }, [fetchResources]);
+    fetchShareCandidates();
+  }, [fetchResources, fetchShareCandidates]);
+
+  const handleLinkUser = useCallback(async (resourceId, userId) => {
+    await capacityApi.linkResourceUser(resourceId, userId);
+    // Refetch both so the dropdown's "already linked" annotations stay accurate.
+    await Promise.all([fetchResources(), fetchShareCandidates()]);
+  }, [fetchResources, fetchShareCandidates]);
 
   const handleCreate = async (data) => {
     try {
@@ -197,6 +219,7 @@ const ResourcePool = ({ rates }) => {
                 <th className="text-left p-2 font-medium">{t('resources.role')}</th>
                 <th className="text-left p-2 font-medium">{t('resources.level')}</th>
                 <th className="text-left p-2 font-medium">{t('resources.type')}</th>
+                <th className="text-left p-2 font-medium">{t('capacity.linkedUser')}</th>
                 <th className="text-center p-2 font-medium">{t('resources.maxCapacity')}</th>
                 <th className="text-center p-2 font-medium w-24">{/* Actions */}</th>
               </tr>
@@ -208,6 +231,13 @@ const ResourcePool = ({ rates }) => {
                   <td className="p-2">{resource.role}</td>
                   <td className="p-2">{getLevelLabel(t, resource.level)}</td>
                   <td className="p-2">{getTypeBadge(resource.level)}</td>
+                  <td className="p-2 min-w-[180px]">
+                    <LinkUserToResource
+                      resource={resource}
+                      candidates={shareCandidates}
+                      onLink={(userId) => handleLinkUser(resource.id, userId)}
+                    />
+                  </td>
                   <td className="p-2 text-center font-mono tabular-nums">{resource.max_capacity}%</td>
                   <td className="p-2 text-center">
                     <div className="flex items-center justify-center gap-1">
@@ -234,7 +264,7 @@ const ResourcePool = ({ rates }) => {
               ))}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
                     {resources.length === 0 ? t('resources.empty') : t('resources.search')}
                   </td>
                 </tr>
