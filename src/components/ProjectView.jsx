@@ -146,7 +146,14 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
   const { t } = useLocale();
   const query = useQuery();
   const isAuthorized = query.get('r') === 'true';
-  const [activeTab, setActiveTab] = useState(initialTab || 'phases');
+  // Default tab depends on role: members land on Work directly; everyone
+  // else starts on Phases. If a member deep-links to a hidden tab (e.g. an
+  // old bookmark to /budget) we also redirect them to Work.
+  const MEMBER_VISIBLE = new Set(['work', 'timeline']);
+  const initialTabResolved = project.role === 'member'
+    ? (MEMBER_VISIBLE.has(initialTab) ? initialTab : 'work')
+    : (initialTab || 'phases');
+  const [activeTab, setActiveTab] = useState(initialTabResolved);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(project.name);
   const [resourcePool, setResourcePool] = useState([]);
@@ -248,15 +255,20 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
   const currency = project.settings?.currency || 'CAD';
   const fmt = (v) => formatCurrency(v, currency);
 
+  // Role-gated tab visibility. The execution-module Work tab is the only
+  // one every role sees — team members (role === 'member') must never land
+  // on a finance / planning tab by accident. Viewer keeps read-only access
+  // to planning tabs for context but cannot edit (enforced server-side).
+  const isTeamOnly = project.role === 'member';
   const TABS = [
-    { id: 'phases', label: t('tab.phases'), icon: LayoutDashboard },
-    { id: 'timeline', label: t('tab.timeline'), icon: Calendar },
-    { id: 'budget', label: t('tab.budget'), icon: DollarSign },
-    { id: 'work', label: t('tab.work'), icon: Briefcase },
-    { id: 'charts', label: t('tab.charts'), icon: BarChart3 },
-    { id: 'summary', label: t('tab.summary'), icon: FileText },
-    { id: 'risks', label: t('tab.risks'), icon: AlertTriangle },
-  ];
+    { id: 'phases', label: t('tab.phases'), icon: LayoutDashboard, showFor: !isTeamOnly },
+    { id: 'timeline', label: t('tab.timeline'), icon: Calendar, showFor: true },
+    { id: 'budget', label: t('tab.budget'), icon: DollarSign, showFor: !isTeamOnly },
+    { id: 'work', label: t('tab.work'), icon: Briefcase, showFor: true },
+    { id: 'charts', label: t('tab.charts'), icon: BarChart3, showFor: !isTeamOnly },
+    { id: 'summary', label: t('tab.summary'), icon: FileText, showFor: !isTeamOnly },
+    { id: 'risks', label: t('tab.risks'), icon: AlertTriangle, showFor: !isTeamOnly },
+  ].filter((tab) => tab.showFor);
 
   const updateProject = (changes) => onProjectChange({ ...project, ...changes });
   const updateSettings = (s) => updateProject({ settings: { ...project.settings, ...s } });

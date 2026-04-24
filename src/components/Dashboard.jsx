@@ -136,7 +136,11 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
       </div>
 
       {sortedProjects.length > 0 && (() => {
-        const totalCostAll = projects.reduce((sum, p) => {
+        // Exclude member-level shares from the cost aggregate — members are
+        // team workers who should not see the finance rollup of projects
+        // they contribute to. Their own owned projects are still included.
+        const financeVisibleProjects = projects.filter((p) => p.role !== 'member');
+        const totalCostAll = financeVisibleProjects.reduce((sum, p) => {
           return sum + calculateProjectCost(p, rates);
         }, 0);
         const totalWeeksAll = projects.reduce((sum, p) => {
@@ -150,7 +154,9 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
 
         const stats = [
           { icon: BarChart3, label: t('dashboard.stats.projects'), value: `${projects.length}` },
-          { icon: DollarSign, label: t('dashboard.stats.totalCost'), value: formatCurrency(totalCostAll, primaryCurrency) },
+          ...(financeVisibleProjects.length > 0
+            ? [{ icon: DollarSign, label: t('dashboard.stats.totalCost'), value: formatCurrency(totalCostAll, primaryCurrency) }]
+            : []),
           { icon: Clock, label: t('dashboard.stats.avgDuration'), value: `${avgWeeks.toFixed(1)} ${t('dashboard.stats.weeks')}` },
           { icon: UsersRound, label: t('dashboard.stats.members'), value: `${totalMembers}` },
         ];
@@ -272,7 +278,9 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                                 }}
                               >
                                 <Users className="w-3 h-3 inline mr-1" />
-                                {project.role === 'editor' ? t('dashboard.role.editor') : t('dashboard.role.viewer')}
+                                {project.role === 'editor' ? t('dashboard.role.editor')
+                                  : project.role === 'member' ? t('dashboard.role.member')
+                                  : t('dashboard.role.viewer')}
                               </span>
                             )}
                           </h3>
@@ -290,10 +298,17 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
-                      <div className="text-left sm:text-right">
-                        <div className="text-xs text-muted-foreground">{t('dashboard.totalCost')}</div>
-                        <div className="font-mono text-xl font-semibold tabular-nums">{formatCurrency(totalCost, currency)}</div>
-                      </div>
+                      {/* Members see no finance (Decision 9 extension for
+                          team UX): the Total Cost block is hidden for them
+                          so a dev on a shared project isn't confronted
+                          with their own project's budget. Owners, editors,
+                          and viewers retain the full view. */}
+                      {project.role !== 'member' && (
+                        <div className="text-left sm:text-right">
+                          <div className="text-xs text-muted-foreground">{t('dashboard.totalCost')}</div>
+                          <div className="font-mono text-xl font-semibold tabular-nums">{formatCurrency(totalCost, currency)}</div>
+                        </div>
+                      )}
 
                       {!compareMode && (
                         <div

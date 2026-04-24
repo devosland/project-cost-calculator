@@ -1,11 +1,13 @@
 /**
  * Permission helpers for the execution module.
  *
- * Reuses the existing `projects.owner_id` + `project_shares(role)` model:
+ * Four-tier role model on project_shares:
  *
  *   owner  → full access
- *   editor → can CRUD epics / stories / tasks and log time on their own tasks
- *   viewer → read-only
+ *   editor → PM-level: CRUD on Epic/Story/Task, budget edits, period close
+ *   member → team-level: log time on own tasks, transition own tasks; no
+ *            project planning or finance
+ *   viewer → read-only on everything the project exposes
  *   none   → pretend the project does not exist (404, not 403) so existence
  *            is never leaked to unshared users
  *
@@ -16,7 +18,7 @@
  */
 import { db } from '../db.js';
 
-const ROLE_RANK = { viewer: 1, editor: 2, owner: 3 };
+const ROLE_RANK = { viewer: 1, member: 2, editor: 3, owner: 4 };
 
 /**
  * @param {string} projectId

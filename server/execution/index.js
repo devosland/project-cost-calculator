@@ -373,6 +373,31 @@ router.post('/stories/:storyId/tasks', (req, res) => {
   }
 });
 
+/**
+ * GET /api/execution/my-tasks
+ * Cross-project task list for the logged-in user: all tasks whose assignee
+ * resource is linked to this user. Grouped by project client-side; here we
+ * return a flat list with a `project_id` + `project_name` on each row so
+ * MyWork can group without N+1 calls.
+ *
+ * A user who is an owner of several projects but has no linked resource
+ * simply gets an empty array — they don't "work" on tasks as a resource
+ * themselves unless someone mapped them explicitly.
+ */
+router.get('/my-tasks', (req, res) => {
+  const rows = db.prepare(`
+    SELECT t.*, s.epic_id, e.project_id, p.name AS project_name
+    FROM tasks t
+    JOIN stories s ON s.id = t.story_id
+    JOIN epics e ON e.id = s.epic_id
+    JOIN projects p ON p.id = e.project_id
+    JOIN resources r ON r.id = t.assignee_id
+    WHERE r.linked_user_id = ?
+    ORDER BY p.name, t.status, t.id DESC
+  `).all(req.user.id);
+  res.json(rows);
+});
+
 /** GET /api/execution/tasks/:id */
 router.get('/tasks/:id', (req, res) => {
   const id = Number(req.params.id);
@@ -427,7 +452,9 @@ router.post('/tasks/:id/transition', (req, res) => {
   const id = Number(req.params.id);
   const projectId = projectIdForTask(id);
   const role = projectId ? getProjectRole(projectId, req.user.id) : null;
-  if (gateAccess(res, role, 'editor')) return;
+  // Member tier: can transition only tasks whose assignee resource is linked
+  // to their user account. Editors and above can transition anything.
+  if (gateAccess(res, role, 'member')) return;
 
   const parsed = transitionSchema.safeParse(req.body);
   if (!parsed.success) return respondValidationError(res, parsed.error);
@@ -435,8 +462,16 @@ router.post('/tasks/:id/transition', (req, res) => {
   if (!statusExists(projectId, to)) {
     return res.status(400).json({ error: 'unknown_status', status: to });
   }
-  const task = db.prepare('SELECT status FROM tasks WHERE id = ?').get(id);
+  const task = db.prepare('SELECT status, assignee_id FROM tasks WHERE id = ?').get(id);
   const from = task.status;
+
+  if (!hasRole(role, 'editor')) {
+    // Restrict members to tasks they're assigned to via their linked resource.
+    const own = task.assignee_id && db.prepare(
+      'SELECT 1 FROM resources WHERE id = ? AND linked_user_id = ?'
+    ).get(task.assignee_id, req.user.id);
+    if (!own) return res.status(403).json({ error: 'not_your_task' });
+  }
 
   const hasTransitions = db.prepare(
     'SELECT 1 FROM project_transitions WHERE project_id = ? LIMIT 1'
@@ -554,7 +589,9 @@ router.post('/tasks/:taskId/time', (req, res) => {
   const taskId = Number(req.params.taskId);
   const projectId = projectIdForTask(taskId);
   const role = projectId ? getProjectRole(projectId, req.user.id) : null;
-  if (gateAccess(res, role, 'editor')) return;
+  // Members can log; ownership is still enforced per-entry below via
+  // linked_user_id. Editors / owners retain the original override powers.
+  if (gateAccess(res, role, 'member')) return;
 
   const parsed = timeEntryCreateSchema.safeParse(req.body);
   if (!parsed.success) return respondValidationError(res, parsed.error);
@@ -603,7 +640,9 @@ router.put('/time/:id', (req, res) => {
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const projectId = projectIdForTask(existing.task_id);
   const role = projectId ? getProjectRole(projectId, req.user.id) : null;
-  if (gateAccess(res, role, 'editor')) return;
+  // Ownership of this specific entry is asserted below via linked_user_id
+  // for non-owner roles. Members can only edit their own entries.
+  if (gateAccess(res, role, 'member')) return;
 
   // Own-entry check: editors can edit only their own entries; owners can
   // edit any. The resource's linked_user_id is the identity tie-in.
@@ -648,7 +687,7 @@ router.delete('/time/:id', (req, res) => {
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const projectId = projectIdForTask(existing.task_id);
   const role = projectId ? getProjectRole(projectId, req.user.id) : null;
-  if (gateAccess(res, role, 'editor')) return;
+  if (gateAccess(res, role, 'member')) return;
 
   if (role !== 'owner') {
     const resource = db.prepare('SELECT linked_user_id FROM resources WHERE id = ?').get(existing.resource_id);

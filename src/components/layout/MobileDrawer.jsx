@@ -12,7 +12,7 @@
  *   - aria-modal + role="dialog" pour les screen readers
  */
 import { useEffect } from 'react';
-import { LayoutDashboard, BarChart3, X } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Briefcase, X } from 'lucide-react';
 import PrismWordmark from '../brand/PrismWordmark';
 import { useLocale } from '../../lib/i18n';
 import NavItem from './NavItem';
@@ -43,6 +43,7 @@ export default function MobileDrawer({ open, onClose, currentView, onNavigate })
 
   const items = [
     { id: 'projects', label: t('dashboard.title'), icon: LayoutDashboard },
+    { id: 'my-work', label: t('myWork.title'), icon: Briefcase },
     { id: 'capacity', label: t('capacity.title'), icon: BarChart3 },
   ];
 

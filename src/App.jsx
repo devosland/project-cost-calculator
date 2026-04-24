@@ -17,6 +17,7 @@ import TemplateManager from './components/TemplateManager'
 import ShareDialog from './components/ShareDialog'
 import VersionHistory from './components/VersionHistory'
 import ProfileView from './components/ProfileView'
+import MyWork from './components/execution/MyWork'
 import { getRatesConfig } from './config/rates'
 import { api } from './lib/api'
 import { createProject } from './lib/projectStore'
@@ -38,7 +39,11 @@ function AppContent() {
   const { segments, navigate } = useHashRouter();
 
   // Derive view state from URL hash
-  const view = segments[0] === 'capacity' ? 'capacity' : segments[0] === 'profile' ? 'profile' : 'projects';
+  const view =
+    segments[0] === 'capacity' ? 'capacity' :
+    segments[0] === 'profile' ? 'profile' :
+    segments[0] === 'my-work' ? 'my-work' :
+    'projects';
   const activeProjectId = (view === 'projects' && segments[1]) ? segments[1] : null;
   // Tab segment depends on the view:
   //   /projects/:id/:tab → segments[2]
@@ -51,6 +56,7 @@ function AppContent() {
   const setView = useCallback((v) => {
     if (v === 'capacity') navigate('capacity');
     else if (v === 'profile') navigate('profile');
+    else if (v === 'my-work') navigate('my-work');
     else navigate('projects');
   }, [navigate]);
   const setActiveProjectId = useCallback((id) => {
@@ -310,6 +316,8 @@ function AppContent() {
       >
         {view === 'profile' ? (
           <ProfileView user={user} />
+        ) : view === 'my-work' ? (
+          <MyWork onBack={() => setView('projects')} />
         ) : view === 'capacity' ? (
           <CapacityView rates={rates} initialTab={hashTab || 'resources'} onRatesChange={handleRatesChange} onBack={() => setView('projects')} onDataChanged={() => {
             api.loadData().then((data) => {
