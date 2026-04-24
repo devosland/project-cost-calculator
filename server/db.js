@@ -196,6 +196,163 @@ db.exec(`
   )
 `);
 
+// --- Execution module tables (Jira-like Epic → Story → Task + time tracking) ---
+// See docs/specs/2026-04-23-execution-module-spec.md for the rationale.
+
+// Human-readable keys (PRISM-E1, PRISM-S42, PRISM-T123). One counter per
+// (project, entity_type). last_key is the highest number used; next insert = last_key + 1.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS project_key_counters (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('epic','story','task')),
+    last_key INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (project_id, entity_type)
+  )
+`);
+
+// Per-project workflow: status list. Category drives metrics ('todo' | 'inprogress' | 'done').
+db.exec(`
+  CREATE TABLE IF NOT EXISTS project_statuses (
+    id INTEGER PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL CHECK (category IN ('todo','inprogress','done')),
+    order_idx INTEGER NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (project_id, name)
+  )
+`);
+
+// Per-project allowed status transitions. Empty = any-to-any (Jira default).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS project_transitions (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    from_status TEXT NOT NULL,
+    to_status TEXT NOT NULL,
+    PRIMARY KEY (project_id, from_status, to_status)
+  )
+`);
+
+// Epics: large buckets of work. milestone_id is free-text (references a milestone
+// id inside projects.data JSON, same pattern as resource_assignments.phase_id).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS epics (
+    id INTEGER PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL,
+    priority TEXT NOT NULL DEFAULT 'medium',
+    milestone_id TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (project_id, key)
+  )
+`);
+
+// Many-to-many: Epic ↔ Phase. phase_id references projects.data JSON phase id.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS epic_phases (
+    epic_id INTEGER NOT NULL REFERENCES epics(id) ON DELETE CASCADE,
+    phase_id TEXT NOT NULL,
+    PRIMARY KEY (epic_id, phase_id)
+  )
+`);
+
+// Stories: child of an Epic.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS stories (
+    id INTEGER PRIMARY KEY,
+    epic_id INTEGER NOT NULL REFERENCES epics(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL,
+    priority TEXT NOT NULL DEFAULT 'medium',
+    estimate_hours REAL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (epic_id, key)
+  )
+`);
+
+// Tasks: child of a Story. assignee_id can be null (backlog) — Decision 7.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY,
+    story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL,
+    priority TEXT NOT NULL DEFAULT 'medium',
+    assignee_id INTEGER REFERENCES resources(id) ON DELETE SET NULL,
+    estimate_hours REAL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (story_id, key)
+  )
+`);
+
+// Time entries: the actuals source. rate_* columns are SNAPSHOTTED at insert
+// time and never updated — see Decision 3 + §3.4 of the spec. IPC May bump is
+// the motivating example: April entries stay at their April rate even if the
+// rate card is bumped in May.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS time_entries (
+    id INTEGER PRIMARY KEY,
+    task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    hours REAL NOT NULL CHECK (hours > 0 AND hours <= 24),
+    note TEXT,
+    rate_hourly REAL NOT NULL,
+    rate_role TEXT,
+    rate_level TEXT,
+    source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','timer')),
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Active timers: one per user max (PK on user_id). Moving timer between tasks
+// just overwrites the row — no history needed; history is in time_entries.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS active_timers (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    started_at TEXT NOT NULL
+  )
+`);
+
+// Closed accounting periods — Decision 8. When a (project, YYYY-MM) row exists,
+// the time_entries write middleware rejects any insert/update/delete of an
+// entry dated within that month with 423 Locked.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS project_closed_periods (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    period TEXT NOT NULL,
+    closed_at TEXT NOT NULL,
+    closed_by_user INTEGER NOT NULL REFERENCES users(id),
+    PRIMARY KEY (project_id, period)
+  )
+`);
+
+// --- ALTER resources: add linked_user_id for Decision 9 (user ↔ resource linkage) ---
+// The existing resources.user_id is the *owner* (the PM who manages this pool
+// entry). linked_user_id is a different concept: the user account that is
+// allowed to log time as this resource. Nullable — most consultants never get
+// linked, and that's fine (only the project owner can log on their tasks).
+//
+// SQLite does not support ADD COLUMN IF NOT EXISTS, so we guard with PRAGMA.
+{
+  const columns = db.prepare("PRAGMA table_info('resources')").all();
+  if (!columns.some((c) => c.name === 'linked_user_id')) {
+    db.exec(`ALTER TABLE resources ADD COLUMN linked_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+  }
+}
+
 // --- Indexes ---
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_resources_user ON resources(user_id)`);
@@ -205,6 +362,19 @@ db.exec(`CREATE INDEX IF NOT EXISTS idx_transition_plans_user ON transition_plan
 // Partial index: only index active (non-revoked) keys for fast authentication lookups.
 db.exec(`CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id) WHERE revoked_at IS NULL`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_api_key_usage_key ON api_key_usage(api_key_id, created_at)`);
+
+// Execution-module indexes. The (resource_id, date) one on time_entries is
+// the critical hot path: "all hours logged by this resource this month".
+db.exec(`CREATE INDEX IF NOT EXISTS idx_epics_project ON epics(project_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_epics_milestone ON epics(milestone_id) WHERE milestone_id IS NOT NULL`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_epic_phases_phase ON epic_phases(phase_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_stories_epic ON stories(epic_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_story ON tasks(story_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id) WHERE assignee_id IS NOT NULL`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_time_task ON time_entries(task_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_time_resource_date ON time_entries(resource_id, date)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_closed_project ON project_closed_periods(project_id, period)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_resources_linked_user ON resources(linked_user_id) WHERE linked_user_id IS NOT NULL`);
 
 // --- Migration ---
 
@@ -256,6 +426,50 @@ function migrateUserDataToProjects() {
 }
 
 migrateUserDataToProjects();
+
+/**
+ * Default workflow seed — makes sure every project has at least the three
+ * canonical statuses (To Do / In Progress / Done) the moment any code in the
+ * execution module looks them up. Idempotent per project: if any statuses
+ * already exist for a project, it is left alone (so a user who customised
+ * their workflow never sees defaults re-appear).
+ *
+ * Runs on every startup. Cheap: one SELECT + zero-to-three INSERTs per
+ * statuses-less project.
+ */
+function seedDefaultStatuses() {
+  try {
+    const projectsWithoutStatuses = db.prepare(`
+      SELECT p.id FROM projects p
+      LEFT JOIN project_statuses s ON s.project_id = p.id
+      WHERE s.id IS NULL
+      GROUP BY p.id
+    `).all();
+    if (projectsWithoutStatuses.length === 0) return;
+
+    const insert = db.prepare(
+      'INSERT OR IGNORE INTO project_statuses (project_id, name, category, order_idx) VALUES (?, ?, ?, ?)'
+    );
+    const DEFAULTS = [
+      { name: 'To Do', category: 'todo', order_idx: 0 },
+      { name: 'In Progress', category: 'inprogress', order_idx: 1 },
+      { name: 'Done', category: 'done', order_idx: 2 },
+    ];
+
+    const seed = db.transaction(() => {
+      for (const row of projectsWithoutStatuses) {
+        for (const s of DEFAULTS) insert.run(row.id, s.name, s.category, s.order_idx);
+      }
+    });
+    seed();
+    console.log(`Seed: default statuses inserted for ${projectsWithoutStatuses.length} projects`);
+  } catch (err) {
+    // Non-fatal: server boots, can be retried next restart.
+    console.error('Seed default statuses error (non-fatal):', err);
+  }
+}
+
+seedDefaultStatuses();
 
 // --- Helper functions ---
 

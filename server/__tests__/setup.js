@@ -70,6 +70,7 @@ export function seedSchema(db) {
       role TEXT NOT NULL,
       level TEXT NOT NULL,
       max_capacity INTEGER DEFAULT 100,
+      linked_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(user_id, name)
@@ -103,12 +104,146 @@ export function seedSchema(db) {
     )
   `);
 
+  // --- Execution module tables (mirrors server/db.js) ---
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS project_key_counters (
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      entity_type TEXT NOT NULL CHECK (entity_type IN ('epic','story','task')),
+      last_key INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (project_id, entity_type)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS project_statuses (
+      id INTEGER PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL CHECK (category IN ('todo','inprogress','done')),
+      order_idx INTEGER NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (project_id, name)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS project_transitions (
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      from_status TEXT NOT NULL,
+      to_status TEXT NOT NULL,
+      PRIMARY KEY (project_id, from_status, to_status)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS epics (
+      id INTEGER PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      key TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL,
+      priority TEXT NOT NULL DEFAULT 'medium',
+      milestone_id TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (project_id, key)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS epic_phases (
+      epic_id INTEGER NOT NULL REFERENCES epics(id) ON DELETE CASCADE,
+      phase_id TEXT NOT NULL,
+      PRIMARY KEY (epic_id, phase_id)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS stories (
+      id INTEGER PRIMARY KEY,
+      epic_id INTEGER NOT NULL REFERENCES epics(id) ON DELETE CASCADE,
+      key TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL,
+      priority TEXT NOT NULL DEFAULT 'medium',
+      estimate_hours REAL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (epic_id, key)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id INTEGER PRIMARY KEY,
+      story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+      key TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL,
+      priority TEXT NOT NULL DEFAULT 'medium',
+      assignee_id INTEGER REFERENCES resources(id) ON DELETE SET NULL,
+      estimate_hours REAL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (story_id, key)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS time_entries (
+      id INTEGER PRIMARY KEY,
+      task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      hours REAL NOT NULL CHECK (hours > 0 AND hours <= 24),
+      note TEXT,
+      rate_hourly REAL NOT NULL,
+      rate_role TEXT,
+      rate_level TEXT,
+      source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','timer')),
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS active_timers (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      started_at TEXT NOT NULL
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS project_closed_periods (
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      period TEXT NOT NULL,
+      closed_at TEXT NOT NULL,
+      closed_by_user INTEGER NOT NULL REFERENCES users(id),
+      PRIMARY KEY (project_id, period)
+    )
+  `);
+
   // --- Indexes ---
 
   db.exec(`CREATE INDEX IF NOT EXISTS idx_resources_user ON resources(user_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_assignments_resource_months ON resource_assignments(resource_id, start_month, end_month)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_assignments_project ON resource_assignments(project_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_transition_plans_user ON transition_plans(user_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_epics_project ON epics(project_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_epics_milestone ON epics(milestone_id) WHERE milestone_id IS NOT NULL`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_epic_phases_phase ON epic_phases(phase_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_stories_epic ON stories(epic_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_story ON tasks(story_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id) WHERE assignee_id IS NOT NULL`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_time_task ON time_entries(task_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_time_resource_date ON time_entries(resource_id, date)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_closed_project ON project_closed_periods(project_id, period)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_resources_linked_user ON resources(linked_user_id) WHERE linked_user_id IS NOT NULL`);
 }
 
 /**
