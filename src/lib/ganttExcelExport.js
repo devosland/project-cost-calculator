@@ -281,7 +281,10 @@ function buildProjectSheet(ws, ctx) {
     const role = resource.role || '';
     const level = resource.level || '';
     const name = resource.name || '';
-    const type = resource.type === 'permanent' ? labels.typePerm : labels.typeConsultant;
+    // Canonical rule used across the app (ResourcePool, projectStore): a
+    // resource is permanent iff its level is the sentinel "Employé interne",
+    // otherwise it is a consultant. No separate `type` field is stored.
+    const type = level === 'Employé interne' ? labels.typePerm : labels.typeConsultant;
     const rate = getHourlyRate(rates, role, level);
 
     ws.getCell(currentRow, 1).value = role;

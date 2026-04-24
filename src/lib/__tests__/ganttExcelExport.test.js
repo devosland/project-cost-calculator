@@ -20,8 +20,10 @@ const RATES = {
   CONSULTANT_RATES: { Dev: { Senior: 120, Junior: 80 } },
 };
 const RESOURCES = [
-  { id: 1, name: 'Alice', role: 'Dev', level: 'Senior', type: 'permanent' },
-  { id: 2, name: 'Bob', role: 'Dev', level: 'Junior', type: 'consultant' },
+  // Permanent: level === 'Employé interne' per the app's canonical rule.
+  { id: 1, name: 'Alice', role: 'Dev', level: 'Employé interne' },
+  // Consultant: any other level.
+  { id: 2, name: 'Bob', role: 'Dev', level: 'Junior' },
 ];
 const ASSIGNMENTS = [
   { resource_id: 1, project_id: 10, allocation: 50, start_month: '2026-01', end_month: '2026-02' },
@@ -118,6 +120,19 @@ describe('ganttExcelExport', () => {
     expect(cost).toHaveProperty('formula');
     // Should reference alloc cell (F14), rate cell (E14), and hours cell (F11).
     expect(cost.formula).toMatch(/F14.*E14.*F\$11|F14.*F\$11.*E14/);
+  });
+
+  it('derives the Type column from level: "Employé interne" → Permanent, else Consultant', async () => {
+    const buf = await generateGanttExcelBuffer({
+      projects: PROJECTS, resources: RESOURCES, assignments: ASSIGNMENTS, months: MONTHS, rates: RATES, locale: 'fr',
+    });
+    const wb = await reload(buf);
+    const ws = wb.getWorksheet('Portail Client');
+    // Resource rows start at row 14. Column D (4) holds the Type label.
+    // Alice (id 1, level "Employé interne") and Bob (id 2, level "Junior") both have assignments on this project.
+    const types = [ws.getCell(14, 4).value, ws.getCell(15, 4).value];
+    expect(types).toContain('Permanent');
+    expect(types).toContain('Consultant');
   });
 
   it('exports a placeholder sheet when there are no assignments', async () => {
