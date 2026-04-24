@@ -9,6 +9,7 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { AlertTriangle } from 'lucide-react';
+import PeriodLock from './execution/PeriodLock';
 import {
   calculateProjectCost,
   calculateProjectDurationWeeks,
@@ -202,6 +203,18 @@ const BudgetTracker = ({ project, rates }) => {
             </div>
           </div>
         </div>
+      </CardContent>
+
+      {/*
+        Decision 8 (execution spec): the project manager manually closes each
+        month once the finance report is out. Viewers still see the status
+        but cannot toggle it; the server enforces the permission regardless.
+      */}
+      <CardContent className="pt-0">
+        <PeriodLock
+          projectId={project.id}
+          canEdit={project.role === 'owner' || project.role === 'editor'}
+        />
       </CardContent>
     </Card>
   );

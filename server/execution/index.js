@@ -691,4 +691,116 @@ router.get('/projects/:projectId/epic-costs', (req, res) => {
   res.json(getEpicCosts(projectId));
 });
 
+// ---------------------------------------------------------------------------
+// Period lock (Decision 8)
+// ---------------------------------------------------------------------------
+
+/** Format a (year, month) 1-indexed tuple as 'YYYY-MM'. */
+function periodString(year, month) {
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+/**
+ * Validate a `YYYY-MM` path param and reject closing of future months.
+ * Returns { ok: true, period } or { ok: false, status, body }.
+ */
+function parsePeriodParam(yyyyMM) {
+  if (!/^\d{4}-\d{2}$/.test(yyyyMM)) {
+    return { ok: false, status: 400, body: { error: 'invalid_period_format' } };
+  }
+  const now = new Date();
+  const current = periodString(now.getFullYear(), now.getMonth() + 1);
+  // Allow closing the current or any past month; reject strictly-future.
+  if (yyyyMM > current) {
+    return { ok: false, status: 400, body: { error: 'cannot_close_future_period' } };
+  }
+  return { ok: true, period: yyyyMM };
+}
+
+/**
+ * GET /api/execution/projects/:projectId/periods
+ * Returns the status of every month in a 12-month window ending at the
+ * current month (inclusive). Closed entries carry who closed them + when.
+ * The frontend is a dumb renderer — no client-side date math required.
+ */
+router.get('/projects/:projectId/periods', (req, res) => {
+  const { projectId } = req.params;
+  const role = getProjectRole(projectId, req.user.id);
+  if (gateAccess(res, role, 'viewer')) return;
+
+  const closed = db.prepare(`
+    SELECT cp.period, cp.closed_at, cp.closed_by_user, u.email AS closed_by_email
+    FROM project_closed_periods cp
+    LEFT JOIN users u ON u.id = cp.closed_by_user
+    WHERE cp.project_id = ?
+  `).all(projectId);
+  const closedMap = new Map(closed.map((r) => [r.period, r]));
+
+  const now = new Date();
+  const out = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const period = periodString(d.getFullYear(), d.getMonth() + 1);
+    const entry = closedMap.get(period);
+    out.push({
+      period,
+      closed_at: entry?.closed_at ?? null,
+      closed_by_user: entry?.closed_by_user ?? null,
+      closed_by_email: entry?.closed_by_email ?? null,
+    });
+  }
+  res.json(out);
+});
+
+/**
+ * POST /api/execution/projects/:projectId/periods/:yyyyMM
+ * Close the period. Idempotent: closing an already-closed period is a no-op
+ * and returns the existing row. Editor or owner only.
+ */
+router.post('/projects/:projectId/periods/:yyyyMM', (req, res) => {
+  const { projectId, yyyyMM } = req.params;
+  const role = getProjectRole(projectId, req.user.id);
+  if (gateAccess(res, role, 'editor')) return;
+
+  const parsed = parsePeriodParam(yyyyMM);
+  if (!parsed.ok) return res.status(parsed.status).json(parsed.body);
+
+  try {
+    db.prepare(`
+      INSERT INTO project_closed_periods (project_id, period, closed_at, closed_by_user)
+      VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+      ON CONFLICT(project_id, period) DO NOTHING
+    `).run(projectId, parsed.period, req.user.id);
+
+    const row = db.prepare(`
+      SELECT cp.period, cp.closed_at, cp.closed_by_user, u.email AS closed_by_email
+      FROM project_closed_periods cp
+      LEFT JOIN users u ON u.id = cp.closed_by_user
+      WHERE cp.project_id = ? AND cp.period = ?
+    `).get(projectId, parsed.period);
+    res.status(201).json(row);
+  } catch (err) {
+    console.error('Close period error:', err);
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+/**
+ * DELETE /api/execution/projects/:projectId/periods/:yyyyMM
+ * Reopen the period. Editor or owner only. Returns 200 even if the period
+ * was already open — keeps the UI optimistic-update code simple.
+ */
+router.delete('/projects/:projectId/periods/:yyyyMM', (req, res) => {
+  const { projectId, yyyyMM } = req.params;
+  const role = getProjectRole(projectId, req.user.id);
+  if (gateAccess(res, role, 'editor')) return;
+  if (!/^\d{4}-\d{2}$/.test(yyyyMM)) {
+    return res.status(400).json({ error: 'invalid_period_format' });
+  }
+  db.prepare(
+    'DELETE FROM project_closed_periods WHERE project_id = ? AND period = ?'
+  ).run(projectId, yyyyMM);
+  res.json({ success: true });
+});
+
 export default router;
