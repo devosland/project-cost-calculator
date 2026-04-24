@@ -260,6 +260,10 @@ const translations = {
     'budget.contingencyIncluded': "Incluse dans main-d\u2019\u0153uvre",
     'budget.taxes': 'Taxes ({percent}%)',
     'budget.taxesIncluded': "Incluses dans main-d\u2019\u0153uvre",
+    'budget.actualsTitle': 'Réels (temps loggé)',
+    'budget.actualsHours': 'Heures loggées',
+    'budget.actualsCost': 'Coût réel',
+    'budget.forecastVsActuals': 'Écart prévision / réel',
 
     // Non-labour costs
     'nonLabour.title': "Coûts non liés à la main-d\u2019\u0153uvre",
@@ -311,6 +315,9 @@ const translations = {
     'summary.otherCosts': 'Autres coûts',
     'summary.contingencyIncluded': 'Contingence de {percent}% incluse',
     'summary.taxesIncluded': 'Taxes de {percent}% incluses',
+    'summary.actualsTitle': 'Réels',
+    'summary.hoursLogged': 'Heures loggées',
+    'summary.actualCost': 'Coût réel',
     'summary.phases': 'Phases',
     'summary.phase': 'Phase',
     'summary.budget': 'Budget',
@@ -842,6 +849,10 @@ const translations = {
     'budget.contingencyIncluded': 'Included in labour',
     'budget.taxes': 'Taxes ({percent}%)',
     'budget.taxesIncluded': 'Included in labour',
+    'budget.actualsTitle': 'Actuals (logged time)',
+    'budget.actualsHours': 'Hours logged',
+    'budget.actualsCost': 'Actual cost',
+    'budget.forecastVsActuals': 'Forecast vs actual',
 
     // Non-labour costs
     'nonLabour.title': 'Non-labour costs',
@@ -893,6 +904,9 @@ const translations = {
     'summary.otherCosts': 'Other costs',
     'summary.contingencyIncluded': '{percent}% contingency included',
     'summary.taxesIncluded': 'Taxes ({percent}%) included',
+    'summary.actualsTitle': 'Actuals',
+    'summary.hoursLogged': 'Hours logged',
+    'summary.actualCost': 'Actual cost',
     'summary.phases': 'Phases',
     'summary.phase': 'Phase',
     'summary.budget': 'Budget',

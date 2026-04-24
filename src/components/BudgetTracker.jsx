@@ -6,10 +6,11 @@
  * Renders nothing special when no budget is set — the grid simply omits the
  * variance card.
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { AlertTriangle } from 'lucide-react';
 import PeriodLock from './execution/PeriodLock';
+import { executionApi } from '../lib/executionApi';
 import {
   calculateProjectCost,
   calculateProjectDurationWeeks,
@@ -49,6 +50,22 @@ const BudgetTracker = ({ project, rates }) => {
 
   const alertThreshold = project.settings?.budgetAlertThreshold ?? 80;
   const isAboveThreshold = hasBudget && usagePercent >= alertThreshold && !isOverBudget;
+
+  // Actuals (hours logged via the execution module). Non-fatal: a project
+  // with no logged time returns zeros from the rollup endpoint, so we can
+  // always render the row — no feature flag needed.
+  const [actuals, setActuals] = useState({ hours: 0, cost: 0 });
+  useEffect(() => {
+    let cancelled = false;
+    executionApi.getActuals(project.id)
+      .then((data) => { if (!cancelled) setActuals({ hours: data.hours || 0, cost: data.cost || 0 }); })
+      .catch(() => {
+        // Silent failure — actuals are optional context. A shared project
+        // without execution access still renders the forecast normally.
+      });
+    return () => { cancelled = true; };
+  }, [project.id]);
+  const forecastVsActual = totalCost - actuals.cost;
 
   // Token-driven usage bar color:
   //   over budget        → error
@@ -200,6 +217,32 @@ const BudgetTracker = ({ project, rates }) => {
                   <span className="text-sm">{t('budget.taxesIncluded')}</span>
                 </div>
               )}
+            </div>
+
+            {/*
+              Réels (hours logged via the execution module). Shown even when
+              zero — the line is a permanent reassurance that the loop is
+              closed between execution and pilotage.
+            */}
+            <div className="mt-6 pt-4 border-t border-border space-y-2">
+              <h3 className="font-display font-semibold text-sm tracking-tight">{t('budget.actualsTitle')}</h3>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">{t('budget.actualsHours')}</span>
+                <span className="text-sm font-mono tabular-nums">{actuals.hours.toFixed(2)} h</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">{t('budget.actualsCost')}</span>
+                <span className="text-sm font-mono font-semibold tabular-nums">{fmt(actuals.cost)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">{t('budget.forecastVsActuals')}</span>
+                <span
+                  className="text-sm font-mono tabular-nums"
+                  style={{ color: `var(--prism-${forecastVsActual >= 0 ? 'success' : 'warning'})` }}
+                >
+                  {forecastVsActual >= 0 ? '+' : ''}{fmt(forecastVsActual)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
