@@ -36,6 +36,26 @@ export const capacityApi = {
    */
   deleteResource: (id) => api.request(`/capacity/resources/${id}`, { method: 'DELETE' }),
 
+  /**
+   * List users eligible to be linked to a resource in the pool — the caller
+   * plus anyone shared on one of their projects. Used by the Resource Pool
+   * "Linked user" dropdown.
+   * @returns {Promise<Array<{ id: number, email: string, name: string, linked_resource_id: number|null }>>}
+   */
+  getShareCandidates: () => api.request('/capacity/share-candidates'),
+
+  /**
+   * Link (or unlink, with userId=null) a resource to a user account. The
+   * linked user is the one allowed to log time against that resource per
+   * Decision 9.
+   * @param {number} resourceId
+   * @param {number|null} userId
+   */
+  linkResourceUser: (resourceId, userId) => api.request(
+    `/capacity/resources/${resourceId}/user`,
+    { method: 'PUT', body: JSON.stringify({ user_id: userId }) }
+  ),
+
   // --- Assignments ---
 
   /**
