@@ -8,7 +8,7 @@
  * gets slow we can consolidate into a single /backlog endpoint later.
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Wand2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useLocale } from '../../lib/i18n';
 import { executionApi } from '../../lib/executionApi';
@@ -64,13 +64,33 @@ export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
     fetchAll();
   }
 
+  async function syncFromPlan() {
+    if (!window.confirm(t('work.syncConfirm'))) return;
+    try {
+      const r = await executionApi.syncFromPlan(projectId);
+      // Quick feedback: alert with the count, then refetch. A proper toast
+      // system would be nicer but keeps PR scope tight (V2 polish).
+      alert(t('work.syncResult', { epics: r.epicsCreated, stories: r.storiesCreated }));
+      await fetchAll();
+    } catch (err) {
+      console.error('Sync from plan failed:', err);
+      alert(t('work.syncFailed'));
+    }
+  }
+
   return (
     <div className="space-y-4">
       {canEdit && (
-        <Button onClick={addEpic} size="sm" className="flex items-center gap-1.5">
-          <Plus className="w-3.5 h-3.5" />
-          {t('work.newEpic')}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={addEpic} size="sm" className="flex items-center gap-1.5">
+            <Plus className="w-3.5 h-3.5" />
+            {t('work.newEpic')}
+          </Button>
+          <Button onClick={syncFromPlan} variant="outline" size="sm" className="flex items-center gap-1.5" title={t('work.syncTitle')}>
+            <Wand2 className="w-3.5 h-3.5" />
+            {t('work.syncFromPlan')}
+          </Button>
+        </div>
       )}
 
       {loading && <p className="text-xs text-muted-foreground">{t('work.loading')}</p>}

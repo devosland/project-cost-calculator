@@ -106,6 +106,13 @@ export const executionApi = {
    *  logged-in user. Rows carry project_id + project_name for grouping. */
   getMyTasks: () => request('/my-tasks'),
 
+  /** Idempotent: creates Epics for every phase + Stories for every milestone
+   *  not already tracked. Returns { epicsCreated, storiesCreated }. Safe to
+   *  re-run after the user adds / renames phases. */
+  syncFromPlan: (projectId) => request(`/projects/${projectId}/sync-from-plan`, {
+    method: 'POST',
+  }),
+
   // --- Accounting period lock (Decision 8) ---
 
   /** List the past 12 months with open/closed status + who closed. */
