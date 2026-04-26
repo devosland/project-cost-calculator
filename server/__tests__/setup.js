@@ -146,6 +146,7 @@ export function seedSchema(db) {
       status TEXT NOT NULL,
       priority TEXT NOT NULL DEFAULT 'medium',
       milestone_id TEXT,
+      source_phase_id TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (project_id, key)
@@ -170,6 +171,7 @@ export function seedSchema(db) {
       status TEXT NOT NULL,
       priority TEXT NOT NULL DEFAULT 'medium',
       estimate_hours REAL,
+      source_milestone_id TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       UNIQUE (epic_id, key)

@@ -842,4 +842,99 @@ router.delete('/projects/:projectId/periods/:yyyyMM', (req, res) => {
   res.json({ success: true });
 });
 
+// ---------------------------------------------------------------------------
+// Sync from project plan
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/execution/projects/:projectId/sync-from-plan
+ * Generates Epics + Stories from the project's phases / milestones JSON.
+ * Idempotent — runs at any time, only adds what's missing:
+ *   - For each phase without a tracked epic (via epics.source_phase_id),
+ *     create one (title = phase.name) and link it to the phase via epic_phases.
+ *   - For each milestone without a tracked story (via stories.source_milestone_id),
+ *     create one under the corresponding phase's epic.
+ *
+ * Never modifies or deletes existing entities — user-renamed or user-created
+ * Epics/Stories are left untouched. Re-running after the user has reorganised
+ * is therefore safe; a deleted phase leaves its epic in place (the user can
+ * decide whether to delete it manually).
+ *
+ * Editor or owner only. Returns 200 with `{ epicsCreated, storiesCreated }`.
+ */
+router.post('/projects/:projectId/sync-from-plan', (req, res) => {
+  const { projectId } = req.params;
+  const role = getProjectRole(projectId, req.user.id);
+  if (gateAccess(res, role, 'editor')) return;
+
+  const projectRow = db.prepare('SELECT data FROM projects WHERE id = ?').get(projectId);
+  if (!projectRow) return res.status(404).json({ error: 'not_found' });
+
+  let phases = [];
+  try {
+    const parsed = JSON.parse(projectRow.data || '{}');
+    phases = Array.isArray(parsed.phases) ? parsed.phases : [];
+  } catch {
+    return res.status(500).json({ error: 'project_data_unparseable' });
+  }
+
+  // The default status for newly-created entities. Always falls back to the
+  // first project_statuses row by order_idx; the seedDefaultStatuses() boot
+  // migration guarantees at least 'To Do' exists.
+  const firstStatus = db.prepare(
+    'SELECT name FROM project_statuses WHERE project_id = ? ORDER BY order_idx ASC LIMIT 1'
+  ).get(projectId);
+  const defaultStatus = firstStatus?.name || 'To Do';
+
+  let epicsCreated = 0;
+  let storiesCreated = 0;
+
+  const tx = db.transaction(() => {
+    for (const phase of phases) {
+      if (!phase || !phase.id) continue;
+
+      let epicId;
+      const existingEpic = db.prepare(
+        'SELECT id FROM epics WHERE project_id = ? AND source_phase_id = ?'
+      ).get(projectId, phase.id);
+
+      if (existingEpic) {
+        epicId = existingEpic.id;
+      } else {
+        const key = nextKey(db, projectId, 'epic');
+        const r = db.prepare(`
+          INSERT INTO epics (project_id, key, title, status, priority, source_phase_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'medium', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `).run(projectId, key, phase.name || 'Untitled phase', defaultStatus, phase.id);
+        epicId = Number(r.lastInsertRowid);
+        db.prepare('INSERT OR IGNORE INTO epic_phases (epic_id, phase_id) VALUES (?, ?)').run(epicId, phase.id);
+        epicsCreated++;
+      }
+
+      // Stories under this epic — one per milestone.
+      const milestones = Array.isArray(phase.milestones) ? phase.milestones : [];
+      for (const milestone of milestones) {
+        if (!milestone || !milestone.id) continue;
+        const existingStory = db.prepare(
+          'SELECT 1 FROM stories WHERE epic_id = ? AND source_milestone_id = ?'
+        ).get(epicId, milestone.id);
+        if (existingStory) continue;
+        const key = nextKey(db, projectId, 'story');
+        db.prepare(`
+          INSERT INTO stories (epic_id, key, title, status, priority, source_milestone_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'medium', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `).run(epicId, key, milestone.name || 'Untitled milestone', defaultStatus, milestone.id);
+        storiesCreated++;
+      }
+    }
+  });
+  try {
+    tx();
+  } catch (err) {
+    console.error('sync-from-plan error:', err);
+    return res.status(500).json({ error: 'internal_error' });
+  }
+  res.json({ epicsCreated, storiesCreated });
+});
+
 export default router;

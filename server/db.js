@@ -353,6 +353,23 @@ db.exec(`
   }
 }
 
+// --- Sync-from-plan provenance (PR after #82) ----------------------------
+// epics.source_phase_id and stories.source_milestone_id let us correlate
+// auto-generated entities back to the project's phases/milestones JSON, so
+// re-running the sync is idempotent (we skip phases that already have a
+// matching epic). Both are TEXT because phase / milestone ids in
+// projects.data are strings (`generateId()` from src/lib/projectStore.js).
+{
+  const epicCols = db.prepare("PRAGMA table_info('epics')").all();
+  if (!epicCols.some((c) => c.name === 'source_phase_id')) {
+    db.exec(`ALTER TABLE epics ADD COLUMN source_phase_id TEXT`);
+  }
+  const storyCols = db.prepare("PRAGMA table_info('stories')").all();
+  if (!storyCols.some((c) => c.name === 'source_milestone_id')) {
+    db.exec(`ALTER TABLE stories ADD COLUMN source_milestone_id TEXT`);
+  }
+}
+
 // --- Indexes ---
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_resources_user ON resources(user_id)`);
@@ -375,6 +392,8 @@ db.exec(`CREATE INDEX IF NOT EXISTS idx_time_task ON time_entries(task_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_time_resource_date ON time_entries(resource_id, date)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_closed_project ON project_closed_periods(project_id, period)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_resources_linked_user ON resources(linked_user_id) WHERE linked_user_id IS NOT NULL`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_epics_source_phase ON epics(project_id, source_phase_id) WHERE source_phase_id IS NOT NULL`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_stories_source_milestone ON stories(epic_id, source_milestone_id) WHERE source_milestone_id IS NOT NULL`);
 
 // --- Migration ---
 
