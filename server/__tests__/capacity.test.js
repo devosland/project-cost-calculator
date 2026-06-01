@@ -494,3 +494,62 @@ describe('gantt query logic', () => {
     expect(assignments.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe('resource_availability table', () => {
+  function makeResource(email, name = 'Marie') {
+    const user = seedUser(db, { email });
+    const r = db
+      .prepare('INSERT INTO resources (user_id, name, role, level) VALUES (?, ?, ?, ?)')
+      .run(user.id, name, 'Developer', 'Senior');
+    return { userId: user.id, resourceId: Number(r.lastInsertRowid) };
+  }
+
+  it('stores a monthly availability override', () => {
+    const { resourceId } = makeResource('avail1@test.com');
+    db.prepare(
+      'INSERT INTO resource_availability (resource_id, month, available_pct) VALUES (?, ?, ?)'
+    ).run(resourceId, '2026-03', 50);
+    const row = db
+      .prepare('SELECT * FROM resource_availability WHERE resource_id = ? AND month = ?')
+      .get(resourceId, '2026-03');
+    expect(row.available_pct).toBe(50);
+  });
+
+  it('enforces UNIQUE(resource_id, month)', () => {
+    const { resourceId } = makeResource('avail2@test.com');
+    const stmt = db.prepare(
+      'INSERT INTO resource_availability (resource_id, month, available_pct) VALUES (?, ?, ?)'
+    );
+    stmt.run(resourceId, '2026-04', 80);
+    expect(() => stmt.run(resourceId, '2026-04', 60)).toThrow();
+  });
+
+  it('upserts via ON CONFLICT(resource_id, month)', () => {
+    const { resourceId } = makeResource('avail3@test.com');
+    const upsert = db.prepare(`
+      INSERT INTO resource_availability (resource_id, month, available_pct, created_at, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(resource_id, month) DO UPDATE SET
+        available_pct = excluded.available_pct,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+    upsert.run(resourceId, '2026-05', 50);
+    upsert.run(resourceId, '2026-05', 70);
+    const row = db
+      .prepare('SELECT * FROM resource_availability WHERE resource_id = ? AND month = ?')
+      .get(resourceId, '2026-05');
+    expect(row.available_pct).toBe(70);
+  });
+
+  it('cascades delete when the resource is removed', () => {
+    const { resourceId } = makeResource('avail4@test.com');
+    db.prepare(
+      'INSERT INTO resource_availability (resource_id, month, available_pct) VALUES (?, ?, ?)'
+    ).run(resourceId, '2026-06', 0);
+    db.prepare('DELETE FROM resources WHERE id = ?').run(resourceId);
+    const row = db
+      .prepare('SELECT * FROM resource_availability WHERE resource_id = ?')
+      .get(resourceId);
+    expect(row).toBeUndefined();
+  });
+});

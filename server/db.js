@@ -152,6 +152,19 @@ db.exec(`
   )
 `);
 
+// Monthly availability overrides per resource. A missing row means "use base max_capacity".
+db.exec(`
+  CREATE TABLE IF NOT EXISTS resource_availability (
+    id INTEGER PRIMARY KEY,
+    resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+    month TEXT NOT NULL,
+    available_pct INTEGER NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(resource_id, month)
+  )
+`);
+
 // Consultant-to-permanent transition plans; status moves draft → applied on execution.
 db.exec(`
   CREATE TABLE IF NOT EXISTS transition_plans (
@@ -375,6 +388,7 @@ db.exec(`
 db.exec(`CREATE INDEX IF NOT EXISTS idx_resources_user ON resources(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_assignments_resource_months ON resource_assignments(resource_id, start_month, end_month)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_assignments_project ON resource_assignments(project_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_availability_resource_month ON resource_availability(resource_id, month)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_transition_plans_user ON transition_plans(user_id)`);
 // Partial index: only index active (non-revoked) keys for fast authentication lookups.
 db.exec(`CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id) WHERE revoked_at IS NULL`);
@@ -963,6 +977,55 @@ function deleteAssignment(assignmentId) {
   return stmt.run(assignmentId);
 }
 
+// Availability helpers
+
+/**
+ * Returns all availability overrides for a user's resource pool.
+ * Joined through resources so we only return rows the caller owns.
+ * @param {number} userId
+ * @returns {Array<{ id, resource_id, month, available_pct }>}
+ */
+function getAvailabilityByUser(userId) {
+  return db
+    .prepare(
+      `SELECT av.id, av.resource_id, av.month, av.available_pct
+       FROM resource_availability av
+       JOIN resources r ON r.id = av.resource_id
+       WHERE r.user_id = ?
+       ORDER BY av.resource_id, av.month`
+    )
+    .all(userId);
+}
+
+/**
+ * Insert or update a single monthly availability override.
+ * @param {number} resourceId
+ * @param {string} month         'YYYY-MM'
+ * @param {number} availablePct  0..100 (absolute %)
+ */
+function upsertAvailability(resourceId, month, availablePct) {
+  return db
+    .prepare(
+      `INSERT INTO resource_availability (resource_id, month, available_pct, created_at, updated_at)
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ON CONFLICT(resource_id, month) DO UPDATE SET
+         available_pct = excluded.available_pct,
+         updated_at = CURRENT_TIMESTAMP`
+    )
+    .run(resourceId, month, availablePct);
+}
+
+/**
+ * Remove a monthly override (used when the value reverts to base capacity).
+ * @param {number} resourceId
+ * @param {string} month  'YYYY-MM'
+ */
+function deleteAvailability(resourceId, month) {
+  return db
+    .prepare('DELETE FROM resource_availability WHERE resource_id = ? AND month = ?')
+    .run(resourceId, month);
+}
+
 // Transition plan helpers
 
 /**
@@ -1265,6 +1328,9 @@ export {
   createAssignment,
   updateAssignment,
   deleteAssignment,
+  getAvailabilityByUser,
+  upsertAvailability,
+  deleteAvailability,
   getTransitionPlansByUser,
   getTransitionPlanById,
   createTransitionPlan,
