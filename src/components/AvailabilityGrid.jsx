@@ -11,19 +11,12 @@
  */
 import { useEffect, useState, useMemo } from 'react';
 import { capacityApi } from '../lib/capacityApi';
-import { getMonthRange, getMonthlyCapacity } from '../lib/capacityCalculations';
+import { getMonthRange, getMonthlyCapacity, addMonths } from '../lib/capacityCalculations';
 import { useLocale } from '../lib/i18n';
 
 /** Mois courant au format YYYY-MM (fenêtre glissante de 12 mois, comme le Gantt). */
 function currentMonth() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-/** Ajoute n mois à un YYYY-MM. */
-function addMonths(ym, n) {
-  const [y, m] = ym.split('-').map(Number);
-  const d = new Date(y, m - 1 + n, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
@@ -97,17 +90,18 @@ const AvailabilityGrid = () => {
                   <span className="text-xs text-muted-foreground font-mono tabular-nums">{base}%</span>
                 </div>
                 {months.map((m) => {
-                  const hasOverride = overrides.some(
+                  const override = overrides.find(
                     (o) => String(o.resource_id) === String(r.id) && o.month === m
                   );
-                  const value = getMonthlyCapacity(r.id, m, overrides, base);
+                  const hasOverride = override !== undefined;
                   return (
                     <div key={m} className="border-b border-border p-0.5">
                       <input
+                        key={hasOverride ? `set-${override.available_pct}` : 'base'}
                         type="number"
                         min={0}
                         max={100}
-                        defaultValue={hasOverride ? value : ''}
+                        defaultValue={hasOverride ? override.available_pct : ''}
                         placeholder={String(base)}
                         aria-label={`${r.name} ${m}`}
                         onBlur={(e) => handleCommit(r, m, e.target.value)}

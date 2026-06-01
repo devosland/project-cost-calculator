@@ -56,6 +56,18 @@ export function getMonthRange(start, end) {
 }
 
 /**
+ * Ajoute n mois à un YYYY-MM, gère les débordements d'année.
+ * @param {string} ym  Mois de base au format YYYY-MM.
+ * @param {number} n   Nombre de mois à ajouter (peut être négatif).
+ * @returns {string} Mois résultant au format YYYY-MM.
+ */
+export function addMonths(ym, n) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
  * Sum the total allocation percentage for a given resource during a specific
  * calendar month across all their active assignments.
  *
