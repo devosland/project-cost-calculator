@@ -480,8 +480,12 @@ router.put('/availability', (req, res) => {
       if (!/^\d{4}-\d{2}$/.test(e.month)) {
         return res.status(400).json({ error: `Invalid month format: ${e.month} (expected YYYY-MM)` });
       }
-      const pct = Number(e.available_pct);
-      if (!Number.isInteger(pct) || pct < 0 || pct > 100) {
+      if (
+        typeof e.available_pct !== 'number' ||
+        !Number.isInteger(e.available_pct) ||
+        e.available_pct < 0 ||
+        e.available_pct > 100
+      ) {
         return res
           .status(400)
           .json({ error: `available_pct must be an integer 0-100 (got ${e.available_pct})` });
@@ -495,8 +499,8 @@ router.put('/availability', (req, res) => {
     // Apply atomically: delete redundant (== base) overrides, upsert the rest.
     const apply = db.transaction((items) => {
       for (const e of items) {
-        const base = getResourceById(e.resource_id).max_capacity ?? 100;
-        const pct = Number(e.available_pct);
+        const base = getResourceById(e.resource_id)?.max_capacity ?? 100;
+        const pct = e.available_pct;
         if (pct === base) {
           deleteAvailability(e.resource_id, e.month);
         } else {
