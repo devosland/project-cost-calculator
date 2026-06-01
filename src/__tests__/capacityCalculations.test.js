@@ -4,6 +4,7 @@ import {
   getMonthRange,
   calculateUtilization,
   calculateTransitionCostImpact,
+  getMonthlyCapacity,
 } from '../lib/capacityCalculations';
 
 describe('weekToMonth', () => {
@@ -133,5 +134,50 @@ describe('calculateTransitionCostImpact', () => {
     const result = calculateTransitionCostImpact(params);
     // (95 - 55) * 37.5 * 52 * 1 = 78000
     expect(result.annualSavings).toBe((95 - 55) * HOURS_PER_WEEK * 52);
+  });
+});
+
+describe('getMonthlyCapacity', () => {
+  const overrides = [
+    { resource_id: 1, month: '2026-03', available_pct: 50 },
+    { resource_id: 1, month: '2026-07', available_pct: 0 },
+    { resource_id: 2, month: '2026-03', available_pct: 80 },
+  ];
+
+  it('returns the override when one exists for that resource/month', () => {
+    expect(getMonthlyCapacity(1, '2026-03', overrides, 100)).toBe(50);
+    expect(getMonthlyCapacity(1, '2026-07', overrides, 100)).toBe(0);
+  });
+
+  it('falls back to base capacity when no override exists', () => {
+    expect(getMonthlyCapacity(1, '2026-04', overrides, 100)).toBe(100);
+    expect(getMonthlyCapacity(2, '2026-04', overrides, 60)).toBe(60);
+  });
+
+  it('defaults base capacity to 100 when undefined', () => {
+    expect(getMonthlyCapacity(3, '2026-01', overrides, undefined)).toBe(100);
+  });
+
+  it('matches resource ids regardless of string/number type', () => {
+    expect(getMonthlyCapacity('1', '2026-03', overrides, 100)).toBe(50);
+  });
+});
+
+describe('time-phased over-allocation', () => {
+  const assignments = [
+    { resource_id: 1, allocation: 60, start_month: '2026-03', end_month: '2026-03' },
+  ];
+
+  it('flags over-allocation when demand exceeds reduced availability', () => {
+    const overrides = [{ resource_id: 1, month: '2026-03', available_pct: 50 }];
+    const demand = calculateUtilization(assignments, 1, '2026-03'); // 60
+    const capacity = getMonthlyCapacity(1, '2026-03', overrides, 100); // 50
+    expect(demand > capacity).toBe(true);
+  });
+
+  it('does not flag when demand is within base capacity and no override', () => {
+    const demand = calculateUtilization(assignments, 1, '2026-03'); // 60
+    const capacity = getMonthlyCapacity(1, '2026-03', [], 100); // 100
+    expect(demand > capacity).toBe(false);
   });
 });

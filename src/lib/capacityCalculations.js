@@ -81,6 +81,26 @@ export function calculateUtilization(assignments, resourceId, month) {
 }
 
 /**
+ * Effective capacity (%) of a resource for a given month.
+ *
+ * Looks up a time-phased override in `overrides`; if none exists for this
+ * resource/month, falls back to the resource's base capacity. This is the
+ * single rule used everywhere capacity must be known per month.
+ *
+ * @param {string|number} resourceId  - Resource to look up.
+ * @param {string}        month        - Target month in YYYY-MM format.
+ * @param {object[]}      overrides    - Rows from resource_availability ({ resource_id, month, available_pct }).
+ * @param {number}        baseCapacity - resources.max_capacity (defaults to 100 if undefined).
+ * @returns {number} Capacity percentage 0..100.
+ */
+export function getMonthlyCapacity(resourceId, month, overrides, baseCapacity) {
+  const override = (overrides || []).find(
+    (o) => String(o.resource_id) === String(resourceId) && o.month === month
+  );
+  return override ? override.available_pct : baseCapacity ?? 100;
+}
+
+/**
  * Compute the full cost impact of replacing a consultant with a permanent
  * internal employee over their remaining engagement.
  *
