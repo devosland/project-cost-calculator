@@ -93,6 +93,18 @@ export function seedSchema(db) {
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS resource_availability (
+      id INTEGER PRIMARY KEY,
+      resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+      month TEXT NOT NULL,
+      available_pct INTEGER NOT NULL CHECK (available_pct BETWEEN 0 AND 100),
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(resource_id, month)
+    )
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS transition_plans (
       id INTEGER PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id),

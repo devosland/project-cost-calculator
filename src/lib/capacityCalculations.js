@@ -56,6 +56,18 @@ export function getMonthRange(start, end) {
 }
 
 /**
+ * Ajoute n mois à un YYYY-MM, gère les débordements d'année.
+ * @param {string} ym  Mois de base au format YYYY-MM.
+ * @param {number} n   Nombre de mois à ajouter (peut être négatif).
+ * @returns {string} Mois résultant au format YYYY-MM.
+ */
+export function addMonths(ym, n) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
  * Sum the total allocation percentage for a given resource during a specific
  * calendar month across all their active assignments.
  *
@@ -78,6 +90,26 @@ export function calculateUtilization(assignments, resourceId, month) {
         a.end_month >= month
     )
     .reduce((sum, a) => sum + a.allocation, 0);
+}
+
+/**
+ * Effective capacity (%) of a resource for a given month.
+ *
+ * Looks up a time-phased override in `overrides`; if none exists for this
+ * resource/month, falls back to the resource's base capacity. This is the
+ * single rule used everywhere capacity must be known per month.
+ *
+ * @param {string|number} resourceId  - Resource to look up.
+ * @param {string}        month        - Target month in YYYY-MM format.
+ * @param {object[]}      overrides    - Rows from resource_availability ({ resource_id, month, available_pct }).
+ * @param {number}        baseCapacity - resources.max_capacity (defaults to 100 if undefined).
+ * @returns {number} Capacity percentage 0..100.
+ */
+export function getMonthlyCapacity(resourceId, month, overrides, baseCapacity) {
+  const override = (overrides || []).find(
+    (o) => String(o.resource_id) === String(resourceId) && o.month === month
+  );
+  return override ? override.available_pct : baseCapacity ?? 100;
 }
 
 /**

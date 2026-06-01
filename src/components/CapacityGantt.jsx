@@ -23,7 +23,7 @@ import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import { api } from '../lib/api';
 import { capacityApi } from '../lib/capacityApi';
-import { getMonthRange, calculateUtilization, projectAssignmentsWithPlan } from '../lib/capacityCalculations';
+import { getMonthRange, addMonths, calculateUtilization, projectAssignmentsWithPlan } from '../lib/capacityCalculations';
 import GanttBar from './GanttBar';
 import UtilizationSummary from './UtilizationSummary';
 import QuickTransition from './QuickTransition';
@@ -33,20 +33,6 @@ const PROJECT_COLORS = [
   '#6366f1', '#10b981', '#f59e0b', '#ef4444',
   '#06b6d4', '#f97316', '#8b5cf6', '#14b8a6',
 ];
-
-/**
- * Ajoute `count` mois à une chaîne 'YYYY-MM' et retourne la nouvelle chaîne 'YYYY-MM'.
- * Gère correctement les débordements d'année (ex: 2024-12 + 1 = 2025-01).
- *
- * @param {string} ym - Mois source au format 'YYYY-MM'
- * @param {number} count - Nombre de mois à ajouter (négatif pour soustraire)
- * @returns {string} Nouveau mois au format 'YYYY-MM'
- */
-function addMonths(ym, count) {
-  const [y, m] = ym.split('-').map(Number);
-  const d = new Date(y, m - 1 + count, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
 
 /**
  * Returns the month immediately after `ym` (YYYY-MM).
@@ -102,6 +88,13 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
   useEffect(() => {
     capacityApi.getGanttData(startMonth, endMonth).then(setData).catch(() => {});
   }, [startMonth, endMonth]);
+
+  // Fetch time-phased availability overrides so UtilizationSummary can use
+  // per-month capacity instead of the constant max_capacity for each resource.
+  const [availability, setAvailability] = useState([]);
+  useEffect(() => {
+    capacityApi.getAvailability().then((d) => setAvailability(Array.isArray(d) ? d : [])).catch(() => {});
+  }, []);
 
   // Fetch the draft plan whenever previewPlanId changes.
   useEffect(() => {
@@ -673,7 +666,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
           {viewMode === 'project' ? renderByProject() : renderByType()}
 
           {/* Résumé d'utilisation agrégé en bas du Gantt */}
-          <UtilizationSummary resources={resources} assignments={assignments} months={months} gridCols={gridCols} />
+          <UtilizationSummary resources={resources} assignments={assignments} months={months} gridCols={gridCols} availability={availability} />
         </div>
       </div>
 
