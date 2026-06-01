@@ -103,6 +103,13 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
     capacityApi.getGanttData(startMonth, endMonth).then(setData).catch(() => {});
   }, [startMonth, endMonth]);
 
+  // Fetch time-phased availability overrides so UtilizationSummary can use
+  // per-month capacity instead of the constant max_capacity for each resource.
+  const [availability, setAvailability] = useState([]);
+  useEffect(() => {
+    capacityApi.getAvailability().then((d) => setAvailability(Array.isArray(d) ? d : [])).catch(() => {});
+  }, []);
+
   // Fetch the draft plan whenever previewPlanId changes.
   useEffect(() => {
     if (!previewPlanId) {
@@ -673,7 +680,7 @@ const CapacityGantt = ({ rates, previewPlanId, onExitPreview = () => {} }) => {
           {viewMode === 'project' ? renderByProject() : renderByType()}
 
           {/* Résumé d'utilisation agrégé en bas du Gantt */}
-          <UtilizationSummary resources={resources} assignments={assignments} months={months} gridCols={gridCols} />
+          <UtilizationSummary resources={resources} assignments={assignments} months={months} gridCols={gridCols} availability={availability} />
         </div>
       </div>
 

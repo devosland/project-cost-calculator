@@ -7,7 +7,7 @@
  * spans all month columns.
  */
 import React from 'react';
-import { calculateUtilization } from '../lib/capacityCalculations';
+import { calculateUtilization, getMonthlyCapacity } from '../lib/capacityCalculations';
 import { useLocale } from '../lib/i18n';
 
 /**
@@ -20,8 +20,11 @@ import { useLocale } from '../lib/i18n';
  *   matching the Gantt grid columns.
  * @param {string} props.gridCols - CSS grid-template-columns value that matches
  *   the parent Gantt grid so the row aligns perfectly.
+ * @param {Array<Object>} [props.availability=[]] - Time-phased availability overrides
+ *   from capacityApi.getAvailability(); each entry carries resource_id, month, and
+ *   capacity so the utilization denominator reflects vacation / part-time reductions.
  */
-const UtilizationSummary = ({ resources, assignments, months, gridCols }) => {
+const UtilizationSummary = ({ resources, assignments, months, gridCols, availability = [] }) => {
   const { t } = useLocale();
 
   return (
@@ -30,7 +33,10 @@ const UtilizationSummary = ({ resources, assignments, months, gridCols }) => {
         {t('capacity.utilization')}
       </div>
       {months.map((month) => {
-        const totalCapacity = resources.reduce((sum, r) => sum + (r.max_capacity || 100), 0);
+        const totalCapacity = resources.reduce(
+          (sum, r) => sum + getMonthlyCapacity(r.id, month, availability, r.max_capacity ?? 100),
+          0
+        );
         const totalAllocation = resources.reduce(
           (sum, r) => sum + calculateUtilization(assignments, r.id, month),
           0
