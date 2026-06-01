@@ -138,3 +138,17 @@ calculateUtilization(assignments, resourceId, M) > getMonthlyCapacity(resourceId
 - Le Gantt passe une cellule en surcharge quand la charge dépasse la **dispo du mois** (et non plus 100 fixe).
 - Les données et comportements existants (ressources sans override) sont inchangés.
 - Tests verts (frontend + backend), CI verte.
+
+---
+
+## Addendum — révisions post-exploration du code (2026-06-01)
+
+Trois précisions découvertes en cartographiant le code, qui priment sur le texte ci-dessus en cas de divergence :
+
+1. **Point d'intégration de la surcharge = `UtilizationSummary`, pas le Gantt.** Le `CapacityGantt` ne colore **pas** la surcharge par ressource aujourd'hui (il rend des barres `GanttBar` avec le `%`, sans comparaison à une capacité). Le seul composant qui compare charge vs capacité est `UtilizationSummary` (ligne d'agrégat), qui calcule `Σ(allocations) ÷ Σ(max_capacity)`. Le chantier A le rend **time-phasé** (utilise `getMonthlyCapacity` au lieu de `max_capacity` constant). Des cellules de surcharge **par ressource** dans le Gantt relèvent du chantier 2 (§11).
+
+2. **Validation manuelle, pas Zod.** Les routes de `server/capacity.js` valident à la main (`if (!x) return res.status(400)…`). Le chantier A suit ce style pour rester cohérent avec le fichier, plutôt que d'introduire Zod (réservé à l'API publique v1).
+
+3. **Schéma de test dupliqué.** `server/__tests__/setup.js` (`seedSchema`) contient sa **propre** copie des `CREATE TABLE` (« mirrors server/db.js »). La table `resource_availability` doit être ajoutée **aux deux** endroits, sinon les tests échouent (« no such table »).
+
+4. **Critère de succès #3 reformulé** : « `UtilizationSummary` reflète la surcharge contre la **dispo time-phasée** du mois (et non plus la somme des `max_capacity` constants) ».
