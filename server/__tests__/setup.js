@@ -97,7 +97,7 @@ export function seedSchema(db) {
       id INTEGER PRIMARY KEY,
       resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
       month TEXT NOT NULL,
-      available_pct INTEGER NOT NULL,
+      available_pct INTEGER NOT NULL CHECK (available_pct BETWEEN 0 AND 100),
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(resource_id, month)

@@ -27,7 +27,10 @@ import {
   getTransitionPlanById,
   createTransitionPlan,
   updateTransitionPlan,
-  deleteTransitionPlan
+  deleteTransitionPlan,
+  getAvailabilityByUser,
+  upsertAvailability,
+  deleteAvailability,
 } from './db.js';
 
 const router = Router();
@@ -431,6 +434,81 @@ router.get('/gantt', (req, res) => {
     res.json({ resources, assignments });
   } catch (err) {
     console.error('Gantt query error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// --- Availability (time-phased monthly capacity overrides) ---
+
+/**
+ * GET /api/capacity/availability
+ * Returns every monthly availability override in the caller's resource pool.
+ * A missing row means "use the resource's base max_capacity for that month".
+ */
+router.get('/availability', (req, res) => {
+  try {
+    res.json(getAvailabilityByUser(req.user.id));
+  } catch (err) {
+    console.error('List availability error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /api/capacity/availability
+ * Bulk upsert of monthly overrides. Body: [{ resource_id, month, available_pct }].
+ * If available_pct equals the resource's base max_capacity, the override row is
+ * DELETED instead of stored — the table only ever holds non-redundant data.
+ * Validation is manual (mirrors the rest of this file; no Zod here).
+ */
+router.put('/availability', (req, res) => {
+  try {
+    const entries = req.body;
+    if (!Array.isArray(entries)) {
+      return res
+        .status(400)
+        .json({ error: 'Request body must be an array of { resource_id, month, available_pct }' });
+    }
+
+    // Validate every entry up-front (ownership + shape) before mutating anything.
+    for (const e of entries) {
+      if (!e.resource_id || !e.month || e.available_pct == null) {
+        return res
+          .status(400)
+          .json({ error: 'Each entry requires resource_id, month, and available_pct' });
+      }
+      if (!/^\d{4}-\d{2}$/.test(e.month)) {
+        return res.status(400).json({ error: `Invalid month format: ${e.month} (expected YYYY-MM)` });
+      }
+      const pct = Number(e.available_pct);
+      if (!Number.isInteger(pct) || pct < 0 || pct > 100) {
+        return res
+          .status(400)
+          .json({ error: `available_pct must be an integer 0-100 (got ${e.available_pct})` });
+      }
+      const resource = getResourceById(e.resource_id);
+      if (!resource || resource.user_id !== req.user.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+
+    // Apply atomically: delete redundant (== base) overrides, upsert the rest.
+    const apply = db.transaction((items) => {
+      for (const e of items) {
+        const base = getResourceById(e.resource_id).max_capacity ?? 100;
+        const pct = Number(e.available_pct);
+        if (pct === base) {
+          deleteAvailability(e.resource_id, e.month);
+        } else {
+          upsertAvailability(e.resource_id, e.month, pct);
+        }
+      }
+    });
+    apply(entries);
+
+    res.json(getAvailabilityByUser(req.user.id));
+  } catch (err) {
+    console.error('Save availability error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

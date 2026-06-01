@@ -541,6 +541,15 @@ describe('resource_availability table', () => {
     expect(row.available_pct).toBe(70);
   });
 
+  it('rejects available_pct outside 0..100 via CHECK constraint', () => {
+    const { resourceId } = makeResource('availcheck@test.com');
+    const stmt = db.prepare(
+      'INSERT INTO resource_availability (resource_id, month, available_pct) VALUES (?, ?, ?)'
+    );
+    expect(() => stmt.run(resourceId, '2026-08', 150)).toThrow();
+    expect(() => stmt.run(resourceId, '2026-09', -5)).toThrow();
+  });
+
   it('cascades delete when the resource is removed', () => {
     const { resourceId } = makeResource('avail4@test.com');
     db.prepare(
