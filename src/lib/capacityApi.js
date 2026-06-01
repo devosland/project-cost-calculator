@@ -89,6 +89,23 @@ export const capacityApi = {
    */
   deleteAssignment: (id) => api.request(`/capacity/assignments/${id}`, { method: 'DELETE' }),
 
+  // --- Availability (time-phased monthly capacity) ---
+
+  /**
+   * Fetch all monthly availability overrides for the pool.
+   * @returns {Promise<Array<{ id, resource_id, month, available_pct }>>}
+   */
+  getAvailability: () => api.request('/capacity/availability'),
+
+  /**
+   * Bulk upsert monthly availability overrides. Entries whose available_pct
+   * equals the resource's base capacity are removed server-side.
+   * @param {Array<{ resource_id: number, month: string, available_pct: number }>} entries
+   * @returns {Promise<Array>} The refreshed list of overrides.
+   */
+  saveAvailability: (entries) =>
+    api.request('/capacity/availability', { method: 'PUT', body: JSON.stringify(entries) }),
+
   // --- Gantt ---
 
   /**
