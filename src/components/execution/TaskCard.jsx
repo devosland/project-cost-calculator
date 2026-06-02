@@ -23,6 +23,15 @@ export default function TaskCard({ task, onClick, dragging }) {
         dragging ? 'shadow-lg cursor-grabbing' : 'cursor-grab'
       }`}
     >
+      {task.epic_title && (
+        <div
+          className="text-[10px] text-muted-foreground truncate mb-1"
+          title={task.story_title ? `${task.epic_title} › ${task.story_title}` : task.epic_title}
+        >
+          {task.epic_key ? `${task.epic_key} · ` : ''}
+          {task.epic_title}
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-1">
         <span className="font-mono text-[10px] text-muted-foreground">{task.key}</span>
         <span
