@@ -353,34 +353,50 @@ export function getCostByCategory(project, rates, labourLabel = "Main-d'oeuvre")
 
 // --- Dependency-aware scheduling ---
 
+/** Types de dépendance supportés (Finish-to-Start, Start-to-Start, Finish-to-Finish, Start-to-Finish). */
+export const DEPENDENCY_TYPES = ['FS', 'SS', 'FF', 'SF'];
+
 /**
- * Calculate each phase's start and end week while respecting `dependsOn`
- * relationships between phases.
+ * Normalise une entrée de dépendance de phase en { id, type, lag }.
+ * Rétro-compat : une dépendance stockée en string (ancien format) devient FS / lag 0.
  *
- * Algorithm:
- * 1. If no phase has dependencies → sequential layout (order in array).
- * 2. Otherwise, run DFS cycle detection. If a cycle is found → fall back to
- *    sequential layout (prevents infinite recursion on bad data).
- * 3. For a valid DAG, compute each phase's startWeek = max(endWeek of all
- *    dependencies) using memoised recursion (getEndWeek). Phases with no
- *    dependencies start at week 0.
+ * @param {string|{id:string,type?:string,lag?:number}} dep
+ * @returns {{ id: string, type: 'FS'|'SS'|'FF'|'SF', lag: number }}
+ */
+export function normalizeDependency(dep) {
+  if (typeof dep === 'string') return { id: dep, type: 'FS', lag: 0 };
+  if (dep && typeof dep === 'object') {
+    return {
+      id: dep.id,
+      type: DEPENDENCY_TYPES.includes(dep.type) ? dep.type : 'FS',
+      lag: Number.isFinite(dep.lag) ? dep.lag : 0,
+    };
+  }
+  return { id: undefined, type: 'FS', lag: 0 };
+}
+
+/**
+ * Calcule le planning des phases en respectant le type de dépendance
+ * (FS/SS/FF/SF) et le décalage (lag, en semaines ; négatif = avance).
+ * Détecte les cycles (repli séquentiel) et retombe en séquentiel sans dépendance.
  *
  * The returned phaseSchedule array preserves the original phase order so
  * the Timeline tab can render phases in the same order as the Phases tab.
  *
  * @param {object} project - Project with phases[] (each phase may have a
- *                           `dependencies` array of sibling phase IDs).
- * @returns {{ totalWeeks: number, phaseSchedule: Array<{phaseId, startWeek, endWeek}> }}
+ *                           `dependencies` array of sibling phase IDs or dep objects).
+ * @returns {{ totalWeeks: number, phaseSchedule: Array<{phaseId:string,startWeek:number,endWeek:number}> }}
  */
 export function calculateProjectDurationWithDependencies(project) {
   const phases = project.phases || [];
   if (phases.length === 0) return { totalWeeks: 0, phaseSchedule: [] };
-
   const phaseMap = new Map(phases.map((p) => [p.id, p]));
-  const hasDependencies = phases.some((p) => p.dependencies && p.dependencies.length > 0);
 
-  // Fall back to sequential if no dependencies are defined
-  if (!hasDependencies) {
+  // Dépendances normalisées d'une phase, filtrées aux prédécesseurs existants.
+  const depsOf = (phase) =>
+    (phase.dependencies || []).map(normalizeDependency).filter((d) => phaseMap.has(d.id));
+
+  const sequential = () => {
     let offset = 0;
     const phaseSchedule = phases.map((p) => {
       const entry = { phaseId: p.id, startWeek: offset, endWeek: offset + p.durationWeeks };
@@ -388,76 +404,63 @@ export function calculateProjectDurationWithDependencies(project) {
       return entry;
     });
     return { totalWeeks: offset, phaseSchedule };
-  }
+  };
 
-  // Detect circular dependencies via topological sort attempt.
-  // `visiting` tracks the current DFS path; if we re-enter a node that's
-  // already on the path, a cycle exists and we must bail out.
+  const hasDependencies = phases.some((p) => depsOf(p).length > 0);
+  if (!hasDependencies) return sequential();
+
+  // Détection de cycle (DFS trois couleurs) sur les ids normalisés.
   const visited = new Set();
   const visiting = new Set();
   let hasCycle = false;
-
   function detectCycle(id) {
     if (visiting.has(id)) { hasCycle = true; return; }
     if (visited.has(id)) return;
     visiting.add(id);
     const phase = phaseMap.get(id);
-    if (phase && phase.dependencies) {
-      for (const depId of phase.dependencies) {
-        if (phaseMap.has(depId)) detectCycle(depId);
-      }
+    if (phase) {
+      for (const dep of depsOf(phase)) detectCycle(dep.id);
     }
     visiting.delete(id);
     visited.add(id);
   }
-
   for (const p of phases) {
     detectCycle(p.id);
     if (hasCycle) break;
   }
+  if (hasCycle) return sequential();
 
-  // If circular, fall back to sequential to prevent infinite loops
-  if (hasCycle) {
-    let offset = 0;
-    const phaseSchedule = phases.map((p) => {
-      const entry = { phaseId: p.id, startWeek: offset, endWeek: offset + p.durationWeeks };
-      offset += p.durationWeeks;
-      return entry;
-    });
-    return { totalWeeks: offset, phaseSchedule };
-  }
-
-  // Calculate start/end using dependency graph.
-  // endWeekMap memoises results so shared dependencies are computed only once.
-  const endWeekMap = new Map();
-
-  function getEndWeek(id) {
-    if (endWeekMap.has(id)) return endWeekMap.get(id);
+  // Planning mémoïsé { startWeek, endWeek } respectant type + lag.
+  const scheduleMap = new Map();
+  function getSchedule(id) {
+    if (scheduleMap.has(id)) return scheduleMap.get(id);
     const phase = phaseMap.get(id);
-    if (!phase) return 0;
-
-    // This phase can only start after all its dependencies have ended.
+    if (!phase) return { startWeek: 0, endWeek: 0 };
+    const duration = phase.durationWeeks;
     let startWeek = 0;
-    const deps = (phase.dependencies || []).filter((d) => phaseMap.has(d));
-    for (const depId of deps) {
-      startWeek = Math.max(startWeek, getEndWeek(depId));
+    for (const dep of depsOf(phase)) {
+      const { startWeek: ps, endWeek: pe } = getSchedule(dep.id);
+      let candidate;
+      switch (dep.type) {
+        case 'SS': candidate = ps + dep.lag; break;
+        case 'FF': candidate = pe + dep.lag - duration; break;
+        case 'SF': candidate = ps + dep.lag - duration; break;
+        case 'FS':
+        default: candidate = pe + dep.lag; break;
+      }
+      startWeek = Math.max(startWeek, candidate);
     }
-    const endWeek = startWeek + phase.durationWeeks;
-    endWeekMap.set(id, endWeek);
-    return endWeek;
+    startWeek = Math.max(0, startWeek);
+    const entry = { startWeek, endWeek: startWeek + duration };
+    scheduleMap.set(id, entry);
+    return entry;
   }
-
-  for (const p of phases) getEndWeek(p.id);
 
   const phaseSchedule = phases.map((p) => {
-    const endWeek = endWeekMap.get(p.id);
-    return { phaseId: p.id, startWeek: endWeek - p.durationWeeks, endWeek };
+    const { startWeek, endWeek } = getSchedule(p.id);
+    return { phaseId: p.id, startWeek, endWeek };
   });
-
-  // Total project duration is the latest end week across all phases
-  // (phases can run in parallel, so it's not simply the sum of durations).
   const totalWeeks = phaseSchedule.length > 0 ? Math.max(...phaseSchedule.map((s) => s.endWeek)) : 0;
-
   return { totalWeeks, phaseSchedule };
 }
 
