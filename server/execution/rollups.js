@@ -84,6 +84,57 @@ export function getProjectActuals(projectId) {
 }
 
 /**
+ * Avancement agrégé d'un projet, dérivé des statuts Kanban (règle 0/50/100 :
+ * done=1, inprogress=0.5, todo=0), pondéré par estimate_hours, avec le même
+ * split epic→phases que getProjectActuals (epic lié à N phases ⇒ split égal).
+ *
+ * Retourne des AGRÉGATS bruts par phase ; le pourcentage final (avec repli sur
+ * le nombre de tâches si aucune estimation) est calculé côté client par
+ * evmCalculations.phaseProgressPct.
+ *
+ * @param {string} projectId
+ * @returns {{ by_phase: Object<string,{earned:number,est:number,taskCount:number,earnedCount:number}> }}
+ */
+export function getProjectProgress(projectId) {
+  const rows = db.prepare(`
+    WITH epic_progress AS (
+      SELECT e.id AS epic_id,
+             SUM(COALESCE(t.estimate_hours,0) * (CASE ps.category WHEN 'done' THEN 1.0 WHEN 'inprogress' THEN 0.5 ELSE 0 END)) AS earned,
+             SUM(COALESCE(t.estimate_hours,0)) AS est,
+             COUNT(t.id) AS task_count,
+             SUM(CASE ps.category WHEN 'done' THEN 1.0 WHEN 'inprogress' THEN 0.5 ELSE 0 END) AS earned_count
+      FROM epics e
+      JOIN stories s ON s.epic_id = e.id
+      JOIN tasks   t ON t.story_id = s.id
+      JOIN project_statuses ps ON ps.project_id = e.project_id AND ps.name = t.status
+      WHERE e.project_id = ?
+      GROUP BY e.id
+    ),
+    phase_count AS (
+      SELECT epic_id, COUNT(*) AS n FROM epic_phases GROUP BY epic_id
+    )
+    SELECT ep.phase_id AS phase_id,
+           SUM(epr.earned / COALESCE(pc.n,1)) AS earned,
+           SUM(epr.est / COALESCE(pc.n,1)) AS est,
+           SUM(CAST(epr.task_count AS REAL) / COALESCE(pc.n,1)) AS task_count,
+           SUM(epr.earned_count / COALESCE(pc.n,1)) AS earned_count
+    FROM epic_phases ep
+    JOIN epic_progress epr ON epr.epic_id = ep.epic_id
+    LEFT JOIN phase_count pc ON pc.epic_id = ep.epic_id
+    GROUP BY ep.phase_id
+  `).all(projectId);
+
+  return {
+    by_phase: Object.fromEntries(
+      rows.map((r) => [
+        r.phase_id,
+        { earned: r.earned, est: r.est, taskCount: r.task_count, earnedCount: r.earned_count },
+      ])
+    ),
+  };
+}
+
+/**
  * Per-epic rollup used by the Board and Dashboard widgets. Epics with zero
  * logged time are included (hours=0, cost=0) so the list matches exactly
  * what the epics list endpoint returns.
