@@ -42,12 +42,29 @@ const DependencyArrows = ({ links, barRefs, containerRef }) => {
   }, [links, barRefs, containerRef]);
 
   useLayoutEffect(() => {
+    // Ce composant est le premier enfant du conteneur ; les refs des barres
+    // (frères suivants) ne sont attachées qu'APRÈS l'exécution de cet effet
+    // (commit React en post-ordre). On diffère donc la première mesure à la
+    // frame suivante, quand toutes les barres sont mesurables. Le recompute
+    // immédiat couvre les re-mesures ultérieures (refs déjà en place).
     recompute();
+    const raf =
+      typeof requestAnimationFrame !== 'undefined' ? requestAnimationFrame(recompute) : null;
+
     const container = containerRef.current;
-    if (!container || typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(recompute);
-    ro.observe(container);
-    return () => ro.disconnect();
+    let ro;
+    if (container && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(recompute);
+      ro.observe(container);
+    }
+    // Reflow lié au redimensionnement de la fenêtre (mise en page responsive).
+    if (typeof window !== 'undefined') window.addEventListener('resize', recompute);
+
+    return () => {
+      if (raf != null) cancelAnimationFrame(raf);
+      if (ro) ro.disconnect();
+      if (typeof window !== 'undefined') window.removeEventListener('resize', recompute);
+    };
   }, [recompute]);
 
   if (paths.length === 0) return null;
