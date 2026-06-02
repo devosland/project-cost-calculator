@@ -17,6 +17,7 @@ import {
   calculatePhaseWeeklyCost,
   calculatePhaseTotalCost,
   formatCurrency,
+  normalizeDependency,
 } from '../lib/costCalculations';
 import { useLocale, LEVEL_KEYS, getLevelLabel } from '../lib/i18n';
 
@@ -500,26 +501,51 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                 {allPhases
                   .filter((p) => p.id !== phase.id)
                   .map((otherPhase) => {
-                    const deps = phase.dependencies || [];
-                    const isChecked = deps.includes(otherPhase.id);
+                    const deps = (phase.dependencies || []).map(normalizeDependency);
+                    const current = deps.find((d) => d.id === otherPhase.id);
+                    const isChecked = !!current;
+                    const writeDeps = (next) => update({ dependencies: next });
+                    const toggle = () => {
+                      if (isChecked) writeDeps(deps.filter((d) => d.id !== otherPhase.id));
+                      else writeDeps([...deps, { id: otherPhase.id, type: 'FS', lag: 0 }]);
+                    };
+                    const setField = (field, value) =>
+                      writeDeps(deps.map((d) => (d.id === otherPhase.id ? { ...d, [field]: value } : d)));
                     return (
-                      <label
-                        key={otherPhase.id}
-                        className="flex items-center gap-2 text-sm py-1 px-2 rounded-md hover:bg-muted cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {
-                            const newDeps = isChecked
-                              ? deps.filter((d) => d !== otherPhase.id)
-                              : [...deps, otherPhase.id];
-                            update({ dependencies: newDeps });
-                          }}
-                          className="rounded border-border"
-                        />
-                        {otherPhase.name}
-                      </label>
+                      <div key={otherPhase.id} className="flex items-center gap-2 text-sm py-1 px-2 rounded-md hover:bg-muted">
+                        <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={toggle}
+                            className="rounded border-border"
+                          />
+                          <span className="truncate">{otherPhase.name}</span>
+                        </label>
+                        {isChecked && (
+                          <>
+                            <select
+                              value={current.type}
+                              onChange={(e) => setField('type', e.target.value)}
+                              aria-label={`${otherPhase.name} — ${t('phase.dependencies')}`}
+                              className="text-xs border border-border rounded-md px-1 py-1 bg-background"
+                            >
+                              <option value="FS">{t('dep.type.fs')}</option>
+                              <option value="SS">{t('dep.type.ss')}</option>
+                              <option value="FF">{t('dep.type.ff')}</option>
+                              <option value="SF">{t('dep.type.sf')}</option>
+                            </select>
+                            <input
+                              type="number"
+                              value={current.lag}
+                              onChange={(e) => setField('lag', parseInt(e.target.value, 10) || 0)}
+                              title={t('dep.lag')}
+                              aria-label={`${otherPhase.name} — ${t('dep.lag')}`}
+                              className="w-16 text-xs text-center border border-border rounded-md px-1 py-1 bg-background font-mono tabular-nums"
+                            />
+                          </>
+                        )}
+                      </div>
                     );
                   })}
               </div>
