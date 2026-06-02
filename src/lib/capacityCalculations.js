@@ -113,6 +113,26 @@ export function getMonthlyCapacity(resourceId, month, overrides, baseCapacity) {
 }
 
 /**
+ * Statut sémantique d'occupation d'une capacité, pour le code couleur.
+ * Seuils alignés sur ceux historiques de UtilizationSummary (exprimés en
+ * utilisation = demande / capacité).
+ *
+ * @param {number} demand    Somme des allocations (%).
+ * @param {number} capacity  Capacité disponible (%).
+ * @returns {'success'|'warning'|'error'}
+ *   error   = surchargé (utilisation ≥ 100 %, ou demande > 0 quand capacité = 0)
+ *   warning = proche de la limite (80–99 %)
+ *   success = marge (< 80 %, ou aucune demande)
+ */
+export function capacityStatus(demand, capacity) {
+  if (capacity <= 0) return demand > 0 ? 'error' : 'success';
+  const util = (demand / capacity) * 100;
+  if (util >= 100) return 'error';
+  if (util >= 80) return 'warning';
+  return 'success';
+}
+
+/**
  * Compute the full cost impact of replacing a consultant with a permanent
  * internal employee over their remaining engagement.
  *
