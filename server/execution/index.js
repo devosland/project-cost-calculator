@@ -330,7 +330,8 @@ router.get('/projects/:projectId/tasks', (req, res) => {
   }
 
   const tasks = db.prepare(`
-    SELECT t.*, s.epic_id, e.project_id
+    SELECT t.*, s.epic_id, s.key AS story_key, s.title AS story_title,
+           e.key AS epic_key, e.title AS epic_title, e.project_id
     FROM tasks t
     JOIN stories s ON s.id = t.story_id
     JOIN epics e ON e.id = s.epic_id
