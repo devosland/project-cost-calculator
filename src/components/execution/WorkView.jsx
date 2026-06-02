@@ -109,6 +109,7 @@ export default function WorkView({ project }) {
           key={reloadKey}
           projectId={project.id}
           statuses={statuses}
+          phases={project.phases || []}
           canEdit={canEdit}
           onOpenTask={setOpenTaskId}
         />
