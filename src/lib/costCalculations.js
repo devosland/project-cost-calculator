@@ -409,6 +409,61 @@ export function applyConstraint(depStart, duration, constraint) {
 }
 
 /**
+ * Passe arrière CPM : fin au plus tard (late end) de chaque phase, plafonnée à
+ * totalWeeks. Pur, sans effet de bord. **Source unique** de la passe arrière,
+ * partagée par le chemin critique (SP2) et l'ordonnancement ALAP (SP3b).
+ * Suppose un graphe acyclique (appelé hors cycle par les deux consommateurs).
+ *
+ * @param {Array<{id:string,durationWeeks:number,dependencies?:Array}>} phases
+ * @param {number} totalWeeks - Fin du projet (passe avant).
+ * @returns {Map<string, number>} id → lateEnd (semaine de fin au plus tard).
+ */
+export function computeLateEnds(phases, totalWeeks) {
+  const phaseMap = new Map(phases.map((p) => [p.id, p]));
+  const depsOf = (phase) =>
+    (phase.dependencies || []).map(normalizeDependency).filter((d) => phaseMap.has(d.id));
+  const successors = new Map(phases.map((p) => [p.id, []]));
+  for (const succ of phases) {
+    for (const dep of depsOf(succ)) {
+      successors.get(dep.id).push({ succId: succ.id, type: dep.type, lag: dep.lag });
+    }
+  }
+  const lateEndMap = new Map();
+  const getLateEnd = (id) => {
+    if (lateEndMap.has(id)) return lateEndMap.get(id);
+    const phase = phaseMap.get(id);
+    const d = phase.durationWeeks;
+    let lateEnd = totalWeeks;
+    for (const s of successors.get(id)) {
+      const succPhase = phaseMap.get(s.succId);
+      const sLateEnd = getLateEnd(s.succId);
+      const sLateStart = sLateEnd - succPhase.durationWeeks;
+      let bound;
+      switch (s.type) {
+        case 'FF':
+          bound = sLateEnd - s.lag;
+          break;
+        case 'SS':
+          bound = sLateStart - s.lag + d;
+          break;
+        case 'SF':
+          bound = sLateEnd - s.lag + d;
+          break;
+        case 'FS':
+        default:
+          bound = sLateStart - s.lag;
+          break;
+      }
+      lateEnd = Math.min(lateEnd, bound);
+    }
+    lateEndMap.set(id, lateEnd);
+    return lateEnd;
+  };
+  for (const p of phases) getLateEnd(p.id);
+  return lateEndMap;
+}
+
+/**
  * Calcule le planning des phases en respectant le type de dépendance
  * (FS/SS/FF/SF) et le décalage (lag, en semaines ; négatif = avance).
  * Détecte les cycles (repli séquentiel) et retombe en séquentiel sans dépendance.
