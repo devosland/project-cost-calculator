@@ -143,7 +143,12 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                     {phase.crit && !phase.crit.critical && phase.crit.totalFloat > 0 && (
                       <div
                         className="absolute top-0 h-full flex items-center text-[10px] font-medium text-muted-foreground whitespace-nowrap"
-                        style={{ left: `${left + width}%`, paddingLeft: '4px' }}
+                        style={{
+                              left: `${left + width}%`,
+                              maxWidth: `${Math.max(0, 100 - (left + width))}%`,
+                              paddingLeft: '4px',
+                              overflow: 'hidden',
+                            }}
                       >
                         +{phase.crit.totalFloat} {t('budget.weeksAbbr')}
                       </div>
@@ -191,7 +196,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                   return (
                     <tr key={phase.id} className="border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors">
                       <td className="p-2">
-                        <span className={`inline-block w-3 h-3 rounded-sm mr-2 ${COLORS[phase.colorIndex]}`} />
+                        <span className={`inline-block w-3 h-3 rounded-sm mr-2 ${phase.crit?.critical ? 'bg-red-600' : COLORS[phase.colorIndex]}`} />
                         {phase.name}
                       </td>
                       <td className="p-2 text-center font-mono tabular-nums">{phase.durationWeeks} {t('budget.weeksAbbr')}</td>
