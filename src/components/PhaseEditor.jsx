@@ -567,8 +567,15 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                 value={phase.constraint?.type || ''}
                 onChange={(e) => {
                   const type = e.target.value;
-                  if (!type) update({ constraint: null });
-                  else update({ constraint: { type, week: phase.constraint?.week ?? 0 } });
+                  if (!type) {
+                    // "None" — clear constraint entirely
+                    update({ constraint: null });
+                  } else if (type === 'ALAP') {
+                    // ALAP has no week — pure scheduling directive
+                    update({ constraint: { type: 'ALAP' } });
+                  } else {
+                    update({ constraint: { type, week: phase.constraint?.week ?? 0 } });
+                  }
                 }}
                 className="text-sm border border-border rounded-md px-2 py-1 bg-background"
               >
@@ -577,8 +584,10 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                 <option value="FNLT">{t('constraint.fnlt')}</option>
                 <option value="MSO">{t('constraint.mso')}</option>
                 <option value="MFO">{t('constraint.mfo')}</option>
+                <option value="ALAP">{t('constraint.alap')}</option>
               </select>
-              {phase.constraint?.type && (
+              {/* Week input only for SNET/FNLT/MSO/MFO — ALAP needs no week */}
+              {phase.constraint?.type && phase.constraint.type !== 'ALAP' && (
                 <label className="flex items-center gap-1 text-sm">
                   {t('constraint.week')}
                   <input
