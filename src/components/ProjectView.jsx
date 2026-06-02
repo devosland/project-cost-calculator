@@ -12,7 +12,7 @@ import { Dropdown } from './ui/dropdown';
 import {
   ArrowLeft, PlusCircle, Trash2, ChevronUp, ChevronDown,
   LayoutDashboard, Calendar, DollarSign, BarChart3, FileText,
-  Share2, History, AlertTriangle, Bell, Pencil, Check, X, Download, Briefcase,
+  Share2, History, AlertTriangle, Bell, Pencil, Check, X, Download, Briefcase, Target,
 } from 'lucide-react';
 import PhaseEditor from './PhaseEditor';
 import TimelineView from './TimelineView';
@@ -22,6 +22,7 @@ import CostCharts from './CostCharts';
 import ProjectSummary from './ProjectSummary';
 import ResourceConflicts from './ResourceConflicts';
 import RiskRegister from './RiskRegister';
+import PilotageView from './PilotageView';
 import WorkView from './execution/WorkView';
 import { createPhase, exportProject, exportProjectCSV } from '../lib/projectStore';
 import { capacityApi } from '../lib/capacityApi';
@@ -268,6 +269,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
     { id: 'charts', label: t('tab.charts'), icon: BarChart3, showFor: !isTeamOnly },
     { id: 'summary', label: t('tab.summary'), icon: FileText, showFor: !isTeamOnly },
     { id: 'risks', label: t('tab.risks'), icon: AlertTriangle, showFor: !isTeamOnly },
+    { id: 'pilotage', label: t('tab.pilotage'), icon: Target, showFor: !isTeamOnly },
   ].filter((tab) => tab.showFor);
 
   const updateProject = (changes) => onProjectChange({ ...project, ...changes });
@@ -632,6 +634,8 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
           onChange={(newRisks) => updateProject({ risks: newRisks })}
         />
       )}
+
+      {activeTab === 'pilotage' && <PilotageView project={project} rates={rates} />}
 
       {/* --- Onglets Charts et Sommaire --- */}
       {activeTab === 'work' && <WorkView project={project} />}

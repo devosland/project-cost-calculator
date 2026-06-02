@@ -29,7 +29,7 @@ import {
 } from './permissions.js';
 import { nextKey } from './keys.js';
 import { loadProjectRates, getHourlyRate } from './rates.js';
-import { getProjectActuals, getEpicCosts } from './rollups.js';
+import { getProjectActuals, getProjectProgress, getEpicCosts } from './rollups.js';
 
 const router = Router();
 router.use(authMiddleware);
@@ -717,6 +717,18 @@ router.get('/projects/:projectId/actuals', (req, res) => {
   const role = getProjectRole(projectId, req.user.id);
   if (gateAccess(res, role, 'viewer')) return;
   res.json(getProjectActuals(projectId));
+});
+
+/**
+ * GET /api/execution/projects/:projectId/progress
+ * Retourne { by_phase: { phase_id: { earned, est, taskCount, earnedCount } } },
+ * agrégats d'avancement dérivés des statuts (pour la valeur acquise EVM).
+ */
+router.get('/projects/:projectId/progress', (req, res) => {
+  const { projectId } = req.params;
+  const role = getProjectRole(projectId, req.user.id);
+  if (gateAccess(res, role, 'viewer')) return;
+  res.json(getProjectProgress(projectId));
 });
 
 /**
