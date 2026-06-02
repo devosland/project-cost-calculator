@@ -47,6 +47,8 @@ const UtilizationSummary = ({ resources, assignments, months, gridCols, availabi
         //   < 80%  → success (under-allocated, headroom)
         //   80-99% → warning (approaching capacity)
         //   ≥ 100% → error   (over-allocated, capacity breach)
+        // Color from the shared helper on RAW utilization (the displayed `pct` is
+        // rounded for show only — sub-percent boundary differences are immaterial).
         const token = `--prism-${capacityStatus(totalAllocation, totalCapacity)}`;
 
         return (

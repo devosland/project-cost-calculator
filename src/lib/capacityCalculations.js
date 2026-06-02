@@ -85,7 +85,7 @@ export function calculateUtilization(assignments, resourceId, month) {
   return assignments
     .filter(
       (a) =>
-        a.resource_id === resourceId &&
+        String(a.resource_id) === String(resourceId) &&
         a.start_month <= month &&
         a.end_month >= month
     )

@@ -210,3 +210,18 @@ describe('capacityStatus', () => {
     expect(capacityStatus(0, 0)).toBe('success');
   });
 });
+
+describe('calculateUtilization id-type safety', () => {
+  const assignments = [
+    { resource_id: 1, allocation: 50, start_month: '2026-01', end_month: '2026-03' },
+  ];
+
+  it('matches resource ids regardless of string/number type', () => {
+    expect(calculateUtilization(assignments, 1, '2026-02')).toBe(50);
+    expect(calculateUtilization(assignments, '1', '2026-02')).toBe(50);
+  });
+
+  it('returns 0 for a resource with no assignment that month', () => {
+    expect(calculateUtilization(assignments, 1, '2026-09')).toBe(0);
+  });
+});

@@ -54,7 +54,7 @@ const CapacityLoadGrid = () => {
   const renderCell = (capacity, demand, ariaBase) => {
     const remaining = capacity - demand;
     const token = `--prism-${capacityStatus(demand, capacity)}`;
-    const title = `${t('capacity.title')} ${capacity}% · ${t('capacity.demand')} ${demand}% · ${t('capacity.remaining')} ${remaining}%`;
+    const title = `${t('capacity.capacityLabel')} ${capacity}% · ${t('capacity.demand')} ${demand}% · ${t('capacity.remaining')} ${remaining}%`;
     return (
       <div
         title={title}
