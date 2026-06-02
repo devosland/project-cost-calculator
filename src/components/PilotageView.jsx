@@ -19,6 +19,7 @@ function asOfWeekFrom(startDate) {
   if (!startDate) return null;
   const start = new Date(startDate);
   if (Number.isNaN(start.getTime())) return null;
+  // Floor à 0 : une startDate dans le futur donne 0 semaine écoulée (PV=0, SPI N/A).
   return Math.max(0, (Date.now() - start.getTime()) / MS_PER_WEEK);
 }
 
@@ -83,6 +84,7 @@ const PilotageView = ({ project, rates }) => {
         <Card label={t('evm.spi')} value={fmtIdx(evm.spi)} style={idxStyle(evm.spi)} />
         <Card label={t('evm.cpi')} value={fmtIdx(evm.cpi)} style={idxStyle(evm.cpi)} />
         <Card label={t('evm.eac')} value={fmt(evm.eac)} />
+        <Card label={t('evm.etc')} value={fmt(evm.etc)} />
         <Card label={t('evm.vac')} value={fmt(evm.vac)} />
       </div>
 
@@ -90,13 +92,13 @@ const PilotageView = ({ project, rates }) => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              <th className="px-3 py-2 font-medium">{t('evm.phase')}</th>
-              <th className="px-3 py-2 font-medium text-right">{t('evm.planned')}</th>
-              <th className="px-3 py-2 font-medium text-right">{t('evm.pv')}</th>
-              <th className="px-3 py-2 font-medium text-right">{t('evm.ev')}</th>
-              <th className="px-3 py-2 font-medium text-right">{t('evm.ac')}</th>
-              <th className="px-3 py-2 font-medium text-right">{t('evm.cpi')}</th>
-              <th className="px-3 py-2 font-medium text-right">{t('evm.spi')}</th>
+              <th scope="col" className="px-3 py-2 font-medium">{t('evm.phase')}</th>
+              <th scope="col" className="px-3 py-2 font-medium text-right">{t('evm.planned')}</th>
+              <th scope="col" className="px-3 py-2 font-medium text-right">{t('evm.pv')}</th>
+              <th scope="col" className="px-3 py-2 font-medium text-right">{t('evm.ev')}</th>
+              <th scope="col" className="px-3 py-2 font-medium text-right">{t('evm.ac')}</th>
+              <th scope="col" className="px-3 py-2 font-medium text-right">{t('evm.cpi')}</th>
+              <th scope="col" className="px-3 py-2 font-medium text-right">{t('evm.spi')}</th>
             </tr>
           </thead>
           <tbody className="font-mono tabular-nums">
@@ -111,6 +113,8 @@ const PilotageView = ({ project, rates }) => {
                 <td className="px-3 py-2 text-right" style={idxStyle(p.spi)}>{fmtIdx(p.spi)}</td>
               </tr>
             ))}
+          </tbody>
+          <tfoot className="font-mono tabular-nums">
             <tr className="font-semibold">
               <td className="px-3 py-2 font-sans">Total</td>
               <td className="px-3 py-2 text-right">{fmt(evm.bac)}</td>
@@ -120,7 +124,7 @@ const PilotageView = ({ project, rates }) => {
               <td className="px-3 py-2 text-right" style={idxStyle(evm.cpi)}>{fmtIdx(evm.cpi)}</td>
               <td className="px-3 py-2 text-right" style={idxStyle(evm.spi)}>{fmtIdx(evm.spi)}</td>
             </tr>
-          </tbody>
+          </tfoot>
         </table>
       </div>
     </div>
