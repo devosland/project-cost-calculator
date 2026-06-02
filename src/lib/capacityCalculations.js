@@ -85,7 +85,7 @@ export function calculateUtilization(assignments, resourceId, month) {
   return assignments
     .filter(
       (a) =>
-        a.resource_id === resourceId &&
+        String(a.resource_id) === String(resourceId) &&
         a.start_month <= month &&
         a.end_month >= month
     )
@@ -110,6 +110,26 @@ export function getMonthlyCapacity(resourceId, month, overrides, baseCapacity) {
     (o) => String(o.resource_id) === String(resourceId) && o.month === month
   );
   return override ? override.available_pct : baseCapacity ?? 100;
+}
+
+/**
+ * Statut sémantique d'occupation d'une capacité, pour le code couleur.
+ * Seuils alignés sur ceux historiques de UtilizationSummary (exprimés en
+ * utilisation = demande / capacité).
+ *
+ * @param {number} demand    Somme des allocations (%).
+ * @param {number} capacity  Capacité disponible (%).
+ * @returns {'success'|'warning'|'error'}
+ *   error   = surchargé (utilisation ≥ 100 %, ou demande > 0 quand capacité = 0)
+ *   warning = proche de la limite (80–99 %)
+ *   success = marge (< 80 %, ou aucune demande)
+ */
+export function capacityStatus(demand, capacity) {
+  if (capacity <= 0) return demand > 0 ? 'error' : 'success';
+  const util = (demand / capacity) * 100;
+  if (util >= 100) return 'error';
+  if (util >= 80) return 'warning';
+  return 'success';
 }
 
 /**

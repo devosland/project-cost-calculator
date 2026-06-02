@@ -7,7 +7,7 @@
  * spans all month columns.
  */
 import React from 'react';
-import { calculateUtilization, getMonthlyCapacity } from '../lib/capacityCalculations';
+import { calculateUtilization, getMonthlyCapacity, capacityStatus } from '../lib/capacityCalculations';
 import { useLocale } from '../lib/i18n';
 
 /**
@@ -47,7 +47,9 @@ const UtilizationSummary = ({ resources, assignments, months, gridCols, availabi
         //   < 80%  → success (under-allocated, headroom)
         //   80-99% → warning (approaching capacity)
         //   ≥ 100% → error   (over-allocated, capacity breach)
-        const token = pct >= 100 ? '--prism-error' : pct >= 80 ? '--prism-warning' : '--prism-success';
+        // Color from the shared helper on RAW utilization (the displayed `pct` is
+        // rounded for show only — sub-percent boundary differences are immaterial).
+        const token = `--prism-${capacityStatus(totalAllocation, totalCapacity)}`;
 
         return (
           <div
