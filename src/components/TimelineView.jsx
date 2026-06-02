@@ -17,6 +17,7 @@ import {
   calculateProjectDurationWithDependencies,
   formatCurrency,
 } from '../lib/costCalculations';
+import { calculateCriticalPath } from '../lib/criticalPath';
 import { useLocale } from '../lib/i18n';
 
 const COLORS = [
@@ -41,6 +42,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
   const { t } = useLocale();
   const fmt = (v) => formatCurrency(v, currency);
   const { totalWeeks, phaseSchedule } = calculateProjectDurationWithDependencies(project);
+  const { byPhase: criticalByPhase } = calculateCriticalPath(project);
 
   if (totalWeeks === 0) {
     return (
@@ -63,7 +65,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
   const phasesWithOffsets = project.phases.map((phase, index) => {
     const schedule = scheduleMap.get(phase.id);
     const offset = schedule ? schedule.startWeek : 0;
-    return { ...phase, offset, colorIndex: index % COLORS.length };
+    return { ...phase, offset, colorIndex: index % COLORS.length, crit: criticalByPhase[phase.id] };
   });
 
   let runningTotal = 0;
@@ -101,6 +103,16 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
               ))}
             </div>
 
+            <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-3 h-3 rounded-sm bg-red-600" />
+                {t('cpm.criticalPath')}
+              </span>
+              <span>
+                +N {t('budget.weeksAbbr')} = {t('cpm.float')}
+              </span>
+            </div>
+
             {phasesWithOffsets.map((phase) => {
               const left = (phase.offset / totalWeeks) * 100;
               const width = (phase.durationWeeks / totalWeeks) * 100;
@@ -121,13 +133,26 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                       ))}
                     </div>
                     <div
-                      className={`absolute top-0 h-full rounded-lg ${COLORS[phase.colorIndex]} opacity-90 flex items-center justify-center shadow-sm`}
+                      className={`absolute top-0 h-full rounded-lg ${phase.crit?.critical ? 'bg-red-600' : COLORS[phase.colorIndex]} opacity-90 flex items-center justify-center shadow-sm`}
                       style={{ left: `${left}%`, width: `${width}%` }}
                     >
                       <span className="text-white text-xs font-semibold truncate px-2">
                         {phase.durationWeeks} {t('budget.weeksAbbr')}
                       </span>
                     </div>
+                    {phase.crit && !phase.crit.critical && phase.crit.totalFloat > 0 && (
+                      <div
+                        className="absolute top-0 h-full flex items-center text-[10px] font-medium text-muted-foreground whitespace-nowrap"
+                        style={{
+                              left: `${left + width}%`,
+                              maxWidth: `${Math.max(0, 100 - (left + width))}%`,
+                              paddingLeft: '4px',
+                              overflow: 'hidden',
+                            }}
+                      >
+                        +{phase.crit.totalFloat} {t('budget.weeksAbbr')}
+                      </div>
+                    )}
                     {phase.milestones.map((milestone) => {
                       const milestoneLeft = ((phase.offset + milestone.weekOffset) / totalWeeks) * 100;
                       return (
@@ -171,7 +196,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                   return (
                     <tr key={phase.id} className="border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors">
                       <td className="p-2">
-                        <span className={`inline-block w-3 h-3 rounded-sm mr-2 ${COLORS[phase.colorIndex]}`} />
+                        <span className={`inline-block w-3 h-3 rounded-sm mr-2 ${phase.crit?.critical ? 'bg-red-600' : COLORS[phase.colorIndex]}`} />
                         {phase.name}
                       </td>
                       <td className="p-2 text-center font-mono tabular-nums">{phase.durationWeeks} {t('budget.weeksAbbr')}</td>
