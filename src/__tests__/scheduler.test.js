@@ -92,6 +92,16 @@ describe('calculateProjectDurationWithDependencies — typed + lag', () => {
     expect(s.b).toEqual({ phaseId: 'b', startWeek: 3, endWeek: 5 });
   });
 
+  it('SF with a positive lag shifts the successor finish', () => {
+    const s = sched(proj([
+      { id: 'x', durationWeeks: 5 },
+      { id: 'a', durationWeeks: 4, dependencies: [{ id: 'x', type: 'FS', lag: 0 }] },
+      { id: 'b', durationWeeks: 2, dependencies: [{ id: 'a', type: 'SF', lag: 2 }] },
+    ]));
+    // x:{0,5}; a:{5,9}; b SF+2 on a → candidate = a.start(5) + 2 - dur(2) = 5 → b:{5,7}
+    expect(s.b).toEqual({ phaseId: 'b', startWeek: 5, endWeek: 7 });
+  });
+
   it('clamps start to 0 when a lead would go negative', () => {
     const s = sched(proj([
       { id: 'a', durationWeeks: 4 },

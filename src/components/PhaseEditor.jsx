@@ -542,6 +542,7 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
                               title={t('dep.lag')}
                               aria-label={`${otherPhase.name} — ${t('dep.lag')}`}
                               className="w-16 text-xs text-center border border-border rounded-md px-1 py-1 bg-background font-mono tabular-nums"
+                              step="1"
                             />
                           </>
                         )}
