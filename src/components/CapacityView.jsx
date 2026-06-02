@@ -7,7 +7,7 @@
  * receive the pool without re-fetching.
  */
 import { useState, useEffect } from 'react';
-import { ArrowLeft, BarChart3, CalendarClock, Users, ArrowLeftRight, Settings } from 'lucide-react';
+import { ArrowLeft, BarChart3, CalendarClock, Users, ArrowLeftRight, Settings, Gauge } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
 import { useHashRouter } from '../lib/useHashRouter';
@@ -16,6 +16,7 @@ import CapacityGantt from './CapacityGantt';
 import TransitionList from './TransitionList';
 import TransitionPlanner from './TransitionPlanner';
 import AvailabilityGrid from './AvailabilityGrid';
+import CapacityLoadGrid from './CapacityLoadGrid';
 import RolesRatesManager from './RolesRatesManager';
 import { capacityApi } from '../lib/capacityApi';
 
@@ -77,6 +78,7 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
     { id: 'resources', icon: Users, label: t('capacity.resources') },
     { id: 'gantt', icon: BarChart3, label: t('capacity.gantt') },
     { id: 'availability', icon: CalendarClock, label: t('capacity.availability') },
+    { id: 'load', icon: Gauge, label: t('capacity.load') },
     { id: 'transitions', icon: ArrowLeftRight, label: t('capacity.transitions') },
     { id: 'rates', icon: Settings, label: t('tab.rates') },
   ];
@@ -147,6 +149,9 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
       )}
       {activeTab === 'availability' && (
         <AvailabilityGrid />
+      )}
+      {activeTab === 'load' && (
+        <CapacityLoadGrid />
       )}
       {activeTab === 'transitions' && (
         showPlanner ? (
