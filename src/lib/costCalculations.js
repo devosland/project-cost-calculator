@@ -378,6 +378,37 @@ export function normalizeDependency(dep) {
 }
 
 /**
+ * Applique une contrainte de date de phase au start piloté par les dépendances.
+ * @param {number} depStart
+ * @param {number} duration
+ * @param {{type:'SNET'|'FNLT'|'MSO'|'MFO', week:number}|undefined} constraint
+ * @returns {{ start:number, end:number, conflict:('SNET'|'FNLT'|'MSO'|'MFO'|null) }}
+ */
+export function applyConstraint(depStart, duration, constraint) {
+  let start = Math.max(0, depStart);
+  let conflict = null;
+  if (constraint && Number.isFinite(constraint.week)) {
+    const w = constraint.week;
+    if (constraint.type === 'SNET') {
+      start = Math.max(start, w);
+    } else if (constraint.type === 'MSO') {
+      if (start > w) conflict = 'MSO';
+      start = w;
+    } else if (constraint.type === 'MFO') {
+      const cs = w - duration;
+      if (start > cs) conflict = 'MFO';
+      start = cs;
+    }
+    start = Math.max(0, start);
+  }
+  const end = start + duration;
+  if (constraint && constraint.type === 'FNLT' && Number.isFinite(constraint.week) && end > constraint.week) {
+    conflict = 'FNLT';
+  }
+  return { start, end, conflict };
+}
+
+/**
  * Calcule le planning des phases en respectant le type de dépendance
  * (FS/SS/FF/SF) et le décalage (lag, en semaines ; négatif = avance).
  * Détecte les cycles (repli séquentiel) et retombe en séquentiel sans dépendance.
@@ -386,8 +417,9 @@ export function normalizeDependency(dep) {
  * the Timeline tab can render phases in the same order as the Phases tab.
  *
  * @param {object} project - Project with phases[] (each phase may have a
- *                           `dependencies` array of sibling phase IDs or dep objects).
- * @returns {{ totalWeeks: number, phaseSchedule: Array<{phaseId:string,startWeek:number,endWeek:number}> }}
+ *                           `dependencies` array of sibling phase IDs or dep objects,
+ *                           and an optional `constraint` for date enforcement).
+ * @returns {{ totalWeeks: number, phaseSchedule: Array<{phaseId:string,startWeek:number,endWeek:number}>, conflicts: object }}
  */
 export function calculateProjectDurationWithDependencies(project) {
   const phases = project.phases || [];
@@ -400,12 +432,14 @@ export function calculateProjectDurationWithDependencies(project) {
 
   const sequential = () => {
     let offset = 0;
+    const conflicts = {};
     const phaseSchedule = phases.map((p) => {
-      const entry = { phaseId: p.id, startWeek: offset, endWeek: offset + p.durationWeeks };
-      offset += p.durationWeeks;
-      return entry;
+      const { start, end, conflict } = applyConstraint(offset, p.durationWeeks, p.constraint);
+      if (conflict) conflicts[p.id] = conflict;
+      offset = end;
+      return { phaseId: p.id, startWeek: start, endWeek: end };
     });
-    return { totalWeeks: offset, phaseSchedule };
+    return { totalWeeks: offset, phaseSchedule, conflicts };
   };
 
   const hasDependencies = phases.some((p) => depsOf(p).length > 0);
@@ -433,13 +467,14 @@ export function calculateProjectDurationWithDependencies(project) {
   if (hasCycle) return sequential();
 
   // Planning mémoïsé { startWeek, endWeek } respectant type + lag.
+  const conflicts = {};
   const scheduleMap = new Map();
   function getSchedule(id) {
     if (scheduleMap.has(id)) return scheduleMap.get(id);
     const phase = phaseMap.get(id);
     if (!phase) return { startWeek: 0, endWeek: 0 };
     const duration = phase.durationWeeks;
-    let startWeek = 0;
+    let depStart = 0;
     for (const dep of depsOf(phase)) {
       const { startWeek: ps, endWeek: pe } = getSchedule(dep.id);
       let candidate;
@@ -450,10 +485,11 @@ export function calculateProjectDurationWithDependencies(project) {
         case 'FS':
         default: candidate = pe + dep.lag; break;
       }
-      startWeek = Math.max(startWeek, candidate);
+      depStart = Math.max(depStart, candidate);
     }
-    startWeek = Math.max(0, startWeek);
-    const entry = { startWeek, endWeek: startWeek + duration };
+    const { start, end, conflict } = applyConstraint(depStart, duration, phase.constraint);
+    if (conflict) conflicts[id] = conflict;
+    const entry = { startWeek: start, endWeek: end };
     scheduleMap.set(id, entry);
     return entry;
   }
@@ -463,7 +499,7 @@ export function calculateProjectDurationWithDependencies(project) {
     return { phaseId: p.id, startWeek, endWeek };
   });
   const totalWeeks = phaseSchedule.length > 0 ? Math.max(...phaseSchedule.map((s) => s.endWeek)) : 0;
-  return { totalWeeks, phaseSchedule };
+  return { totalWeeks, phaseSchedule, conflicts };
 }
 
 // --- Formatting ---
