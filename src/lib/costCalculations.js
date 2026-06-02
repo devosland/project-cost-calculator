@@ -549,11 +549,67 @@ export function calculateProjectDurationWithDependencies(project) {
     return entry;
   }
 
-  const phaseSchedule = phases.map((p) => {
+  // Passe avant ASAP (mémoïsée via getSchedule).
+  let phaseSchedule = phases.map((p) => {
     const { startWeek, endWeek } = getSchedule(p.id);
     return { phaseId: p.id, startWeek, endWeek };
   });
-  const totalWeeks = phaseSchedule.length > 0 ? Math.max(...phaseSchedule.map((s) => s.endWeek)) : 0;
+  let totalWeeks = phaseSchedule.length > 0 ? Math.max(...phaseSchedule.map((s) => s.endWeek)) : 0;
+
+  // SP3b — Passe ALAP : épingle chaque phase ALAP à son late start (consomme sa
+  // marge, juste-à-temps) sans rallonger le projet. Gardée par présence ; ne
+  // s'exécute que dans la branche DAG (cycle/séquentiel n'ont pas de marge).
+  const hasAlap = phases.some((p) => p.constraint?.type === 'ALAP');
+  if (hasAlap) {
+    const lateEnds = computeLateEnds(phases, totalWeeks);
+    const alapMap = new Map();
+    const getAlapSchedule = (id) => {
+      if (alapMap.has(id)) return alapMap.get(id);
+      const phase = phaseMap.get(id);
+      if (!phase) return { startWeek: 0, endWeek: 0 };
+      const duration = phase.durationWeeks;
+      let depStart = 0;
+      for (const dep of depsOf(phase)) {
+        const { startWeek: ps, endWeek: pe } = getAlapSchedule(dep.id);
+        let candidate;
+        switch (dep.type) {
+          case 'SS':
+            candidate = ps + dep.lag;
+            break;
+          case 'FF':
+            candidate = pe + dep.lag - duration;
+            break;
+          case 'SF':
+            candidate = ps + dep.lag - duration;
+            break;
+          case 'FS':
+          default:
+            candidate = pe + dep.lag;
+            break;
+        }
+        depStart = Math.max(depStart, candidate);
+      }
+      let { start, end, conflict } = applyConstraint(depStart, duration, phase.constraint);
+      if (phase.constraint?.type === 'ALAP') {
+        // Plancher ALAP : démarrer au plus tard (late start), borné ≥ 0.
+        const lateStart = (lateEnds.get(id) ?? totalWeeks) - duration;
+        if (lateStart > start) {
+          start = Math.max(0, lateStart);
+          end = start + duration;
+        }
+      }
+      if (conflict) conflicts[id] = conflict;
+      const entry = { startWeek: start, endWeek: end };
+      alapMap.set(id, entry);
+      return entry;
+    };
+    phaseSchedule = phases.map((p) => {
+      const { startWeek, endWeek } = getAlapSchedule(p.id);
+      return { phaseId: p.id, startWeek, endWeek };
+    });
+    totalWeeks = phaseSchedule.length > 0 ? Math.max(...phaseSchedule.map((s) => s.endWeek)) : 0;
+  }
+
   return { totalWeeks, phaseSchedule, conflicts };
 }
 
