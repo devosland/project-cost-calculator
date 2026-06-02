@@ -57,6 +57,7 @@ const CapacityLoadGrid = () => {
     const title = `${t('capacity.capacityLabel')} ${capacity}% · ${t('capacity.demand')} ${demand}% · ${t('capacity.remaining')} ${remaining}%`;
     return (
       <div
+        role="img"
         title={title}
         aria-label={`${ariaBase} — ${title}`}
         className="rounded-md text-xs font-semibold flex items-center justify-center min-h-[28px] font-mono tabular-nums"
