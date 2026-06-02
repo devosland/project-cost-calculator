@@ -24,6 +24,7 @@ import ResourceConflicts from './ResourceConflicts';
 import RiskRegister from './RiskRegister';
 import PilotageView from './PilotageView';
 import WorkView from './execution/WorkView';
+import LevelingSuggestions from './LevelingSuggestions';
 import { createPhase, exportProject, exportProjectCSV } from '../lib/projectStore';
 import { capacityApi } from '../lib/capacityApi';
 import {
@@ -601,7 +602,19 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
       )}
 
       {/* --- Onglet Timeline --- */}
-      {activeTab === 'timeline' && <TimelineView project={project} rates={rates} currency={currency} />}
+      {activeTab === 'timeline' && (
+        <div className="space-y-6">
+          <TimelineView project={project} rates={rates} currency={currency} />
+          <LevelingSuggestions
+            project={project}
+            onApplyConstraint={(phaseId, constraint) =>
+              updateProject({
+                phases: project.phases.map((p) => (p.id === phaseId ? { ...p, constraint } : p)),
+              })
+            }
+          />
+        </div>
+      )}
 
       {/* --- Onglet Budget : enveloppe + webhook + tracker + non-labour --- */}
       {activeTab === 'budget' && (
