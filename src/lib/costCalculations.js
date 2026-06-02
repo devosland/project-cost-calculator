@@ -361,7 +361,9 @@ export const DEPENDENCY_TYPES = ['FS', 'SS', 'FF', 'SF'];
  * Rétro-compat : une dépendance stockée en string (ancien format) devient FS / lag 0.
  *
  * @param {string|{id:string,type?:string,lag?:number}} dep
- * @returns {{ id: string, type: 'FS'|'SS'|'FF'|'SF', lag: number }}
+ * @returns {{ id: string|undefined, type: 'FS'|'SS'|'FF'|'SF', lag: number }}
+ *   Les entrées malformées donnent id:undefined ; les consommateurs (scheduler depsOf,
+ *   UI par id) les ignorent (aucune phase ne correspond).
  */
 export function normalizeDependency(dep) {
   if (typeof dep === 'string') return { id: dep, type: 'FS', lag: 0 };
