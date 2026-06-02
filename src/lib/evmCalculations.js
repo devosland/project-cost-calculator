@@ -4,7 +4,8 @@
  * Niveau de calcul : la phase est le « compte de contrôle ». On agrège ensuite
  * au projet. PV est dérivé du plan vivant (accrual linéaire sur la durée de
  * phase), EV de l'avancement (statuts Kanban remontés par le serveur), AC des
- * réels (time_entries). Aucune baseline figée.
+ * réels (time_entries). Baseline figée optionnelle (`project.baseline`) : si
+ * présente, PV/BAC mesurés contre elle ; sinon plan vivant.
  */
 import {
   calculatePhaseTotalCost,
@@ -43,6 +44,35 @@ export function plannedValueToDate(startWeek, endWeek, asOfWeek, phaseCost) {
 }
 
 /**
+ * Construit une baseline figée (PMB) : snapshot du plan de référence que le PV
+ * consommera ensuite. Pur ; `capturedAt` est fourni par l'appelant (pas de Date
+ * dans la lib → testable).
+ *
+ * @param {object} project   Projet (phases, settings).
+ * @param {object} rates     Carte de taux.
+ * @param {string} capturedAt Date de gel 'YYYY-MM-DD'.
+ * @returns {{capturedAt:string, startDate:(string|null), phases:Object<string,{startWeek:number,endWeek:number,bac:number}>}}
+ */
+export function buildBaseline(project, rates, capturedAt) {
+  const { phaseSchedule } = calculateProjectDurationWithDependencies(project);
+  const schedById = Object.fromEntries(phaseSchedule.map((s) => [s.phaseId, s]));
+  const phases = {};
+  for (const phase of project.phases || []) {
+    const sched = schedById[phase.id] || { startWeek: 0, endWeek: phase.durationWeeks };
+    phases[phase.id] = {
+      startWeek: sched.startWeek,
+      endWeek: sched.endWeek,
+      bac: calculatePhaseTotalCost(phase, rates),
+    };
+  }
+  return {
+    capturedAt,
+    startDate: project.settings?.startDate || null,
+    phases,
+  };
+}
+
+/**
  * Statut sémantique d'un indice de performance (SPI/CPI) pour le code couleur.
  * Sens inverse de la capacité : un indice >= 1 est bon.
  * @param {number|null} value
@@ -69,10 +99,17 @@ export function computeEvm({ project, rates, progress = {}, actuals = {}, asOfWe
   const { phaseSchedule } = calculateProjectDurationWithDependencies(project);
   const schedById = Object.fromEntries(phaseSchedule.map((s) => [s.phaseId, s]));
 
+  const baseline = project.baseline || null;
   const byPhase = (project.phases || []).map((phase) => {
-    const bac = calculatePhaseTotalCost(phase, rates);
-    const sched = schedById[phase.id] || { startWeek: 0, endWeek: phase.durationWeeks };
-    const pv = plannedValueToDate(sched.startWeek, sched.endWeek, asOfWeek, bac);
+    const liveBac = calculatePhaseTotalCost(phase, rates);
+    const liveSched = schedById[phase.id] || { startWeek: 0, endWeek: phase.durationWeeks };
+    // Baseline-aware : PV/BAC mesurés contre le plan figé quand il existe ;
+    // sinon plan vivant (comportement chantier D inchangé).
+    const bl = baseline && baseline.phases ? baseline.phases[phase.id] : null;
+    const bac = bl ? bl.bac : liveBac;
+    const startWeek = bl ? bl.startWeek : liveSched.startWeek;
+    const endWeek = bl ? bl.endWeek : liveSched.endWeek;
+    const pv = plannedValueToDate(startWeek, endWeek, asOfWeek, bac);
     const pct = phaseProgressPct(progress[phase.id]);
     const ev = pct * bac;
     const ac = (actuals[phase.id] && actuals[phase.id].cost) || 0;
@@ -91,5 +128,18 @@ export function computeEvm({ project, rates, progress = {}, actuals = {}, asOfWe
   const etc = eac != null ? eac - ac : null;
   const vac = eac != null ? bac - eac : null;
 
-  return { bac, pv, ev, ac, spi, cpi, eac, etc, vac, byPhase };
+  return {
+    bac,
+    pv,
+    ev,
+    ac,
+    spi,
+    cpi,
+    eac,
+    etc,
+    vac,
+    byPhase,
+    hasBaseline: !!baseline,
+    baselineCapturedAt: baseline ? baseline.capturedAt : null,
+  };
 }
