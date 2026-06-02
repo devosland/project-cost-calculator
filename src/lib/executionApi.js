@@ -99,6 +99,9 @@ export const executionApi = {
   /** Project-wide actuals: totals + by_month (YYYY-MM map) + by_phase map. */
   getActuals: (projectId) => request(`/projects/${projectId}/actuals`),
 
+  /** Avancement par phase (statuts) pour l'EVM : { by_phase: { phase_id: {earned,est,taskCount,earnedCount} } }. */
+  getProgress: (projectId) => request(`/projects/${projectId}/progress`),
+
   /** Per-epic hours + cost, includes zero-cost epics. */
   getEpicCosts: (projectId) => request(`/projects/${projectId}/epic-costs`),
 
