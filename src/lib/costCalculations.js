@@ -423,7 +423,7 @@ export function applyConstraint(depStart, duration, constraint) {
  */
 export function calculateProjectDurationWithDependencies(project) {
   const phases = project.phases || [];
-  if (phases.length === 0) return { totalWeeks: 0, phaseSchedule: [] };
+  if (phases.length === 0) return { totalWeeks: 0, phaseSchedule: [], conflicts: {} };
   const phaseMap = new Map(phases.map((p) => [p.id, p]));
 
   // Dépendances normalisées d'une phase, filtrées aux prédécesseurs existants.

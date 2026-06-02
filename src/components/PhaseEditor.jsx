@@ -558,6 +558,43 @@ const PhaseEditor = ({ phase, rates, isAuthorized, currency = 'CAD', onChange, a
               )}
             </div>
           )}
+
+          {/* --- Section Contrainte de date --- */}
+          <div className="border-t border-border pt-4 mt-4">
+            <h4 className="font-semibold mb-2">{t('constraint.label')}</h4>
+            <div className="flex items-center gap-2">
+              <select
+                value={phase.constraint?.type || ''}
+                onChange={(e) => {
+                  const type = e.target.value;
+                  if (!type) update({ constraint: null });
+                  else update({ constraint: { type, week: phase.constraint?.week ?? 0 } });
+                }}
+                className="text-sm border border-border rounded-md px-2 py-1 bg-background"
+              >
+                <option value="">{t('constraint.none')}</option>
+                <option value="SNET">{t('constraint.snet')}</option>
+                <option value="FNLT">{t('constraint.fnlt')}</option>
+                <option value="MSO">{t('constraint.mso')}</option>
+                <option value="MFO">{t('constraint.mfo')}</option>
+              </select>
+              {phase.constraint?.type && (
+                <label className="flex items-center gap-1 text-sm">
+                  {t('constraint.week')}
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={phase.constraint.week}
+                    onChange={(e) =>
+                      update({ constraint: { ...phase.constraint, week: Math.max(0, parseInt(e.target.value, 10) || 0) } })
+                    }
+                    className="w-16 text-sm text-center border border-border rounded-md px-1 py-1 bg-background font-mono tabular-nums"
+                  />
+                </label>
+              )}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
