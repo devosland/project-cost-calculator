@@ -9,7 +9,11 @@
  * Dégradation : sur un cycle (l'ordonnanceur retombe en séquentiel) ou en
  * l'absence de dépendances, toutes les phases sont marquées critiques (marge 0).
  */
-import { calculateProjectDurationWithDependencies, normalizeDependency } from './costCalculations';
+import {
+  calculateProjectDurationWithDependencies,
+  normalizeDependency,
+  computeLateEnds,
+} from './costCalculations';
 
 /**
  * @param {object} project
@@ -64,49 +68,12 @@ export function calculateCriticalPath(project) {
   }
   if (hasCycle) return allCritical();
 
-  const successors = new Map(phases.map((p) => [p.id, []]));
-  for (const succ of phases) {
-    for (const dep of depsOf(succ)) {
-      successors.get(dep.id).push({ succId: succ.id, type: dep.type, lag: dep.lag });
-    }
-  }
-
-  const lateEndMap = new Map();
-  function getLateEnd(id) {
-    if (lateEndMap.has(id)) return lateEndMap.get(id);
-    const phase = phaseMap.get(id);
-    const d = phase.durationWeeks;
-    let lateEnd = totalWeeks;
-    for (const s of successors.get(id)) {
-      const succPhase = phaseMap.get(s.succId);
-      const sLateEnd = getLateEnd(s.succId);
-      const sLateStart = sLateEnd - succPhase.durationWeeks;
-      let bound;
-      switch (s.type) {
-        case 'FF':
-          bound = sLateEnd - s.lag;
-          break;
-        case 'SS':
-          bound = sLateStart - s.lag + d;
-          break;
-        case 'SF':
-          bound = sLateEnd - s.lag + d;
-          break;
-        case 'FS':
-        default:
-          bound = sLateStart - s.lag;
-          break;
-      }
-      lateEnd = Math.min(lateEnd, bound);
-    }
-    lateEndMap.set(id, lateEnd);
-    return lateEnd;
-  }
+  const lateEndMap = computeLateEnds(phases, totalWeeks);
 
   const byPhase = {};
   for (const p of phases) {
     const e = early[p.id];
-    const lateEnd = getLateEnd(p.id);
+    const lateEnd = lateEndMap.get(p.id);
     const lateStart = lateEnd - p.durationWeeks;
     const totalFloat = lateStart - e.startWeek;
     byPhase[p.id] = {
