@@ -28,6 +28,7 @@ import { createPhase, exportProject, exportProjectCSV } from '../lib/projectStor
 import { capacityApi } from '../lib/capacityApi';
 import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency, CURRENCIES,
+  normalizeDependency,
 } from '../lib/costCalculations';
 import { useLocale } from '../lib/i18n';
 import { weekToMonth } from '../lib/capacityCalculations';
@@ -309,7 +310,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
         .map((p) => ({
           ...p,
           // Clean up dangling dependency references when a phase is deleted
-          dependencies: (p.dependencies || []).filter((d) => d !== phaseId),
+          dependencies: (p.dependencies || []).filter((d) => normalizeDependency(d).id !== phaseId),
         })),
     });
   };

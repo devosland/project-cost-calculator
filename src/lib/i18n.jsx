@@ -235,6 +235,11 @@ const translations = {
     'phase.noMilestones': 'Aucun jalon défini.',
     'phase.week': 'Semaine {week}',
     'phase.dependencies': 'Dépendances',
+    'dep.type.fs': 'Fin → Début (FS)',
+    'dep.type.ss': 'Début → Début (SS)',
+    'dep.type.ff': 'Fin → Fin (FF)',
+    'dep.type.sf': 'Début → Fin (SF)',
+    'dep.lag': 'Décalage (sem.)',
     'phase.noDependencies': 'Aucune dépendance. Cette phase peut démarrer immédiatement.',
 
     // Levels
@@ -862,6 +867,11 @@ const translations = {
     'phase.noMilestones': 'No milestones defined.',
     'phase.week': 'Week {week}',
     'phase.dependencies': 'Dependencies',
+    'dep.type.fs': 'Finish → Start (FS)',
+    'dep.type.ss': 'Start → Start (SS)',
+    'dep.type.ff': 'Finish → Finish (FF)',
+    'dep.type.sf': 'Start → Finish (SF)',
+    'dep.lag': 'Lag (wks)',
     'phase.noDependencies': 'No dependencies. This phase can start immediately.',
 
     // Levels
