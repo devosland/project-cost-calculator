@@ -52,10 +52,10 @@ Termes, calculés _as-of_ **aujourd'hui** (toutes les durées en semaines depuis
 
 Dans `server/execution/rollups.js`, nouveau `getProjectProgress(projectId)`, **jumeau** de `getProjectActuals` :
 
-- Retour : `{ by_phase: { [phaseId]: { pct, est_hours } } }` où `pct` ∈ [0,1] = avancement pondéré.
-- Calcul : pour chaque tâche, `factor = {todo:0, inprogress:0.5, done:1}[status.category]`, poids = `task.estimate_hours` (les tâches sans estimation comptent poids 0 ; si une phase n'a que des tâches sans estimation, `pct` se calcule en **compte** de tâches en repli). `pct_phase = Σ(factor × poids) / Σ(poids)`.
+- Retour : `{ by_phase: { [phaseId]: { earned, est, taskCount, earnedCount } } }` — agrégats bruts ; le pourcentage final (`pct` ∈ [0,1]) est calculé côté client par `evmCalculations.phaseProgressPct`, incluant le repli sur le compte de tâches si aucune estimation n'est présente.
+- Calcul : pour chaque tâche, la règle 0/50/100 est appliquée dans le rollup SQL (`CASE` sur `status.category`) ; `earned` = Σ(factor × estimate_hours), `est` = Σ(estimate_hours), `taskCount`/`earnedCount` servent de repli.
 - Même répartition `epic_phases` que `getProjectActuals` (epic lié à N phases ⇒ split égal des tâches de l'epic sur ces phases).
-- Route : `GET /api/projects/:id/progress` (même middleware/auth que `/actuals`). Client : `executionApi.getProgress(projectId)`.
+- Route : `GET /api/execution/projects/:projectId/progress` (même middleware/auth que `/actuals`). Client : `executionApi.getProgress(projectId)`.
 
 > Le serveur ne calcule **pas** de coût (il n'a pas la config de taux frontend) — il ne renvoie que l'avancement brut. Le coût/EV s'assemble côté client.
 
@@ -63,9 +63,9 @@ Dans `server/execution/rollups.js`, nouveau `getProjectProgress(projectId)`, **j
 
 **`src/lib/evmCalculations.js`** (nouveau, pur, testable) :
 
-- `statusFactor(category)` → `0 | 0.5 | 1`.
+- _(La règle 0/50/100 est appliquée dans le rollup SQL et finalisée par `phaseProgressPct` — il n'existe pas de helper `statusFactor` séparé dans `evmCalculations`.)_
 - `plannedValueToDate(phaseStartWeek, phaseEndWeek, asOfWeek, phaseCost)` → PV de la phase (clamp linéaire).
-- `computeEvm({ phases, schedule, progress, actuals, asOfWeek, hasStartDate })` → `{ bac, pv, ev, ac, spi, cpi, eac, etc, vac, byPhase: [...] }` avec `null` pour les métriques N/A. Réutilise `calculatePhaseTotalCost` / `calculateProjectDurationWithDependencies` de `costCalculations`.
+- `computeEvm({ project, rates, progress, actuals, asOfWeek })` → `{ bac, pv, ev, ac, spi, cpi, eac, etc, vac, byPhase: [...] }` avec `null` pour les métriques N/A. Calcule internement le calendrier des phases et le BAC par phase via `calculateProjectDurationWithDependencies` et `calculatePhaseTotalCost`.
 
 **`src/lib/executionApi.js`** : `getProgress(projectId)`.
 
@@ -77,7 +77,7 @@ Dans `server/execution/rollups.js`, nouveau `getProjectProgress(projectId)`, **j
   - **État vide** : si le projet n'a pas de tâches (module exécution non utilisé) → message d'invite (l'EVM repose sur les statuts de tâches).
 - Tokens Prism, `font-mono tabular-nums` pour les chiffres.
 
-**`src/components/ProjectView.jsx`** : ajouter l'onglet « Pilotage » (suivre le pattern d'onglets existant). Clés i18n FR/EN (`project.pilotage`, libellés EVM : `evm.ev/pv/ac/spi/cpi/eac/etc/vac/bac`, etc.).
+**`src/components/ProjectView.jsx`** : ajouter l'onglet « Pilotage » (suivre le pattern d'onglets existant). Clés i18n FR/EN (`tab.pilotage`, libellés EVM : `evm.ev/pv/ac/spi/cpi/eac/etc/vac/bac`, etc.).
 
 ## 8. Tests
 

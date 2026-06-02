@@ -14,10 +14,12 @@ import { useLocale } from '../lib/i18n';
 
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
-/** Semaines écoulées depuis startDate jusqu'à aujourd'hui (null si pas de date). */
+/** Semaines écoulées depuis startDate (YYYY-MM, ou YYYY-MM-DD) jusqu'à aujourd'hui (null si absent/invalide). */
 function asOfWeekFrom(startDate) {
   if (!startDate) return null;
-  const start = new Date(startDate);
+  const [y, m, d] = String(startDate).split('-').map(Number);
+  if (!y || !m) return null;
+  const start = new Date(y, m - 1, d || 1); // constructeur local fiable (pas de parsing de string YYYY-MM)
   if (Number.isNaN(start.getTime())) return null;
   // Floor à 0 : une startDate dans le futur donne 0 semaine écoulée (PV=0, SPI N/A).
   return Math.max(0, (Date.now() - start.getTime()) / MS_PER_WEEK);
