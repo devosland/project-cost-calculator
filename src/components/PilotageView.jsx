@@ -55,14 +55,10 @@ const PilotageView = ({ project, rates, onUpdateProject }) => {
     return <div className="text-sm text-muted-foreground p-6">…</div>;
   }
 
+  // Sans avancement attribué à une phase, EV/AC restent à 0 ; on affiche quand
+  // même le tableau de bord (BAC/PV planifiés) et le contrôle de baseline — la
+  // baseline se fige au moment de la planification, avant l'exécution.
   const hasProgress = Object.keys(progress).length > 0;
-  if (!hasProgress) {
-    return (
-      <div className="text-sm text-muted-foreground border border-border rounded-lg p-6 bg-card">
-        {t('evm.empty')}
-      </div>
-    );
-  }
 
   const idxStyle = (v) => {
     const status = indexStatus(v);
@@ -101,6 +97,12 @@ const PilotageView = ({ project, rates, onUpdateProject }) => {
           {project.baseline ? t('evm.baseline.refreeze') : t('evm.baseline.freeze')}
         </button>
       </div>
+
+      {!hasProgress && (
+        <div className="text-sm text-muted-foreground border border-border rounded-lg p-3 bg-card">
+          {t('evm.noProgress')}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card label={t('evm.ev')} value={fmt(evm.ev)} />

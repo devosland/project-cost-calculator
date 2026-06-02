@@ -109,6 +109,8 @@ const translations = {
     'tab.pilotage': 'Pilotage',
     'evm.title': 'Valeur acquise (EVM)',
     'evm.empty': "Le pilotage EVM repose sur les statuts des tâches. Ajoutez des Epics/Stories/Tâches dans l'onglet Travail.",
+    'evm.noProgress':
+      "Aucun avancement attribué à une phase : EV et AC restent à zéro. Reliez vos epics à une phase (ou utilisez « Synchroniser depuis le plan » dans l'onglet Travail) pour les faire apparaître. Le PV planifié et la baseline ci-dessous restent disponibles.",
     'evm.ev': 'Valeur acquise (EV)',
     'evm.pv': 'Valeur planifiée (PV)',
     'evm.ac': 'Coût réel (AC)',
@@ -761,6 +763,8 @@ const translations = {
     'tab.pilotage': 'Tracking',
     'evm.title': 'Earned Value (EVM)',
     'evm.empty': 'EVM tracking relies on task statuses. Add Epics/Stories/Tasks in the Work tab.',
+    'evm.noProgress':
+      'No progress attributed to a phase yet: EV and AC stay at zero. Link your epics to a phase (or use “Sync from plan” in the Work tab) to populate them. The planned PV and baseline below remain available.',
     'evm.ev': 'Earned Value (EV)',
     'evm.pv': 'Planned Value (PV)',
     'evm.ac': 'Actual Cost (AC)',
