@@ -6,7 +6,7 @@
  * density to the total duration (every 1, 2, or 4 weeks). Supports iCal
  * export of milestones via exportCalendar.
  */
-import React from 'react';
+import React, { useRef, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Flag, Calendar } from 'lucide-react';
@@ -19,6 +19,8 @@ import {
 } from '../lib/costCalculations';
 import { calculateCriticalPath } from '../lib/criticalPath';
 import { useLocale } from '../lib/i18n';
+import DependencyArrows from './DependencyArrows';
+import { getDependencyLinks } from '../lib/dependencyLinks';
 
 const COLORS = [
   'bg-indigo-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500',
@@ -43,6 +45,11 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
   const fmt = (v) => formatCurrency(v, currency);
   const { totalWeeks, phaseSchedule, conflicts } = calculateProjectDurationWithDependencies(project);
   const { byPhase: criticalByPhase } = calculateCriticalPath(project);
+
+  const barRefs = useRef(new Map());
+  const containerRef = useRef(null);
+  // useMemo: liens stables entre rendus → évite une boucle useLayoutEffect/setState.
+  const links = useMemo(() => getDependencyLinks(project), [project]);
 
   if (totalWeeks === 0) {
     return (
@@ -113,7 +120,9 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
               </span>
             </div>
 
-            {phasesWithOffsets.map((phase) => {
+            <div ref={containerRef} className="relative space-y-3">
+              <DependencyArrows links={links} barRefs={barRefs} containerRef={containerRef} />
+              {phasesWithOffsets.map((phase) => {
               const left = (phase.offset / totalWeeks) * 100;
               const width = (phase.durationWeeks / totalWeeks) * 100;
 
@@ -136,6 +145,11 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                       ))}
                     </div>
                     <div
+                      ref={(el) => {
+                        const m = barRefs.current;
+                        if (el) m.set(phase.id, el);
+                        else m.delete(phase.id);
+                      }}
                       className={`absolute top-0 h-full rounded-lg ${phase.crit?.critical ? 'bg-red-600' : COLORS[phase.colorIndex]} opacity-90 flex items-center justify-center shadow-sm`}
                       style={{ left: `${left}%`, width: `${width}%` }}
                     >
@@ -173,6 +187,7 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                 </div>
               );
             })}
+            </div>
           </div>
 
           <div className="border-t border-border pt-6">
