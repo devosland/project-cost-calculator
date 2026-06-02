@@ -36,14 +36,13 @@ Calculer, par phase, la **marge totale** (float) et un **flag critique**, puis l
 
 1. **Passe avant** : `calculateProjectDurationWithDependencies(project)` → `{ totalWeeks, phaseSchedule }`. `earlyStart = startWeek`, `earlyEnd = endWeek` par phase.
 2. **Adjacence inverse** : pour chaque phase `succ` et chacune de ses dépendances normalisées (`normalizeDependency`) `{ id: predId, type, lag }`, enregistrer `(succ, type, lag)` dans la liste des **successeurs** de `predId` (filtrée aux phases existantes).
-3. **Passe arrière** (ordre topologique inverse — l'inverse de l'ordre de la passe avant convient) : pour chaque phase `P` de durée `d` :
-   - Si `P` n'a **aucun successeur** : `lateEnd = totalWeeks`.
-   - Sinon `lateEnd = min` sur ses successeurs `S` (relation type/lag) de la borne inversée :
-     - **FS** : `S.lateStart − lag`
-     - **FF** : `S.lateEnd − lag`
-     - **SS** : `S.lateStart − lag + d`
-     - **SF** : `S.lateEnd − lag + d`
-   - `lateStart = lateEnd − d`.
+3. **Passe arrière** (mémoïsée, sûre car DAG) : pour chaque phase `P` de durée `d`, `lateEnd` **démarre à `totalWeeks`** (plafond projet — aucune phase ne finit après la fin du projet), puis `lateEnd = min(lateEnd, borne)` pour chaque successeur `S` (`S.lateStart = S.lateEnd − S.durée`) :
+   - **FS** : `S.lateStart − lag`
+   - **FF** : `S.lateEnd − lag`
+   - **SS** : `S.lateStart − lag + d`
+   - **SF** : `S.lateEnd − lag + d`
+   - Une phase **sans successeur** garde donc `lateEnd = totalWeeks`. `lateStart = lateEnd − d`.
+   - ⚠️ Le **plafond à `totalWeeks` est nécessaire** : avec SS/SF un prédécesseur peut définir la fin du projet **tout en ayant un successeur** ; sans plafond il paraîtrait avoir de la marge (ex. `a` 4 sem + `b` 2 sem en SS sur `a` → `a` doit rester critique).
 4. **Marge / critique** : `totalFloat = lateStart − earlyStart` (= `lateEnd − earlyEnd`) ; `critical = totalFloat <= 0`.
 5. **Retour** : `{ totalWeeks, byPhase: { [phaseId]: { earlyStart, earlyEnd, lateStart, lateEnd, totalFloat, critical } } }`.
 
