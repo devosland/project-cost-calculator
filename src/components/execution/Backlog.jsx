@@ -3,6 +3,12 @@
  * epics, stories, and tasks. This is the "everything in one place" view —
  * the Board has the Kanban semantics, Backlog has the hierarchy.
  *
+ * Roadmap visibility: each epic and story shows an aggregated progress pill
+ * (rollupProgress, 0/50/100 by task status). Epics carry an inline editor to
+ * rename them AND link them to a project phase (epic_phases) — the link that
+ * drives phase-level EVM attribution. Stories/tasks inherit the phase via
+ * their epic.
+ *
  * Data: fetches epics → stories → tasks in three round-trips. For an MVP
  * with at most a few hundred tasks per project this is fine; if the page
  * gets slow we can consolidate into a single /backlog endpoint later.
@@ -12,13 +18,23 @@ import { ChevronDown, ChevronRight, Plus, Wand2, Pencil, Trash2 } from 'lucide-r
 import { Button } from '../ui/button';
 import { useLocale } from '../../lib/i18n';
 import { executionApi } from '../../lib/executionApi';
+import { rollupProgress } from '../../lib/backlogProgress';
 
-export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
+export default function Backlog({ projectId, statuses, phases = [], canEdit, onOpenTask }) {
   const { t } = useLocale();
   const [tree, setTree] = useState([]); // [{ epic, stories: [{ story, tasks: [] }] }]
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState({});
+  // Epic inline editor (rename + link to a phase).
+  const [editingEpicId, setEditingEpicId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editPhaseId, setEditPhaseId] = useState('');
   const defaultStatus = statuses[0]?.name || 'To Do';
+
+  // Carte statut → catégorie pour l'avancement agrégé (pastilles).
+  const categoryByStatus = {};
+  for (const s of statuses) categoryByStatus[s.name] = s.category;
+  const phaseName = (id) => phases.find((p) => p.id === id)?.name;
 
   const fetchAll = useCallback(async () => {
     try {
@@ -64,12 +80,19 @@ export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
     fetchAll();
   }
 
-  async function renameEpic(epic) {
-    const title = window.prompt(t('work.renameEpicPrompt'), epic.title);
-    if (title == null) return; // annulé
-    const trimmed = title.trim();
-    if (!trimmed || trimmed === epic.title) return;
-    await executionApi.updateEpic(epic.id, { title: trimmed });
+  function openEpicEditor(epic) {
+    setEditingEpicId(epic.id);
+    setEditTitle(epic.title);
+    setEditPhaseId(epic.phase_ids?.[0] || '');
+  }
+  async function saveEpic(epic) {
+    const title = editTitle.trim();
+    if (!title) return;
+    await executionApi.updateEpic(epic.id, {
+      title,
+      phase_ids: editPhaseId ? [editPhaseId] : [],
+    });
+    setEditingEpicId(null);
     fetchAll();
   }
   async function deleteEpic(epic) {
@@ -105,6 +128,20 @@ export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
     }
   }
 
+  /** Pastille d'avancement agrégé (null si aucune tâche). */
+  function ProgressPill({ tasks }) {
+    const { pct, total } = rollupProgress(tasks, categoryByStatus);
+    if (total === 0) return null;
+    return (
+      <span
+        className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground whitespace-nowrap tabular-nums shrink-0"
+        title={t('work.progressTitle', { pct: Math.round(pct * 100), total })}
+      >
+        {Math.round(pct * 100)} %
+      </span>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {canEdit && (
@@ -125,24 +162,32 @@ export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
       {tree.map(({ epic, stories }) => {
         const epicKey = `e-${epic.id}`;
         const isCollapsed = collapsed[epicKey];
+        const epicTasks = stories.flatMap((s) => s.tasks);
+        const isEditing = editingEpicId === epic.id;
         return (
           <section key={epic.id} className="border border-border rounded-lg bg-card">
-            <header className="flex items-center justify-between px-3 py-2 border-b border-border">
+            <header className="flex items-center gap-2 px-3 py-2 border-b border-border">
               <button
                 type="button"
                 className="flex items-center gap-2 text-left flex-1 min-w-0"
                 onClick={() => toggle(epicKey)}
               >
-                {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                <span className="font-mono text-xs text-muted-foreground">{epic.key}</span>
+                {isCollapsed ? <ChevronRight className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+                <span className="font-mono text-xs text-muted-foreground shrink-0">{epic.key}</span>
                 <span className="font-semibold truncate">{epic.title}</span>
               </button>
+              {epic.phase_ids?.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary whitespace-nowrap shrink-0">
+                  {epic.phase_ids.map(phaseName).filter(Boolean).join(', ')}
+                </span>
+              )}
+              <ProgressPill tasks={epicTasks} />
               {canEdit && (
                 <div className="flex items-center gap-0.5 shrink-0">
                   <Button variant="ghost" size="sm" onClick={() => addStory(epic.id)} title={t('work.newStory')}>
                     <Plus className="w-3.5 h-3.5" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => renameEpic(epic)} title={t('work.renameEpic')}>
+                  <Button variant="ghost" size="sm" onClick={() => openEpicEditor(epic)} title={t('work.editEpic')}>
                     <Pencil className="w-3.5 h-3.5" />
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => deleteEpic(epic)} title={t('work.deleteEpic')}>
@@ -152,6 +197,32 @@ export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
               )}
             </header>
 
+            {isEditing && canEdit && (
+              <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-border bg-muted/20">
+                <input
+                  className="flex-1 min-w-[140px] text-sm border border-border rounded px-2 py-1 bg-background"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder={t('work.epicTitle')}
+                  aria-label={t('work.epicTitle')}
+                />
+                <label className="text-xs text-muted-foreground">{t('work.epicPhase')}</label>
+                <select
+                  className="text-sm border border-border rounded px-2 py-1 bg-background"
+                  value={editPhaseId}
+                  onChange={(e) => setEditPhaseId(e.target.value)}
+                  aria-label={t('work.epicPhase')}
+                >
+                  <option value="">{t('work.epicPhaseNone')}</option>
+                  {phases.map((ph) => (
+                    <option key={ph.id} value={ph.id}>{ph.name}</option>
+                  ))}
+                </select>
+                <Button size="sm" onClick={() => saveEpic(epic)}>{t('work.save')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingEpicId(null)}>{t('work.cancel')}</Button>
+              </div>
+            )}
+
             {!isCollapsed && (
               <div className="p-3 space-y-3">
                 {stories.length === 0 && <p className="text-xs text-muted-foreground italic">{t('work.emptyEpic')}</p>}
@@ -160,16 +231,17 @@ export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
                   const sCollapsed = collapsed[storyKey];
                   return (
                     <div key={story.id} className="border border-border rounded">
-                      <header className="flex items-center justify-between px-2 py-1.5 bg-muted/30">
+                      <header className="flex items-center gap-2 px-2 py-1.5 bg-muted/30">
                         <button
                           type="button"
                           className="flex items-center gap-2 text-left flex-1 min-w-0"
                           onClick={() => toggle(storyKey)}
                         >
-                          {sCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                          <span className="font-mono text-[10px] text-muted-foreground">{story.key}</span>
+                          {sCollapsed ? <ChevronRight className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
+                          <span className="font-mono text-[10px] text-muted-foreground shrink-0">{story.key}</span>
                           <span className="text-sm truncate">{story.title}</span>
                         </button>
+                        <ProgressPill tasks={tasks} />
                         {canEdit && (
                           <div className="flex items-center gap-0.5 shrink-0">
                             <button
