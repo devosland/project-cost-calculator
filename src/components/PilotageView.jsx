@@ -8,7 +8,7 @@
  */
 import { useEffect, useState, useMemo } from 'react';
 import { executionApi } from '../lib/executionApi';
-import { computeEvm, indexStatus } from '../lib/evmCalculations';
+import { computeEvm, indexStatus, buildBaseline } from '../lib/evmCalculations';
 import { formatCurrency } from '../lib/costCalculations';
 import { useLocale } from '../lib/i18n';
 
@@ -25,7 +25,7 @@ function asOfWeekFrom(startDate) {
   return Math.max(0, (Date.now() - start.getTime()) / MS_PER_WEEK);
 }
 
-const PilotageView = ({ project, rates }) => {
+const PilotageView = ({ project, rates, onUpdateProject }) => {
   const { t } = useLocale();
   const currency = project.settings?.currency || 'CAD';
   const fmt = (v) => (v == null ? '—' : formatCurrency(v, currency));
@@ -41,7 +41,10 @@ const PilotageView = ({ project, rates }) => {
     return () => { cancelled = true; };
   }, [project.id]);
 
-  const asOfWeek = useMemo(() => asOfWeekFrom(project.settings?.startDate), [project.settings?.startDate]);
+  const asOfWeek = useMemo(
+    () => asOfWeekFrom(project.baseline?.startDate || project.settings?.startDate),
+    [project.baseline?.startDate, project.settings?.startDate]
+  );
 
   const evm = useMemo(() => {
     if (progress == null || actuals == null) return null;
@@ -74,9 +77,30 @@ const PilotageView = ({ project, rates }) => {
     </div>
   );
 
+  const freezeBaseline = () => {
+    if (project.baseline && !window.confirm(t('evm.baseline.confirm'))) return;
+    const today = new Date().toISOString().slice(0, 10);
+    onUpdateProject?.({ baseline: buildBaseline(project, rates, today) });
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="font-display text-2xl font-semibold tracking-tight">{t('evm.title')}</h2>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-card border border-border rounded-lg p-3">
+        <span className="text-sm text-muted-foreground">
+          {project.baseline
+            ? t('evm.baseline.capturedOn', { date: project.baseline.capturedAt })
+            : t('evm.baseline.none')}
+        </span>
+        <button
+          type="button"
+          onClick={freezeBaseline}
+          className="text-xs border border-border rounded-md px-3 py-1.5 hover:bg-muted whitespace-nowrap"
+        >
+          {project.baseline ? t('evm.baseline.refreeze') : t('evm.baseline.freeze')}
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card label={t('evm.ev')} value={fmt(evm.ev)} />

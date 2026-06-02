@@ -649,7 +649,9 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
         />
       )}
 
-      {activeTab === 'pilotage' && <PilotageView project={project} rates={rates} />}
+      {activeTab === 'pilotage' && (
+        <PilotageView project={project} rates={rates} onUpdateProject={updateProject} />
+      )}
 
       {/* --- Onglets Charts et Sommaire --- */}
       {activeTab === 'work' && <WorkView project={project} />}
