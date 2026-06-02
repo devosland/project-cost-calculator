@@ -8,7 +8,7 @@
  * gets slow we can consolidate into a single /backlog endpoint later.
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Plus, Wand2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Wand2, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useLocale } from '../../lib/i18n';
 import { executionApi } from '../../lib/executionApi';
@@ -64,6 +64,33 @@ export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
     fetchAll();
   }
 
+  async function renameEpic(epic) {
+    const title = window.prompt(t('work.renameEpicPrompt'), epic.title);
+    if (title == null) return; // annulé
+    const trimmed = title.trim();
+    if (!trimmed || trimmed === epic.title) return;
+    await executionApi.updateEpic(epic.id, { title: trimmed });
+    fetchAll();
+  }
+  async function deleteEpic(epic) {
+    if (!window.confirm(t('work.deleteEpicConfirm', { title: epic.title }))) return;
+    await executionApi.removeEpic(epic.id);
+    fetchAll();
+  }
+  async function renameStory(story) {
+    const title = window.prompt(t('work.renameStoryPrompt'), story.title);
+    if (title == null) return; // annulé
+    const trimmed = title.trim();
+    if (!trimmed || trimmed === story.title) return;
+    await executionApi.updateStory(story.id, { title: trimmed });
+    fetchAll();
+  }
+  async function deleteStory(story) {
+    if (!window.confirm(t('work.deleteStoryConfirm', { title: story.title }))) return;
+    await executionApi.removeStory(story.id);
+    fetchAll();
+  }
+
   async function syncFromPlan() {
     if (!window.confirm(t('work.syncConfirm'))) return;
     try {
@@ -111,9 +138,17 @@ export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
                 <span className="font-semibold truncate">{epic.title}</span>
               </button>
               {canEdit && (
-                <Button variant="ghost" size="sm" onClick={() => addStory(epic.id)} title={t('work.newStory')}>
-                  <Plus className="w-3.5 h-3.5" />
-                </Button>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <Button variant="ghost" size="sm" onClick={() => addStory(epic.id)} title={t('work.newStory')}>
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => renameEpic(epic)} title={t('work.renameEpic')}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => deleteEpic(epic)} title={t('work.deleteEpic')}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               )}
             </header>
 
@@ -136,14 +171,32 @@ export default function Backlog({ projectId, statuses, canEdit, onOpenTask }) {
                           <span className="text-sm truncate">{story.title}</span>
                         </button>
                         {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => addTask(story.id)}
-                            className="text-muted-foreground hover:text-foreground p-1"
-                            title={t('work.newTask')}
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => addTask(story.id)}
+                              className="text-muted-foreground hover:text-foreground p-1"
+                              title={t('work.newTask')}
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => renameStory(story)}
+                              className="text-muted-foreground hover:text-foreground p-1"
+                              title={t('work.renameStory')}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteStory(story)}
+                              className="text-muted-foreground hover:text-foreground p-1"
+                              title={t('work.deleteStory')}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
                       </header>
                       {!sCollapsed && (
