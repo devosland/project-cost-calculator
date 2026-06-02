@@ -41,7 +41,7 @@ const LIGHT_COLORS = [
 const TimelineView = ({ project, rates, currency = 'CAD' }) => {
   const { t } = useLocale();
   const fmt = (v) => formatCurrency(v, currency);
-  const { totalWeeks, phaseSchedule } = calculateProjectDurationWithDependencies(project);
+  const { totalWeeks, phaseSchedule, conflicts } = calculateProjectDurationWithDependencies(project);
   const { byPhase: criticalByPhase } = calculateCriticalPath(project);
 
   if (totalWeeks === 0) {
@@ -121,6 +121,9 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
                 <div key={phase.id} className="flex items-center gap-3">
                   <div className="w-20 sm:w-36 text-sm font-medium truncate text-right pr-2">
                     {phase.name}
+                    {conflicts?.[phase.id] && (
+                      <span title={`${t('constraint.conflict')} (${conflicts[phase.id]})`} style={{ color: 'var(--prism-error)' }} className="ml-1">⚠</span>
+                    )}
                   </div>
                   <div className="flex-1 relative h-9">
                     <div className="absolute inset-0">
