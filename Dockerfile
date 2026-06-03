@@ -1,11 +1,11 @@
-FROM node:25-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 COPY . .
 RUN npm run build
 
-FROM node:25-alpine
+FROM node:26-alpine
 WORKDIR /app
 
 # Install server dependencies
