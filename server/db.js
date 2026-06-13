@@ -735,6 +735,20 @@ function unshareProject(projectId, userId) {
 }
 
 /**
+ * Resolves a user's effective role on a project.
+ * @param {string} projectId
+ * @param {number} userId
+ * @returns {'owner'|'editor'|'viewer'|null} null when the user has no access.
+ */
+function getProjectRole(projectId, userId) {
+  const project = db.prepare('SELECT owner_id FROM projects WHERE id = ?').get(projectId);
+  if (!project) return null;
+  if (project.owner_id === userId) return 'owner';
+  const share = db.prepare('SELECT role FROM project_shares WHERE project_id = ? AND user_id = ?').get(projectId, userId);
+  return share ? share.role : null;
+}
+
+/**
  * Returns all share records for a project including the shared user's email and name.
  * @param {string} projectId
  * @returns {{ id, user_id, role, created_at, email, name }[]}
@@ -1310,6 +1324,7 @@ export {
   upsertProjectRecord,
   shareProject,
   unshareProject,
+  getProjectRole,
   getProjectShares,
   createSnapshot,
   getSnapshots,

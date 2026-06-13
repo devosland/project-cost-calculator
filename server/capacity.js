@@ -31,6 +31,7 @@ import {
   getAvailabilityByUser,
   upsertAvailability,
   deleteAvailability,
+  getProjectRole,
 } from './db.js';
 
 const router = Router();
@@ -296,7 +297,7 @@ router.get('/assignments', (req, res) => {
  * Ownership of the resource is verified — users cannot assign other users' resources.
  * Body: { resource_id, project_id, phase_id, allocation, start_month (YYYY-MM), end_month (YYYY-MM) }
  * Returns: 201 { id, resource_id, project_id, phase_id, allocation, start_month, end_month }
- * Errors: 400 missing fields | 403 resource not owned | 409 duplicate resource/project/phase
+ * Errors: 400 missing fields | 403 resource not owned or project not writable | 409 duplicate resource/project/phase
  */
 router.post('/assignments', (req, res) => {
   try {
@@ -309,6 +310,13 @@ router.post('/assignments', (req, res) => {
     // to another user onto their own project.
     const resource = getResourceById(resource_id);
     if (!resource || resource.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Validate project access — prevents creating phantom assignments on a
+    // project the caller can't write to (owner or editor share required).
+    const projectRole = getProjectRole(project_id, req.user.id);
+    if (projectRole !== 'owner' && projectRole !== 'editor') {
       return res.status(403).json({ error: 'Access denied' });
     }
 

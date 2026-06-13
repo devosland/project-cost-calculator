@@ -17,6 +17,7 @@ import {
   createProject, duplicateProject, deleteProject,
   exportProject, exportProjectCSV, importProjectFromFile,
 } from '../lib/projectStore';
+import { api } from '../lib/api';
 
 import {
   calculateProjectCost, calculateProjectDurationWeeks, formatCurrency,
@@ -57,6 +58,11 @@ const Dashboard = ({ projects, rates, onProjectsChange, onOpenProject, onCompare
   const handleDelete = (id) => {
     onProjectsChange(deleteProject(projects, id));
     setSelectedForCompare((prev) => prev.filter((x) => x !== id));
+    // The bulk PUT /api/data never deletes (an absent project just means
+    // "this client doesn't have it"), so deletion must go through the
+    // owner-only granular route. Optimistic: on failure the project
+    // reappears at next reload instead of being silently lost.
+    api.deleteProject(id).catch((err) => console.error('Delete project failed:', err));
   };
 
   const handleImport = async () => {
