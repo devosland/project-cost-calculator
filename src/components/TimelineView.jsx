@@ -207,7 +207,13 @@ const TimelineView = ({ project, rates, currency = 'CAD' }) => {
               <tbody>
                 {phasesWithOffsets.map((phase) => {
                   const weeklyCost = calculatePhaseWeeklyCost(phase, rates);
-                  const phaseTotalCost = calculatePhaseTotalCost(phase, rates);
+                  // Same calendar context as calculateLabourCost so the
+                  // breakdown rows always sum to the project total (B4).
+                  const sched = scheduleMap.get(phase.id);
+                  const schedCtx = project.settings?.startDate && sched
+                    ? { projectStartMonth: project.settings.startDate, phaseStartWeek: sched.startWeek }
+                    : undefined;
+                  const phaseTotalCost = calculatePhaseTotalCost(phase, rates, schedCtx);
                   runningTotal += phaseTotalCost;
                   const memberCount = phase.teamMembers.reduce((s, m) => s + m.quantity, 0);
 

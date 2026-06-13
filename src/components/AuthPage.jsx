@@ -58,7 +58,15 @@ export default function AuthPage({ onAuth }) {
         setPassword('');
       }
     } catch (err) {
-      setError(err.message);
+      // Translate known failures instead of surfacing raw server strings
+      // ("Request failed", "Invalid credentials") in an otherwise localised UI.
+      const key =
+        err.code === 'network_error' ? 'errors.network'
+        : err.status === 401 ? 'auth.errors.invalidCredentials'
+        : err.status === 409 ? 'auth.errors.emailTaken'
+        : err.status === 429 ? 'auth.errors.tooManyAttempts'
+        : 'errors.generic';
+      setError(t(key));
     } finally {
       setLoading(false);
     }

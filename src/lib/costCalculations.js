@@ -105,6 +105,46 @@ export function getMemberWeeks(member, phase, projectStartMonth) {
 }
 
 /**
+ * Returns the month following a YYYY-MM value (e.g. '2026-12' → '2027-01').
+ * Used to turn an inclusive endMonth into an exclusive week boundary.
+ *
+ * @param {string} ym - YYYY-MM
+ * @returns {string} YYYY-MM of the next month.
+ */
+function nextMonth(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const ny = m === 12 ? y + 1 : y;
+  const nm = m === 12 ? 1 : m + 1;
+  return `${ny}-${String(nm).padStart(2, '0')}`;
+}
+
+/**
+ * Effective weeks a constrained member actually works within a phase, computed
+ * as the calendar OVERLAP between the member's window and the phase's window —
+ * both expressed in weeks since the project start (same 4.33 weeks/month
+ * convention as the rest of the module).
+ *
+ * A member whose window ends before the phase starts (or starts after it ends)
+ * contributes 0 weeks — previously their full window duration was billed as if
+ * it sat inside the phase (review 2026-06-12, finding B4).
+ *
+ * @param {object} member            - Team member with startMonth/endMonth (YYYY-MM).
+ * @param {number} phaseStartWeek    - Phase start, in weeks since project start.
+ * @param {number} phaseDurationWeeks- Phase duration in weeks.
+ * @param {string} projectStartMonth - Project start month (YYYY-MM).
+ * @returns {number} Overlap weeks, in [0, phaseDurationWeeks].
+ */
+export function getMemberOverlapWeeks(member, phaseStartWeek, phaseDurationWeeks, projectStartMonth) {
+  // monthDiffInWeeks clamps at 0, which is exactly right here: a member window
+  // beginning before the project start is cut at week 0.
+  const memberStart = monthDiffInWeeks(projectStartMonth, member.startMonth);
+  const memberEndExcl = monthDiffInWeeks(projectStartMonth, nextMonth(member.endMonth));
+  const phaseEndExcl = phaseStartWeek + phaseDurationWeeks;
+  const overlap = Math.min(phaseEndExcl, memberEndExcl) - Math.max(phaseStartWeek, memberStart);
+  return Math.max(0, Math.min(overlap, phaseDurationWeeks));
+}
+
+/**
  * Convert a month range into an approximate number of weeks.
  *
  * Uses the 4.33 factor (365.25 days / 12 months / 7 days per week ≈ 4.33).
@@ -141,14 +181,27 @@ export function monthDiffInWeeks(startMonth, endMonth) {
  *   allocation, and optional startMonth/endMonth.
  * @param {object} rates            - User rate card.
  * @param {number} phaseDurationWeeks - Duration of the containing phase in weeks.
+ * @param {{projectStartMonth: string, phaseStartWeek: number}} [schedCtx] -
+ *   When provided, constrained members are prorated on the calendar OVERLAP
+ *   with the phase window instead of their raw window duration.
  * @returns {number} Total labour cost for this member in this phase.
  */
-export function calculateMemberProratedCost(member, rates, phaseDurationWeeks) {
+export function calculateMemberProratedCost(member, rates, phaseDurationWeeks, schedCtx) {
   const hourlyRate = getHourlyRate(rates, member.role, member.level);
-  const weeks = (member.startMonth && member.endMonth)
-    ? Math.min(monthDiffInWeeks(member.startMonth, member.endMonth), phaseDurationWeeks)
-    : phaseDurationWeeks;
+  const weeks = getMemberWeeksForPhase(member, phaseDurationWeeks, schedCtx);
   return hourlyRate * HOURS_PER_WEEK * member.quantity * (member.allocation / 100) * weeks;
+}
+
+/**
+ * Shared proration rule: overlap-based when the schedule context is known,
+ * duration-based (legacy behaviour) otherwise.
+ */
+function getMemberWeeksForPhase(member, phaseDurationWeeks, schedCtx) {
+  if (!(member.startMonth && member.endMonth)) return phaseDurationWeeks;
+  if (schedCtx && schedCtx.projectStartMonth && schedCtx.phaseStartWeek != null) {
+    return getMemberOverlapWeeks(member, schedCtx.phaseStartWeek, phaseDurationWeeks, schedCtx.projectStartMonth);
+  }
+  return Math.min(monthDiffInWeeks(member.startMonth, member.endMonth), phaseDurationWeeks);
 }
 
 // --- Phase-level cost calculations ---
@@ -187,9 +240,13 @@ export function calculatePhaseWeeklyCost(phase, rates) {
  *
  * @param {object} phase - Phase with durationWeeks and teamMembers[].
  * @param {object} rates - User rate card.
+ * @param {{projectStartMonth: string, phaseStartWeek: number}} [schedCtx] -
+ *   Calendar context of this phase. When provided, constrained members are
+ *   prorated on their overlap with the phase window (B4 fix); without it the
+ *   legacy duration-based proration applies.
  * @returns {number} Total phase labour cost (prorated where applicable).
  */
-export function calculatePhaseTotalCost(phase, rates) {
+export function calculatePhaseTotalCost(phase, rates, schedCtx) {
   // Prorating gate: if any member has a constrained period, switch to
   // per-member calculation for the whole phase (so unconstrained members
   // still use phase.durationWeeks, while constrained ones use their own span).
@@ -198,9 +255,7 @@ export function calculatePhaseTotalCost(phase, rates) {
     return phase.teamMembers.reduce((total, member) => {
       const hourlyRate = getHourlyRate(rates, member.role, member.level);
       const weeklyCost = hourlyRate * HOURS_PER_WEEK * member.quantity * (member.allocation / 100);
-      const memberWeeks = (member.startMonth && member.endMonth)
-        ? Math.min(monthDiffInWeeks(member.startMonth, member.endMonth), phase.durationWeeks)
-        : phase.durationWeeks;
+      const memberWeeks = getMemberWeeksForPhase(member, phase.durationWeeks, schedCtx);
       return total + weeklyCost * memberWeeks;
     }, 0);
   }
@@ -219,10 +274,23 @@ export function calculatePhaseTotalCost(phase, rates) {
  * @returns {number} Total project labour cost.
  */
 export function calculateLabourCost(project, rates) {
-  return project.phases.reduce(
-    (sum, phase) => sum + calculatePhaseTotalCost(phase, rates),
-    0
-  );
+  // When the project has a start date AND at least one constrained member,
+  // compute the dependency-aware schedule once so each phase can prorate its
+  // members on real calendar overlap (B4). Otherwise keep the cheap path.
+  const projectStartMonth = project.settings?.startDate || null;
+  const needsSchedule = projectStartMonth &&
+    project.phases.some(p => (p.teamMembers || []).some(m => m.startMonth && m.endMonth));
+  let scheduleMap = null;
+  if (needsSchedule) {
+    const { phaseSchedule } = calculateProjectDurationWithDependencies(project);
+    scheduleMap = new Map(phaseSchedule.map(s => [s.phaseId, s]));
+  }
+
+  return project.phases.reduce((sum, phase) => {
+    const sched = scheduleMap?.get(phase.id);
+    const schedCtx = sched ? { projectStartMonth, phaseStartWeek: sched.startWeek } : undefined;
+    return sum + calculatePhaseTotalCost(phase, rates, schedCtx);
+  }, 0);
 }
 
 /**

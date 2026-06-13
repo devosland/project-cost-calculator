@@ -59,9 +59,28 @@ async function request(path, options = {}) {
   // register, forgot-password) work without it.
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch (fetchErr) {
+    // fetch only rejects on network-level failures (offline, DNS, CORS).
+    const e = new Error('network_error');
+    e.code = 'network_error';
+    e.cause = fetchErr;
+    throw e;
+  }
+
+  // Tolerate non-JSON bodies (reverse-proxy error pages, empty responses)
+  // instead of masking the real status behind a SyntaxError.
+  let data = null;
+  try { data = await res.json(); } catch { /* non-JSON body */ }
+
+  if (!res.ok) {
+    const e = new Error((data && data.error) || `Request failed (HTTP ${res.status})`);
+    e.code = (data && data.error) || null;
+    e.status = res.status;
+    throw e;
+  }
   return data;
 }
 

@@ -403,7 +403,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
       </div>
 
       {/* --- Onglets de navigation --- */}
-      <nav className="flex gap-1 border-b mb-8 print:hidden overflow-x-auto">
+      <nav className="flex gap-1 border-b mb-8 print:hidden overflow-x-auto scrollbar-none">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           return (
