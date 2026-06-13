@@ -34,6 +34,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Health probe — public, no auth, no DB. Used as a readiness check by the
+// E2E harness (Playwright webServer) and useful for uptime monitoring.
+app.get('/api/health', (req, res) => res.json({ ok: true }));
+
 // --- Internal API routes (JWT-protected, permissive CORS) ---
 // IMPORTANT: /api/auth/api-keys MUST be registered before /api/auth — Express matches
 // the first prefix that fits, so reversing this order would route api-key requests

@@ -10,6 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "format": "prettier --write .",
     "prepare": "husky"
   },
@@ -40,6 +43,7 @@
     "*.{json,md,yml,yaml,css}": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^18.2.43",
