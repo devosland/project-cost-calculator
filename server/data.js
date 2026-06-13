@@ -1,14 +1,15 @@
 /**
  * Express router for bulk data synchronisation (/api/data).
  * GET returns the full user dataset (projects + rates) in one call.
- * PUT replaces all owned projects and rates atomically, then reconciles
- * resource_assignments with the updated teamMembers in each phase.
+ * PUT upserts the authorized projects (owned + editor shares) and rates, then
+ * reconciles resource_assignments with the updated teamMembers in each phase.
+ * PUT never deletes — deletion is owner-only via DELETE /api/projects/:id.
  *
  * This is a legacy "save everything" endpoint used by the frontend's
  * projectStore. New code should prefer the granular /api/projects/* routes.
  */
 import { Router } from 'express';
-import { getUserData, saveUserData, getProjectsByUser, upsertProjectRecord, deleteProjectRecord, db } from './db.js';
+import { getUserData, saveUserData, getProjectsByUser, upsertProjectRecord, getProjectById, getProjectRole, db } from './db.js';
 import { authMiddleware } from './middleware.js';
 
 const router = Router();
@@ -46,13 +47,18 @@ router.get('/', (req, res) => {
 
 /**
  * PUT /api/data
- * Replaces the authenticated user's entire project set and billing rates.
- * Projects are diffed: projects in the submitted array are upserted, and any
- * owned projects absent from the array are deleted (shared projects are untouched).
+ * Upserts the authenticated user's project set and billing rates.
+ * Authorization is enforced per project: owners and editor-shares are written,
+ * anything else (viewer share, foreign or unknown relation to an existing id)
+ * is skipped and reported in the response. owner_id is never reassigned.
+ * This endpoint NEVER deletes projects — deletion goes through
+ * DELETE /api/projects/:id (owner only), so a partial payload (second tab,
+ * interrupted hydration) can no longer wipe data.
  * After the project sync, resource_assignments are reconciled with teamMembers
- * in each phase (non-fatal — errors are logged but don't roll back the project save).
+ * in each phase of the ACCEPTED projects (non-fatal — errors are logged but
+ * don't roll back the project save).
  * Body: { projects: object[], rates: object|null }
- * Returns: 200 { success: true }
+ * Returns: 200 { success: true, skipped: string[] }
  * Errors: 413 payload too large (>5 MB)
  */
 router.put('/', (req, res) => {
@@ -69,27 +75,35 @@ router.put('/', (req, res) => {
     // retained for backwards-compat with pre-migration clients.
     saveUserData(req.user.id, '[]', ratesStr);
 
-    // Sync projects to the projects table
+    // Sync projects to the projects table.
+    // Per-project authorization: a submitted id that already exists is only
+    // written if the caller owns it or holds an 'editor' share. Everything
+    // else is skipped — a viewer share or a guessed id must never overwrite
+    // someone else's data. New ids are inserted as owned by the caller.
     const projectsArray = projects ?? [];
-    const submittedIds = new Set();
+    const acceptedIds = new Set();
+    const skipped = [];
 
     const syncProjects = db.transaction(() => {
       for (const project of projectsArray) {
         if (!project.id) continue;
-        submittedIds.add(project.id);
+        const existing = getProjectById(project.id);
+        let ownerId = req.user.id;
+        if (existing) {
+          const role = getProjectRole(project.id, req.user.id);
+          if (role !== 'owner' && role !== 'editor') {
+            skipped.push(project.id);
+            continue;
+          }
+          ownerId = existing.owner_id; // never reassign ownership from the bulk path
+        }
+        acceptedIds.add(project.id);
         const name = project.name || 'Sans titre';
         const data = JSON.stringify(project);
-        upsertProjectRecord(project.id, req.user.id, name, data);
+        upsertProjectRecord(project.id, ownerId, name, data);
       }
-
-      // Delete owned projects not in the submitted array.
-      // Only owned projects are deleted — shared projects are read-only from this endpoint.
-      const ownedProjects = db.prepare('SELECT id FROM projects WHERE owner_id = ?').all(req.user.id);
-      for (const owned of ownedProjects) {
-        if (!submittedIds.has(owned.id)) {
-          deleteProjectRecord(owned.id);
-        }
-      }
+      // Deliberately no delete-by-absence here: an absent project means
+      // "this client doesn't have it", not "the user deleted it".
     });
 
     syncProjects();
@@ -99,7 +113,7 @@ router.put('/', (req, res) => {
     // because the frontend may not always send perfectly consistent teamMember data.
     try {
       for (const project of projectsArray) {
-        if (!project.id) continue;
+        if (!project.id || !acceptedIds.has(project.id)) continue;
         const phases = project.phases || [];
         const phaseIds = phases.map(p => p.id);
 
@@ -149,7 +163,7 @@ router.put('/', (req, res) => {
       console.error('Resource assignment sync error:', e);
     }
 
-    res.json({ success: true });
+    res.json({ success: true, skipped });
   } catch (err) {
     console.error('Save data error:', err);
     res.status(500).json({ error: 'Internal server error' });
