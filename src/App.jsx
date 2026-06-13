@@ -282,6 +282,15 @@ function AppContent() {
     try {
       const result = await api.restoreSnapshot(snapshotId);
       if (result.data) {
+        // A pending auto-save still holds the PRE-restore state and would
+        // overwrite the server's restored version one second from now —
+        // cancel it. The server is already up to date (restoreSnapshot
+        // writes server-side), so no client save is needed here.
+        if (saveTimer.current) {
+          clearTimeout(saveTimer.current);
+          saveTimer.current = null;
+        }
+        setSaveStatus('saved');
         const restoredProject = { ...result.data, id: result.id, name: result.name };
         setProjects((prev) => prev.map((p) => p.id === restoredProject.id ? restoredProject : p));
       }

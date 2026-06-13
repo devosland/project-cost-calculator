@@ -15,7 +15,7 @@ import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   useDroppable, useDraggable, closestCenter,
 } from '@dnd-kit/core';
-import { useLocale } from '../../lib/i18n';
+import { useLocale, getStatusLabel } from '../../lib/i18n';
 import { executionApi } from '../../lib/executionApi';
 import TaskCard from './TaskCard';
 
@@ -108,6 +108,7 @@ export default function Board({ projectId, statuses, resources, canEdit, canLog,
 }
 
 function Column({ status, tasks, onOpenTask, canEdit }) {
+  const { t: translate } = useLocale();
   const { setNodeRef, isOver } = useDroppable({ id: status.name });
   return (
     <div
@@ -117,7 +118,7 @@ function Column({ status, tasks, onOpenTask, canEdit }) {
       }`}
     >
       <header className="flex items-center justify-between px-1 py-1 mb-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{status.name}</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{getStatusLabel(translate, status.name)}</h3>
         <span className="text-xs font-mono tabular-nums text-muted-foreground">{tasks.length}</span>
       </header>
       <div className="space-y-2">

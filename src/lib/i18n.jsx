@@ -43,6 +43,14 @@ const translations = {
     'auth.submit.register': 'Créer un compte',
     'auth.submit.forgot': 'Envoyer le jeton',
     'auth.submit.reset': 'Réinitialiser',
+    'auth.errors.invalidCredentials': 'Courriel ou mot de passe invalide.',
+    'auth.errors.emailTaken': 'Un compte existe déjà avec ce courriel.',
+    'auth.errors.tooManyAttempts': 'Trop de tentatives. Réessayez dans quelques minutes.',
+    'errors.network': 'Impossible de joindre le serveur. Vérifiez votre connexion.',
+    'errors.generic': 'Une erreur est survenue. Réessayez.',
+    'status.todo': 'À faire',
+    'status.inprogress': 'En cours',
+    'status.done': 'Terminé',
     'auth.loading.login': 'Connexion...',
     'auth.loading.register': 'Création...',
     'auth.loading.forgot': 'Envoi...',
@@ -712,6 +720,14 @@ const translations = {
     'auth.submit.register': 'Create account',
     'auth.submit.forgot': 'Send token',
     'auth.submit.reset': 'Reset',
+    'auth.errors.invalidCredentials': 'Invalid email or password.',
+    'auth.errors.emailTaken': 'An account already exists with this email.',
+    'auth.errors.tooManyAttempts': 'Too many attempts. Try again in a few minutes.',
+    'errors.network': 'Cannot reach the server. Check your connection.',
+    'errors.generic': 'Something went wrong. Please try again.',
+    'status.todo': 'To Do',
+    'status.inprogress': 'In Progress',
+    'status.done': 'Done',
     'auth.loading.login': 'Logging in...',
     'auth.loading.register': 'Creating...',
     'auth.loading.forgot': 'Sending...',
@@ -1500,6 +1516,25 @@ export function getLevelLabel(t, levelKey) {
     'Expert': t('level.expert'),
   };
   return map[levelKey] || levelKey;
+}
+
+/**
+ * Translate a stored execution-status name to a localised display label.
+ * The three canonical statuses are seeded in English in project_statuses
+ * (To Do / In Progress / Done); custom statuses are user data and are
+ * shown verbatim — same fallback philosophy as getLevelLabel.
+ *
+ * @param {Function} t          - Translation function from `useLocale()`.
+ * @param {string}   statusName - Stored status name.
+ * @returns {string} Localised display string.
+ */
+export function getStatusLabel(t, statusName) {
+  const map = {
+    'To Do': t('status.todo'),
+    'In Progress': t('status.inprogress'),
+    'Done': t('status.done'),
+  };
+  return map[statusName] || statusName;
 }
 
 /**

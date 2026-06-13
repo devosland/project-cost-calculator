@@ -14,7 +14,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../ui/button';
-import { useLocale } from '../../lib/i18n';
+import { useLocale, getStatusLabel } from '../../lib/i18n';
 import { executionApi } from '../../lib/executionApi';
 import TimeLogWidget from './TimeLogWidget';
 
@@ -127,7 +127,7 @@ export default function TaskPanel({ taskId, statuses, resources, canEdit, canLog
                   disabled={!canEdit || saving}
                   onChange={(e) => transition(e.target.value)}
                 >
-                  {statuses.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
+                  {statuses.map((s) => <option key={s.name} value={s.name}>{getStatusLabel(t, s.name)}</option>)}
                 </select>
               </div>
               <div>
