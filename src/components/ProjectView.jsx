@@ -4,7 +4,8 @@
  * sur chaque load ET à chaque updatePhase (single source of truth), et gestion
  * des assignments capacity via PUT /api/data.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import FallbackSpinner from './ui/fallback-spinner';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
@@ -18,11 +19,13 @@ import PhaseEditor from './PhaseEditor';
 import TimelineView from './TimelineView';
 import BudgetTracker from './BudgetTracker';
 import NonLabourCosts from './NonLabourCosts';
-import CostCharts from './CostCharts';
+// Lazy tabs: Charts, Risks and Pilotage are off the default (Phases) path and
+// are never printed, so they load on tab activation rather than up front.
+const CostCharts = lazy(() => import('./CostCharts'));
 import ProjectSummary from './ProjectSummary';
 import ResourceConflicts from './ResourceConflicts';
-import RiskRegister from './RiskRegister';
-import PilotageView from './PilotageView';
+const RiskRegister = lazy(() => import('./RiskRegister'));
+const PilotageView = lazy(() => import('./PilotageView'));
 import WorkView from './execution/WorkView';
 import LevelingSuggestions from './LevelingSuggestions';
 import { createPhase, exportProject, exportProjectCSV } from '../lib/projectStore';
@@ -397,7 +400,7 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
           </div>
           <div className="text-right">
             <div className="text-sm text-muted-foreground">{totalWeeks} {t('project.weeks')}</div>
-            <div className="font-mono text-2xl font-semibold tabular-nums">{fmt(totalCost)}</div>
+            <div className="font-mono text-2xl font-semibold tabular-nums" data-testid="project-total-cost">{fmt(totalCost)}</div>
           </div>
         </div>
       </div>
@@ -643,19 +646,27 @@ const ProjectView = ({ project, rates, onProjectChange, onBack, onOpenShare, onO
 
       {/* --- Onglet Risques --- */}
       {activeTab === 'risks' && (
-        <RiskRegister
-          risks={project.risks || []}
-          onChange={(newRisks) => updateProject({ risks: newRisks })}
-        />
+        <Suspense fallback={<FallbackSpinner />}>
+          <RiskRegister
+            risks={project.risks || []}
+            onChange={(newRisks) => updateProject({ risks: newRisks })}
+          />
+        </Suspense>
       )}
 
       {activeTab === 'pilotage' && (
-        <PilotageView project={project} rates={rates} onUpdateProject={updateProject} />
+        <Suspense fallback={<FallbackSpinner />}>
+          <PilotageView project={project} rates={rates} onUpdateProject={updateProject} />
+        </Suspense>
       )}
 
       {/* --- Onglets Charts et Sommaire --- */}
       {activeTab === 'work' && <WorkView project={project} />}
-      {activeTab === 'charts' && <CostCharts project={project} rates={rates} />}
+      {activeTab === 'charts' && (
+        <Suspense fallback={<FallbackSpinner />}>
+          <CostCharts project={project} rates={rates} />
+        </Suspense>
+      )}
       {activeTab === 'summary' && <ProjectSummary project={project} rates={rates} />}
       {/* Note: l'onglet Rates a été déplacé dans CapacityView (Rates tab moved to CapacityView) */}
     </div>

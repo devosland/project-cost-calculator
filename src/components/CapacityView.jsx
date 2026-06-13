@@ -6,7 +6,8 @@
  * are pre-fetched here so QuickTransition popups inside CapacityGantt can
  * receive the pool without re-fetching.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import FallbackSpinner from './ui/fallback-spinner';
 import { ArrowLeft, BarChart3, CalendarClock, Users, ArrowLeftRight, Settings, Gauge } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocale } from '../lib/i18n';
@@ -14,7 +15,9 @@ import { useHashRouter } from '../lib/useHashRouter';
 import ResourcePool from './ResourcePool';
 import CapacityGantt from './CapacityGantt';
 import TransitionList from './TransitionList';
-import TransitionPlanner from './TransitionPlanner';
+// Lazy: the 452-LOC transition planner only mounts when the user opens it from
+// the Transitions tab, so it stays out of the initial capacity-view bundle.
+const TransitionPlanner = lazy(() => import('./TransitionPlanner'));
 import AvailabilityGrid from './AvailabilityGrid';
 import CapacityLoadGrid from './CapacityLoadGrid';
 import RolesRatesManager from './RolesRatesManager';
@@ -155,13 +158,15 @@ const CapacityView = ({ rates, onBack, onDataChanged, onRatesChange, initialTab 
       )}
       {activeTab === 'transitions' && (
         showPlanner ? (
-          <TransitionPlanner
-            plan={selectedPlan}
-            resources={resources}
-            rates={rates}
-            onClose={() => setShowPlanner(false)}
-            onSave={() => { setShowPlanner(false); setRefreshKey(k => k + 1); if (onDataChanged) onDataChanged(); }}
-          />
+          <Suspense fallback={<FallbackSpinner />}>
+            <TransitionPlanner
+              plan={selectedPlan}
+              resources={resources}
+              rates={rates}
+              onClose={() => setShowPlanner(false)}
+              onSave={() => { setShowPlanner(false); setRefreshKey(k => k + 1); if (onDataChanged) onDataChanged(); }}
+            />
+          </Suspense>
         ) : (
           <TransitionList
             onSelectPlan={(p) => { setSelectedPlan(p); setShowPlanner(true); }}

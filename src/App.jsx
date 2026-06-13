@@ -7,11 +7,14 @@
  * Navigation is entirely URL-hash-driven (useHashRouter) so deep links and
  * browser back/forward work without a server-side router.
  */
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react'
+import FallbackSpinner from './components/ui/fallback-spinner'
 import AuthPage from './components/AuthPage'
 import Dashboard from './components/Dashboard'
 import ProjectView from './components/ProjectView'
-import ScenarioComparison from './components/ScenarioComparison'
+// Lazy: the scenario-comparison view is only reached via the dashboard's
+// "Compare" action, so it never needs to be in the initial bundle.
+const ScenarioComparison = lazy(() => import('./components/ScenarioComparison'))
 import CapacityView from './components/CapacityView'
 import TemplateManager from './components/TemplateManager'
 import ShareDialog from './components/ShareDialog'
@@ -334,12 +337,14 @@ function AppContent() {
             }).catch(() => {});
           }} />
         ) : compareIds ? (
-          <ScenarioComparison
-            projects={projects}
-            rates={rates}
-            selectedIds={compareIds}
-            onClose={() => setCompareIds(null)}
-          />
+          <Suspense fallback={<FallbackSpinner />}>
+            <ScenarioComparison
+              projects={projects}
+              rates={rates}
+              selectedIds={compareIds}
+              onClose={() => setCompareIds(null)}
+            />
+          </Suspense>
         ) : activeProject ? (
           <ProjectView
             project={activeProject}

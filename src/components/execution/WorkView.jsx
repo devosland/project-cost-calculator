@@ -9,13 +9,17 @@
  * Direct navigation from any other tab reloads this view, which is why
  * the sub-tab stays in the hash rather than in local state only.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import FallbackSpinner from '../ui/fallback-spinner';
 import { LayoutGrid, List, Calendar } from 'lucide-react';
 import { useLocale } from '../../lib/i18n';
 import { useHashRouter } from '../../lib/useHashRouter';
 import { capacityApi } from '../../lib/capacityApi';
 import { executionApi } from '../../lib/executionApi';
-import Board from './Board';
+// Lazy: Board is the sole consumer of @dnd-kit (kanban drag-drop). The Backlog
+// and Timesheet subtabs don't need it, so deferring Board keeps @dnd-kit out of
+// the initial bundle. Board owns its own DndContext, so the lazy boundary is safe.
+const Board = lazy(() => import('./Board'));
 import Backlog from './Backlog';
 import Timesheet from './Timesheet';
 import TaskPanel from './TaskPanel';
@@ -94,15 +98,17 @@ export default function WorkView({ project }) {
       </nav>
 
       {subtab === 'board' && (
-        <Board
-          key={reloadKey}
-          projectId={project.id}
-          statuses={statuses}
-          resources={resources}
-          canEdit={canEdit}
-          canLog={canLog}
-          onOpenTask={setOpenTaskId}
-        />
+        <Suspense fallback={<FallbackSpinner />}>
+          <Board
+            key={reloadKey}
+            projectId={project.id}
+            statuses={statuses}
+            resources={resources}
+            canEdit={canEdit}
+            canLog={canLog}
+            onOpenTask={setOpenTaskId}
+          />
+        </Suspense>
       )}
       {subtab === 'backlog' && (
         <Backlog
