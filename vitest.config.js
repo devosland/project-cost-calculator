@@ -8,6 +8,9 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.{test,spec}.{js,jsx}', 'server/**/*.{test,spec}.{js,jsx}'],
     passWithNoTests: true,
+    // Isolate each worker's SQLite database so parallel server-test files never
+    // share one app.db (see vitest.setup.js). Runs before db.js is imported.
+    setupFiles: ['./vitest.setup.js'],
     environmentMatchGlobs: [
       ['server/**/*.{test,spec}.{js,jsx}', 'node'],
     ],
