@@ -1,11 +1,11 @@
-FROM node:25-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 COPY . .
 RUN npm run build
 
-FROM node:25-alpine
+FROM node:26-alpine
 WORKDIR /app
 
 # node:25-alpine bundles npm 11.12.1 whose vendored deps carry CVE-2026-59873
